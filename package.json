@@ -1,0 +1,12 @@
+{
+  "name": "wavee",
+  "private": true,
+  "packageManager": "pnpm@10.6.3",
+  "scripts": {
+    "backend": "pnpm --filter wavee-backend run dev",
+    "backend:typecheck": "pnpm --filter wavee-backend run typecheck",
+    "mobile": "pnpm --filter wavee-mobile run start",
+    "mobile:typecheck": "pnpm --filter wavee-mobile run typecheck",
+    "typecheck": "pnpm -r run typecheck"
+  }
+}

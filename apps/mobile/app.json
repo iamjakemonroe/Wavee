@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Wavee",
+    "slug": "wavee-mobile",
+    "scheme": "wavee",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router"
+    ],
+    "splash": {
+      "backgroundColor": "#0B0B0F"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0B0F"
+      }
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
