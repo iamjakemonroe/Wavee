@@ -1,4 +1,4 @@
--- Wavee MVP schema
+-- Wavee MVP schema sql file
 create extension if not exists "pgcrypto";
 
 create table if not exists public.users (
