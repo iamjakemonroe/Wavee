@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import Toast from "react-native-toast-message";
 import { Screen } from "@/components/ui/Screen";
 import { authService } from "@/services/auth.service";
 import { colors } from "@/theme/colors";
@@ -17,12 +18,40 @@ export default function OnboardingScreen() {
     setError(null);
     try {
       if (isSignUp) {
-        await authService.signUp({ email, password, username });
+        const data = await authService.signUp({ email, password, username });
+        if (!data.session) {
+          Toast.show({
+            type: "success",
+            text1: "Confirm your email",
+            text2: "Check your inbox and click the confirmation link to continue.",
+            position: "bottom",
+          });
+        } else {
+          Toast.show({
+            type: "success",
+            text1: "Account created",
+            text2: "You are signed in and ready to discover music.",
+            position: "bottom",
+          });
+        }
       } else {
         await authService.signIn({ email, password });
+        Toast.show({
+          type: "success",
+          text1: "Welcome back",
+          text2: "You are signed in.",
+          position: "bottom",
+        });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Authentication failed");
+      const message = e instanceof Error ? e.message : "Authentication failed";
+      setError(message);
+      Toast.show({
+        type: "error",
+        text1: "Authentication error",
+        text2: message,
+        position: "bottom",
+      });
     } finally {
       setLoading(false);
     }

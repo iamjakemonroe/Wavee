@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View } from "react-native";
+import Toast from "react-native-toast-message";
 import { AppProviders } from "@/providers/AppProviders";
 import { useAuthBootstrap } from "@/hooks/useAuthBootstrap";
 import { useAuthStore } from "@/store/auth.store";
@@ -25,6 +26,7 @@ function RootNavigator() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(app)" />
       </Stack>
+      <Toast />
     </>
   );
 }
