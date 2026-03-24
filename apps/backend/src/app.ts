@@ -33,17 +33,23 @@ export async function buildApp() {
   app.register(profileRoutes, { prefix: `${base}/profile` });
   app.register(leaderboardRoutes, { prefix: `${base}/leaderboards` });
 
-  app.setErrorHandler((error, request, reply) => {
-    request.log.error(error);
+  app.setErrorHandler((err, request, reply) => {
+    const error = err as Error & { statusCode?: number };
+    console.error(`[${request.method} ${request.url}]`, error);
     if (error instanceof HttpError) {
       return reply.status(error.statusCode).send({
         ok: false,
         error: { message: error.message },
       });
     }
-    return reply.status(500).send({
+    const status = error.statusCode ?? 500;
+    const message =
+      env.NODE_ENV === "production"
+        ? "Internal server error"
+        : error.message || "Internal server error";
+    return reply.status(status).send({
       ok: false,
-      error: { message: "Internal server error" },
+      error: { message },
     });
   });
 

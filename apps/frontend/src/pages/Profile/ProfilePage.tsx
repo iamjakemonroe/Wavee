@@ -1,8 +1,10 @@
-import { FiUser, FiMusic, FiCalendar } from "react-icons/fi";
+import { Link } from "react-router-dom";
+import { FiUser, FiMusic, FiCalendar, FiLogIn } from "react-icons/fi";
 import { useProfileQuery } from "@/hooks/queries/useProfileQuery";
 import { usePlaylistsQuery } from "@/hooks/queries/usePlaylistsQuery";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export function ProfilePage() {
@@ -13,14 +15,37 @@ export function ProfilePage() {
 
   return (
     <section>
-      <header className="mb-6">
-        <h2 className="text-3xl font-black tracking-tight">Profile</h2>
+      <header className="mb-4 sm:mb-6">
+        <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
+          Profile
+        </h2>
       </header>
 
       {!isAuthenticated ? (
-        <GlassPanel className="p-8 text-center">
-          <FiUser className="mx-auto mb-3 text-wavee-muted/30" size={48} />
-          <p className="text-wavee-muted">Sign in to see your profile</p>
+        <GlassPanel className="flex flex-col items-center gap-4 p-8 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-wavee-surface">
+            <FiUser className="text-wavee-muted" size={28} />
+          </div>
+          <div>
+            <p className="font-semibold text-wavee-text">
+              Sign in to your account
+            </p>
+            <p className="mt-1 text-sm text-wavee-muted">
+              Access your profile, playlists, and uploads
+            </p>
+          </div>
+          <Link to="/login">
+            <Button size="lg">
+              <FiLogIn size={18} />
+              Sign In
+            </Button>
+          </Link>
+          <p className="text-xs text-wavee-muted">
+            Don&apos;t have an account?{" "}
+            <Link to="/signup" className="text-wavee-primary hover:underline">
+              Sign up
+            </Link>
+          </p>
         </GlassPanel>
       ) : profileQuery.isLoading ? (
         <GlassPanel className="space-y-4 p-6">

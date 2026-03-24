@@ -10,5 +10,6 @@ export const mockSongs: Song[] = Array.from({ length: 6 }).map((_, index) => ({
   plays_count: 100 + index * 10,
   likes_count: 15 + index * 3,
   created_at: new Date().toISOString(),
+  artist_name: "Demo Artist",
   score: 42 + index,
 }));

@@ -9,6 +9,7 @@ import {
   FiLogOut,
 } from "react-icons/fi";
 import { useAuthStore } from "@/store/useAuthStore";
+import { WaveeLogo } from "@/components/ui/WaveeLogo";
 
 const navItems = [
   { to: "/", icon: FiHome, label: "Home" },
@@ -24,11 +25,9 @@ export function Sidebar() {
   const navigate = useNavigate();
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-white/[0.06] bg-wavee-bg/80 backdrop-blur-xl">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-white/[0.06] bg-wavee-bg/80 backdrop-blur-xl lg:flex">
       <div className="flex items-center gap-2 px-6 py-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-wavee-primary to-wavee-secondary">
-          <FiDisc className="text-white" size={16} />
-        </div>
+        <WaveeLogo size={32} className="rounded-lg" />
         <h1 className="text-xl font-black tracking-tight text-gradient">Wavee</h1>
       </div>
 

@@ -22,6 +22,11 @@ const PlaylistPage = lazy(() =>
     default: m.PlaylistPage,
   })),
 );
+const PlaylistDetailPage = lazy(() =>
+  import("@/pages/Playlist/PlaylistDetailPage").then((m) => ({
+    default: m.PlaylistDetailPage,
+  })),
+);
 const PlayerPage = lazy(() =>
   import("@/pages/Player/PlayerPage").then((m) => ({
     default: m.PlayerPage,
@@ -32,6 +37,11 @@ const LoginPage = lazy(() =>
 );
 const SignupPage = lazy(() =>
   import("@/pages/Auth/SignupPage").then((m) => ({ default: m.SignupPage })),
+);
+const AuthCallbackPage = lazy(() =>
+  import("@/pages/Auth/AuthCallbackPage").then((m) => ({
+    default: m.AuthCallbackPage,
+  })),
 );
 
 function PageLoader() {
@@ -49,6 +59,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
           <Route element={<AppLayout />}>
             <Route path="/" element={<HomePage />} />
@@ -56,6 +67,7 @@ function App() {
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/playlists" element={<PlaylistPage />} />
+            <Route path="/playlists/:playlistId" element={<PlaylistDetailPage />} />
             <Route path="/player" element={<PlayerPage />} />
           </Route>
 

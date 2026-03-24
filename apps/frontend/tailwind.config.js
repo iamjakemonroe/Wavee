@@ -35,16 +35,11 @@ export default {
       },
       animation: {
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
-        waveform: "waveform 1.2s ease-in-out infinite",
       },
       keyframes: {
         "pulse-glow": {
           "0%, 100%": { opacity: "0.4" },
           "50%": { opacity: "1" },
-        },
-        waveform: {
-          "0%, 100%": { transform: "scaleY(0.3)" },
-          "50%": { transform: "scaleY(1)" },
         },
       },
     },

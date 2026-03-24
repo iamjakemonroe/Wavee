@@ -3,6 +3,8 @@ import { FiPlay } from "react-icons/fi";
 import type { Song } from "@/types/entities";
 import { WaveformBar } from "@/components/music/WaveformBar";
 
+const COVER_FALLBACK = "/cover-placeholder.svg";
+
 interface SongCardProps {
   song: Song;
   isActive: boolean;
@@ -26,7 +28,7 @@ export const SongCard = memo(function SongCard({
     >
       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg">
         <img
-          src={song.cover_image_url ?? "/icons.svg"}
+          src={song.cover_image_url || COVER_FALLBACK}
           alt={song.title}
           className="h-full w-full object-cover"
           loading="lazy"
@@ -45,7 +47,9 @@ export const SongCard = memo(function SongCard({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-wavee-text">{song.title}</p>
-        <p className="truncate text-xs text-wavee-muted">{song.genre}</p>
+        <p className="truncate text-xs text-wavee-muted">
+          {song.artist_name ? `${song.artist_name} · ${song.genre}` : song.genre}
+        </p>
       </div>
       <div className="flex items-center gap-3 text-xs text-wavee-muted">
         <span>{song.plays_count.toLocaleString()} plays</span>

@@ -1,15 +1,85 @@
+import type { InfiniteData } from "@tanstack/react-query";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/constants/queryKeys";
 import { apiEndpoints } from "@/services/apiEndpoints";
 import { httpService } from "@/services/httpService";
+import type { Song } from "@/types/entities";
+
+interface ToggleLikeResult {
+  liked: boolean;
+}
+
+function bumpLikesInFeed(
+  data: InfiniteData<Song[]> | undefined,
+  songId: string,
+  delta: 1 | -1,
+): InfiniteData<Song[]> | undefined {
+  if (!data) return data;
+  return {
+    ...data,
+    pages: data.pages.map((page) =>
+      page.map((song) =>
+        song.id === songId
+          ? {
+              ...song,
+              likes_count: Math.max(0, song.likes_count + delta),
+            }
+          : song,
+      ),
+    ),
+  };
+}
 
 export function useLikeSongMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (songId: string) => httpService.post<void>(apiEndpoints.engagement.like(songId)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.homeFeed });
+    mutationFn: (songId: string) =>
+      httpService.post<ToggleLikeResult>(
+        apiEndpoints.engagement.toggleLike(songId),
+      ),
+
+    onMutate: async (songId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.myLikes });
+      await queryClient.cancelQueries({ queryKey: queryKeys.homeFeed });
+
+      const previousMyLikes = queryClient.getQueryData<string[]>(
+        queryKeys.myLikes,
+      );
+      const previousHomeFeed = queryClient.getQueryData<InfiniteData<Song[]>>(
+        queryKeys.homeFeed,
+      );
+
+      const wasLiked = previousMyLikes?.includes(songId) ?? false;
+      const delta: 1 | -1 = wasLiked ? -1 : 1;
+
+      queryClient.setQueryData<string[]>(queryKeys.myLikes, (old) => {
+        if (!old) return wasLiked ? [] : [songId];
+        return wasLiked
+          ? old.filter((id) => id !== songId)
+          : [...old, songId];
+      });
+
+      queryClient.setQueryData<InfiniteData<Song[]>>(
+        queryKeys.homeFeed,
+        (old) => bumpLikesInFeed(old, songId, delta),
+      );
+
+      return { previousMyLikes, previousHomeFeed };
+    },
+
+    onError: (_err, _songId, context) => {
+      if (!context) return;
+      queryClient.setQueryData(queryKeys.myLikes, context.previousMyLikes);
+      queryClient.setQueryData(
+        queryKeys.homeFeed,
+        context.previousHomeFeed,
+      );
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myLikes });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.homeFeed });
     },
   });
 }

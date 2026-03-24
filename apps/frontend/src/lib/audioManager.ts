@@ -20,6 +20,10 @@ class AudioManager {
     return this.audio.duration;
   }
 
+  get paused() {
+    return this.audio.paused;
+  }
+
   setVolume(v: number) {
     this.targetVolume = Math.max(0, Math.min(1, v));
     if (this.fadeRaf === null) {
@@ -35,6 +39,8 @@ class AudioManager {
     if (this.currentUrl !== url) {
       this.currentUrl = url;
       this.audio.src = url;
+    } else {
+      this.audio.currentTime = 0;
     }
 
     this.audio
@@ -42,24 +48,35 @@ class AudioManager {
       .then(() => {
         if (gen === this.generation) this.startFade("in");
       })
-      .catch(() => {});
+      .catch(() => {
+        window.dispatchEvent(new CustomEvent("wavee:playback-blocked"));
+      });
   }
 
   pause() {
+    ++this.generation;
+    this.cancelFade();
     this.startFade("out");
   }
 
   resume() {
     this.cancelFade();
-    this.audio.volume = 0;
     const gen = ++this.generation;
 
+    if (!this.audio.paused) {
+      this.audio.volume = this.targetVolume;
+      return;
+    }
+
+    this.audio.volume = 0;
     this.audio
       .play()
       .then(() => {
         if (gen === this.generation) this.startFade("in");
       })
-      .catch(() => {});
+      .catch(() => {
+        window.dispatchEvent(new CustomEvent("wavee:playback-blocked"));
+      });
   }
 
   seek(time: number) {

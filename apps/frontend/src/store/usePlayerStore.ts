@@ -6,6 +6,7 @@ interface PlayerState {
   queue: Song[];
   currentSongId: string | null;
   isPlaying: boolean;
+  userPaused: boolean;
   progress: number;
   duration: number;
   volume: number;
@@ -26,6 +27,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   queue: [],
   currentSongId: null,
   isPlaying: false,
+  userPaused: false,
   progress: 0,
   duration: 0,
   volume: 1,
@@ -34,13 +36,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   playSong: (song) => {
     const state = get();
-    if (state.currentSongId === song.id && state.isPlaying) return;
+
+    if (state.currentSongId === song.id) {
+      if (!state.isPlaying) {
+        set({ isPlaying: true, userPaused: false });
+        audioManager.resume();
+      }
+      return;
+    }
 
     const exists = state.queue.some((s) => s.id === song.id);
     set({
       queue: exists ? state.queue : [song, ...state.queue],
       currentSongId: song.id,
       isPlaying: true,
+      userPaused: false,
       progress: 0,
       duration: 0,
     });
@@ -57,7 +67,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   togglePlay: () => {
     if (!get().currentSongId) return;
     const willPlay = !get().isPlaying;
-    set({ isPlaying: willPlay });
+    set({ isPlaying: willPlay, userPaused: !willPlay });
     if (willPlay) {
       audioManager.resume();
     } else {
@@ -72,7 +82,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const nextIdx = idx >= 0 ? (idx + 1) % queue.length : 0;
     const nextSong = queue[nextIdx];
     if (nextSong) {
-      set({ currentSongId: nextSong.id, isPlaying: true, progress: 0, duration: 0 });
+      set({ currentSongId: nextSong.id, isPlaying: true, userPaused: false, progress: 0, duration: 0 });
       audioManager.play(nextSong.audio_url);
     }
   },
@@ -91,7 +101,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const prevIdx = idx > 0 ? idx - 1 : queue.length - 1;
     const prevSong = queue[prevIdx];
     if (prevSong) {
-      set({ currentSongId: prevSong.id, isPlaying: true, progress: 0, duration: 0 });
+      set({ currentSongId: prevSong.id, isPlaying: true, userPaused: false, progress: 0, duration: 0 });
       audioManager.play(prevSong.audio_url);
     }
   },

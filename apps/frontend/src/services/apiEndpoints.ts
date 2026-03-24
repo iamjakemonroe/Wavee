@@ -12,11 +12,15 @@ export const apiEndpoints = {
     upload: "/v1/songs/upload",
   },
   engagement: {
+    toggleLike: (songId: string) => `/v1/engagement/toggle-like/${songId}`,
+    myLikes: "/v1/engagement/likes/mine",
     like: (songId: string) => `/v1/engagement/likes/${songId}`,
+    plays: "/v1/engagement/plays",
   },
   playlists: {
     base: "/v1/playlists",
     songs: (playlistId: string) => `/v1/playlists/${playlistId}/songs`,
+    containing: (songId: string) => `/v1/playlists/containing/${songId}`,
   },
   profile: {
     me: "/v1/profile/me",

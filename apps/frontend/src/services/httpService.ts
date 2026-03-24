@@ -14,7 +14,15 @@ class HttpService {
     const headers = new Headers(init?.headers);
     const isFormData = data instanceof FormData;
 
-    if (!isFormData) {
+    const body: BodyInit | undefined =
+      data === undefined
+        ? undefined
+        : isFormData
+          ? (data as BodyInit)
+          : JSON.stringify(data);
+
+    // Fastify rejects empty bodies when Content-Type is application/json (FST_ERR_CTP_EMPTY_JSON_BODY)
+    if (!isFormData && body !== undefined) {
       headers.set("Content-Type", "application/json");
     }
     if (token) {
@@ -25,12 +33,7 @@ class HttpService {
       ...init,
       method,
       headers,
-      body:
-        data === undefined
-          ? undefined
-          : isFormData
-            ? (data as BodyInit)
-            : JSON.stringify(data),
+      body,
     });
 
     const payload = (await response.json()) as ApiResponse<T>;

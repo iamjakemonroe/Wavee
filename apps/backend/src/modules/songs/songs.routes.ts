@@ -30,13 +30,23 @@ export async function songsRoutes(app: FastifyInstance) {
     const { q } = parsed.data;
     const { data, error } = await supabaseAdmin
       .from("songs")
-      .select("*")
+      .select("*, artist:users!user_id(username)")
       .or(`title.ilike.%${q}%,genre.ilike.%${q}%`)
       .order("created_at", { ascending: false })
       .limit(20);
 
     if (error) return fail(reply, 500, error.message);
-    return reply.send({ ok: true, data });
+
+    const songs = (data ?? []).map((s: Record<string, unknown>) => {
+      const artist = s.artist as { username: string } | null;
+      return {
+        ...s,
+        artist_name: artist?.username ?? "Unknown",
+        artist: undefined,
+      };
+    });
+
+    return reply.send({ ok: true, data: songs });
   });
 
   app.post("/upload", { preHandler: [requireAuth] }, async (request, reply) => {

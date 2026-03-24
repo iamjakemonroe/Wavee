@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin, supabaseAnon } from "../../config/supabase.js";
 import { requireAuth } from "../../plugins/auth.js";
 import { fail } from "../../utils/http.js";
+import { env } from "../../config/env.js";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -40,6 +41,7 @@ export async function authRoutes(app: FastifyInstance) {
         data: {
           username: username ?? email.split("@")[0],
         },
+        emailRedirectTo: `${env.FRONTEND_URL}/auth/callback`,
       },
     });
     if (error || !data.user) {

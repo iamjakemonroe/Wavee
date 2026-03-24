@@ -12,6 +12,8 @@ import { ProgressBar } from "@/components/music/ProgressBar";
 import { WaveformBar } from "@/components/music/WaveformBar";
 import { formatTime } from "@/utils/format";
 
+const COVER_FALLBACK = "/cover-placeholder.svg";
+
 export function GlobalPlayer() {
   const {
     queue,
@@ -40,21 +42,21 @@ export function GlobalPlayer() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="fixed bottom-0 left-64 right-0 z-50 border-t border-white/[0.06] bg-wavee-bg/90 backdrop-blur-2xl"
+          className="fixed left-0 right-0 z-40 border-t border-white/[0.06] bg-wavee-bg/90 backdrop-blur-2xl bottom-nav-offset lg:bottom-0 lg:left-64"
         >
           <ProgressBar
             progress={progress}
             duration={duration}
             onSeek={seek}
-            className="absolute -top-2.5 left-0 right-0"
+            className="absolute -top-2.6 left-0 right-0"
           />
 
-          <div className="flex items-center gap-4 px-5 py-3">
+          <div className="flex items-center gap-3 px-3 py-2 sm:gap-4 sm:px-5 sm:py-3">
             {/* Song info */}
-            <div className="flex min-w-0 items-center gap-3" style={{ flex: "1 1 30%" }}>
-              <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg sm:h-11 sm:w-11">
                 <img
-                  src={currentSong.cover_image_url ?? "/icons.svg"}
+                  src={currentSong.cover_image_url || COVER_FALLBACK}
                   alt={currentSong.title}
                   className="h-full w-full object-cover"
                 />
@@ -65,29 +67,31 @@ export function GlobalPlayer() {
                 )}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-wavee-text">
+                <p className="truncate text-xs font-semibold text-wavee-text sm:text-sm">
                   {currentSong.title}
                 </p>
-                <p className="truncate text-xs text-wavee-muted">{currentSong.genre}</p>
+                <p className="truncate text-[10px] text-wavee-muted sm:text-xs">
+                  {currentSong.artist_name ?? currentSong.genre}
+                </p>
               </div>
             </div>
 
             {/* Controls */}
-            <div className="flex items-center justify-center gap-3" style={{ flex: "0 0 auto" }}>
+            <div className="flex shrink-0 items-center gap-1 sm:gap-3">
               <button
                 onClick={previous}
-                className="rounded-full p-2 text-wavee-muted transition-colors hover:bg-white/[0.06] hover:text-wavee-text"
+                className="hidden rounded-full p-2 text-wavee-muted transition-colors hover:bg-white/[0.06] hover:text-wavee-text sm:block"
               >
                 <FiSkipBack size={18} />
               </button>
               <button
                 onClick={togglePlay}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-wavee-primary text-black transition-all hover:shadow-neon active:scale-95"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-wavee-primary text-black transition-all hover:shadow-neon active:scale-95 sm:h-10 sm:w-10"
               >
                 {isPlaying ? (
-                  <FiPause size={18} />
+                  <FiPause size={16} />
                 ) : (
-                  <FiPlay size={18} className="ml-0.5" />
+                  <FiPlay size={16} className="ml-0.5" />
                 )}
               </button>
               <button
@@ -98,13 +102,11 @@ export function GlobalPlayer() {
               </button>
             </div>
 
-            {/* Time + Volume */}
-            <div
-              className="flex items-center justify-end gap-4 text-xs text-wavee-muted"
-              style={{ flex: "1 1 30%" }}
-            >
+            {/* Time + Volume — desktop only */}
+            <div className="hidden items-center justify-end gap-4 text-xs text-wavee-muted md:flex">
               <span className="tabular-nums">
-                {formatTime(progress)} / {formatTime(duration)}
+                {formatTime(progress)} /{" "}
+                {duration > 0 ? formatTime(duration) : "--:--"}
               </span>
               <div className="flex items-center gap-2">
                 <FiVolume2 size={14} />

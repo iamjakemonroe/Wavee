@@ -22,6 +22,7 @@
   body,
   #root {
     min-height: 100vh;
+    min-height: 100dvh;
   }
 
   body {
@@ -94,6 +95,45 @@
   }
 }
 
+/* Waveform bar animations — each has a unique organic rhythm */
+@keyframes wave-1 {
+  0%, 100% { transform: scaleY(0.3) }
+  25% { transform: scaleY(0.8) }
+  50% { transform: scaleY(0.5) }
+  75% { transform: scaleY(1) }
+}
+
+@keyframes wave-2 {
+  0%, 100% { transform: scaleY(0.2) }
+  20% { transform: scaleY(0.9) }
+  40% { transform: scaleY(0.4) }
+  60% { transform: scaleY(1) }
+  80% { transform: scaleY(0.55) }
+}
+
+@keyframes wave-3 {
+  0%, 100% { transform: scaleY(0.4) }
+  30% { transform: scaleY(1) }
+  55% { transform: scaleY(0.55) }
+  80% { transform: scaleY(0.85) }
+}
+
+@keyframes wave-4 {
+  0%, 100% { transform: scaleY(0.25) }
+  15% { transform: scaleY(0.7) }
+  35% { transform: scaleY(1) }
+  55% { transform: scaleY(0.4) }
+  75% { transform: scaleY(0.85) }
+}
+
+@keyframes wave-5 {
+  0%, 100% { transform: scaleY(0.35) }
+  20% { transform: scaleY(0.95) }
+  45% { transform: scaleY(0.45) }
+  65% { transform: scaleY(0.8) }
+  85% { transform: scaleY(0.6) }
+}
+
 @layer utilities {
   .text-gradient {
     @apply bg-gradient-to-r from-wavee-primary to-wavee-secondary bg-clip-text text-transparent;
@@ -105,5 +145,44 @@
 
   .glass-heavy {
     @apply border border-white/[0.08] bg-black/40 backdrop-blur-2xl;
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .bottom-nav-offset {
+    bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pb-with-player-nav {
+    padding-bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pb-with-nav-only {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Feed section: fills viewport minus mobile header + parent padding (top & bottom) */
+  .h-feed {
+    height: calc(
+      100dvh - 3.25rem - 1rem - 8.5rem
+      - env(safe-area-inset-top, 0px)
+      - env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  @media (min-width: 1024px) {
+    .h-feed {
+      height: calc(100dvh - 7.5rem);
+    }
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

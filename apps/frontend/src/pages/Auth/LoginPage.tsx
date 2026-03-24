@@ -2,12 +2,12 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiDisc } from "react-icons/fi";
 import { useLoginMutation } from "@/hooks/mutations/useAuthMutation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { WaveeLogo } from "@/components/ui/WaveeLogo";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
@@ -40,9 +40,7 @@ export function LoginPage() {
         className="w-full max-w-sm"
       >
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-wavee-primary to-wavee-secondary shadow-neon">
-            <FiDisc className="text-white" size={24} />
-          </div>
+          <WaveeLogo size={48} className="rounded-2xl shadow-neon" />
           <h1 className="text-2xl font-black tracking-tight text-gradient">
             Welcome back
           </h1>

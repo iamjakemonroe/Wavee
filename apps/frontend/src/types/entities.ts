@@ -8,6 +8,7 @@ export interface Song {
   plays_count: number;
   likes_count: number;
   created_at: string;
+  artist_name?: string;
   score?: number;
   completion_rate?: number;
   skip_rate?: number;

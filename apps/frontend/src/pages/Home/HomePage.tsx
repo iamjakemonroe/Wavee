@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FeedItem } from "@/components/feed/FeedItem";
 import { FeedSkeleton } from "@/components/feed/FeedSkeleton";
+import { AddToPlaylistSheet } from "@/components/music/AddToPlaylistSheet";
 import { useLikeSongMutation } from "@/hooks/mutations/useLikeSongMutation";
+import { useMyLikesQuery } from "@/hooks/queries/useMyLikesQuery";
 import { useHomeFeedQuery } from "@/hooks/queries/useHomeFeedQuery";
 import { mockSongs } from "@/constants/mockSongs";
 import { usePlayerStore } from "@/store/usePlayerStore";
@@ -11,10 +13,20 @@ export function HomePage() {
   const { isAuthenticated } = useAuthStore();
   const feedQuery = useHomeFeedQuery(isAuthenticated);
   const likeMutation = useLikeSongMutation();
+  const myLikesQuery = useMyLikesQuery(isAuthenticated);
+  const likedSet = useMemo(
+    () => new Set(myLikesQuery.data ?? []),
+    [myLikesQuery.data],
+  );
+
   const { currentSongId, isPlaying, setQueue, playSong, togglePlay } =
     usePlayerStore();
   const feedRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const [playlistSheet, setPlaylistSheet] = useState<{
+    songId: string;
+    title: string;
+  } | null>(null);
 
   const songs = useMemo(() => {
     if (!isAuthenticated) return mockSongs;
@@ -25,7 +37,6 @@ export function HomePage() {
     if (songs.length > 0) setQueue(songs);
   }, [songs, setQueue]);
 
-  // Autoplay when song scrolls into view
   useEffect(() => {
     const container = feedRef.current;
     if (!container || songs.length === 0) return;
@@ -36,6 +47,10 @@ export function HomePage() {
           if (!entry.isIntersecting) continue;
           const songId = (entry.target as HTMLElement).dataset.songId;
           if (!songId) continue;
+
+          const state = usePlayerStore.getState();
+          if (songId === state.currentSongId && state.userPaused) continue;
+
           const song = songs.find((s) => s.id === songId);
           if (song) playSong(song);
           break;
@@ -50,7 +65,6 @@ export function HomePage() {
     return () => observer.disconnect();
   }, [songs, playSong]);
 
-  // Infinite scroll
   useEffect(() => {
     if (!feedQuery.hasNextPage || !isAuthenticated) return;
     const sentinel = sentinelRef.current;
@@ -87,16 +101,29 @@ export function HomePage() {
   );
 
   const handleLike = useCallback(
-    (songId: string) => likeMutation.mutate(songId),
-    [likeMutation],
+    (songId: string) => {
+      if (!isAuthenticated) return;
+      likeMutation.mutate(songId);
+    },
+    [likeMutation, isAuthenticated],
+  );
+
+  const handleAddToPlaylist = useCallback(
+    (songId: string, title: string) => {
+      if (!isAuthenticated) return;
+      setPlaylistSheet({ songId, title });
+    },
+    [isAuthenticated],
   );
 
   if (feedQuery.isLoading && isAuthenticated) {
     return (
       <section>
-        <header className="mb-6">
-          <h2 className="text-3xl font-black tracking-tight">For You</h2>
-          <p className="mt-1 text-sm text-wavee-muted">
+        <header className="mb-4 sm:mb-6">
+          <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
+            For You
+          </h2>
+          <p className="mt-1 text-xs text-wavee-muted sm:text-sm">
             Discover your next favorite track
           </p>
         </header>
@@ -106,41 +133,61 @@ export function HomePage() {
   }
 
   return (
-    <section>
-      <header className="mb-6">
-        <h2 className="text-3xl font-black tracking-tight">For You</h2>
-        <p className="mt-1 text-sm text-wavee-muted">
-          {isAuthenticated
-            ? "Personalized discovery feed"
-            : "Sign in to get personalized recommendations"}
-        </p>
-      </header>
+    <>
+      <section className="flex h-feed flex-col">
+        <header className="mb-2 shrink-0 sm:mb-4">
+          <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
+            For You
+          </h2>
+          <p className="mt-1 text-xs text-wavee-muted sm:text-sm">
+            {isAuthenticated
+              ? "Personalized discovery feed"
+              : "Sign in to get personalized recommendations"}
+          </p>
+        </header>
 
-      <div
-        ref={feedRef}
-        className="h-[calc(100vh-12rem)] snap-y snap-mandatory space-y-4 overflow-y-auto"
-      >
-        {songs.map((song) => (
-          <FeedItem
-            key={song.id}
-            song={song}
-            isActive={currentSongId === song.id}
-            isPlaying={currentSongId === song.id && isPlaying}
-            onToggle={() => handleToggle(song.id)}
-            onLike={() => handleLike(song.id)}
-          />
-        ))}
+        <div
+          ref={feedRef}
+          className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto scrollbar-hide"
+        >
+          {songs.map((song) => (
+            <FeedItem
+              key={song.id}
+              song={song}
+              isActive={currentSongId === song.id}
+              isPlaying={currentSongId === song.id && isPlaying}
+              isLiked={likedSet.has(song.id)}
+              onToggle={() => handleToggle(song.id)}
+              onLike={() => handleLike(song.id)}
+              onAddToPlaylist={() =>
+                handleAddToPlaylist(song.id, song.title)
+              }
+            />
+          ))}
 
-        {feedQuery.hasNextPage && isAuthenticated && (
-          <div ref={sentinelRef} className="flex justify-center py-8">
-            <span className="text-sm text-wavee-muted">
-              {feedQuery.isFetchingNextPage
-                ? "Loading more tracks..."
-                : "Scroll for more"}
-            </span>
-          </div>
-        )}
-      </div>
-    </section>
+          {feedQuery.hasNextPage && isAuthenticated && (
+            <div
+              ref={sentinelRef}
+              className="flex h-full shrink-0 snap-start items-center justify-center"
+            >
+              <span className="text-sm text-wavee-muted">
+                {feedQuery.isFetchingNextPage
+                  ? "Loading more tracks..."
+                  : "Scroll for more"}
+              </span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {playlistSheet && (
+        <AddToPlaylistSheet
+          open
+          songId={playlistSheet.songId}
+          songTitle={playlistSheet.title}
+          onClose={() => setPlaylistSheet(null)}
+        />
+      )}
+    </>
   );
 }

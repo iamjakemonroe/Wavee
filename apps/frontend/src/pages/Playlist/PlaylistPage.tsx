@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { FiPlus, FiMusic } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
+import { FiPlus, FiMusic, FiChevronRight } from "react-icons/fi";
 import { useCreatePlaylistMutation } from "@/hooks/mutations/useCreatePlaylistMutation";
 import { usePlaylistsQuery } from "@/hooks/queries/usePlaylistsQuery";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +12,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 
 export function PlaylistPage() {
   const { isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const playlistsQuery = usePlaylistsQuery(isAuthenticated);
   const createMutation = useCreatePlaylistMutation();
@@ -62,10 +64,17 @@ export function PlaylistPage() {
           {playlistsQuery.data.map((playlist) => (
             <GlassPanel
               key={playlist.id}
+              onClick={() => navigate(`/playlists/${playlist.id}`)}
               className="group cursor-pointer p-5 transition-all hover:border-wavee-primary/20 hover:shadow-neon"
             >
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-wavee-primary/10 transition-colors group-hover:bg-wavee-primary/20">
-                <FiMusic className="text-wavee-primary" size={18} />
+              <div className="flex items-start justify-between">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-wavee-primary/10 transition-colors group-hover:bg-wavee-primary/20">
+                  <FiMusic className="text-wavee-primary" size={18} />
+                </div>
+                <FiChevronRight
+                  className="text-wavee-muted/40 transition-colors group-hover:text-wavee-primary"
+                  size={18}
+                />
               </div>
               <p className="font-semibold">{playlist.name}</p>
               <p className="mt-1 text-xs text-wavee-muted">

@@ -2,11 +2,11 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiDisc } from "react-icons/fi";
 import { useSignupMutation } from "@/hooks/mutations/useAuthMutation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { WaveeLogo } from "@/components/ui/WaveeLogo";
 
 export function SignupPage() {
   const [username, setUsername] = useState("");
@@ -37,9 +37,7 @@ export function SignupPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-wavee-primary/20">
-            <FiDisc className="text-wavee-primary" size={32} />
-          </div>
+          <WaveeLogo size={64} className="mx-auto mb-4 rounded-2xl shadow-neon" />
           <h2 className="text-2xl font-bold">Check your email</h2>
           <p className="mt-2 text-wavee-muted">
             We sent a confirmation link. Redirecting to login...
@@ -58,9 +56,7 @@ export function SignupPage() {
         className="w-full max-w-sm"
       >
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-wavee-primary to-wavee-secondary shadow-neon">
-            <FiDisc className="text-white" size={24} />
-          </div>
+          <WaveeLogo size={48} className="rounded-2xl shadow-neon" />
           <h1 className="text-2xl font-black tracking-tight text-gradient">
             Create account
           </h1>
