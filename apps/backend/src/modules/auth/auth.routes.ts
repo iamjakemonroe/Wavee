@@ -4,6 +4,10 @@ import { supabaseAdmin, supabaseAnon } from "../../config/supabase.js";
 import { requireAuth } from "../../plugins/auth.js";
 import { fail } from "../../utils/http.js";
 import { env } from "../../config/env.js";
+import {
+  mapProfileUpsertError,
+  mapSupabaseAuthErrorMessage,
+} from "../../utils/authErrors.js";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -53,7 +57,11 @@ export async function authRoutes(app: FastifyInstance) {
         },
         "Signup failed at Supabase Auth"
       );
-      return fail(reply, 400, error?.message ?? "Signup failed");
+      return fail(
+        reply,
+        400,
+        mapSupabaseAuthErrorMessage(error?.message, "signup")
+      );
     }
 
     const profileUsername = username ?? email.split("@")[0];
@@ -78,7 +86,11 @@ export async function authRoutes(app: FastifyInstance) {
         },
         "Profile upsert failed after signup"
       );
-      return fail(reply, 500, profileError.message);
+      return fail(
+        reply,
+        409,
+        mapProfileUpsertError(profileError.message, profileError.code)
+      );
     }
 
     return reply.send({
@@ -115,7 +127,11 @@ export async function authRoutes(app: FastifyInstance) {
         },
         "Signin failed at Supabase Auth"
       );
-      return fail(reply, 401, error?.message ?? "Invalid credentials");
+      return fail(
+        reply,
+        401,
+        mapSupabaseAuthErrorMessage(error?.message, "signin")
+      );
     }
 
     return reply.send({
@@ -141,7 +157,7 @@ export async function authRoutes(app: FastifyInstance) {
         },
         "Failed to fetch authenticated profile"
       );
-      return fail(reply, 404, error.message);
+      return fail(reply, 404, "We couldn't load your profile.");
     }
 
     return reply.send({

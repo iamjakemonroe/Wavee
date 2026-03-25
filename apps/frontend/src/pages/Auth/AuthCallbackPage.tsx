@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/useAuthStore";
 import { WaveeLogo } from "@/components/ui/WaveeLogo";
+import { formatVerificationCallbackError } from "@/utils/authErrorMessage";
 
 export function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export function AuthCallbackPage() {
     const errorDescription = params.get("error_description");
 
     if (errorDescription) {
-      setError(decodeURIComponent(errorDescription));
+      setError(formatVerificationCallbackError(decodeURIComponent(errorDescription)));
       return;
     }
 

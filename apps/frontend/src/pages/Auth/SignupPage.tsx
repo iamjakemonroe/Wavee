@@ -1,19 +1,22 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useSignupMutation } from "@/hooks/mutations/useAuthMutation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { WaveeLogo } from "@/components/ui/WaveeLogo";
+import {
+  AUTH_ERROR_FALLBACK_SIGNUP,
+  formatAuthErrorMessage,
+} from "@/utils/authErrorMessage";
 
 export function SignupPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [success, setSuccess] = useState(false);
-  const navigate = useNavigate();
   const mutation = useSignupMutation();
 
   const handleSubmit = (e: FormEvent) => {
@@ -23,7 +26,6 @@ export function SignupPage() {
       {
         onSuccess: () => {
           setSuccess(true);
-          setTimeout(() => navigate("/login"), 3000);
         },
       },
     );
@@ -40,7 +42,7 @@ export function SignupPage() {
           <WaveeLogo size={64} className="mx-auto mb-4 rounded-2xl shadow-neon" />
           <h2 className="text-2xl font-bold">Check your email</h2>
           <p className="mt-2 text-wavee-muted">
-            We sent a confirmation link. Redirecting to login...
+            We sent a confirmation link
           </p>
         </motion.div>
       </div>
@@ -95,7 +97,7 @@ export function SignupPage() {
 
             {mutation.error && (
               <p className="text-sm text-wavee-danger">
-                {(mutation.error as Error).message}
+                {formatAuthErrorMessage(mutation.error, AUTH_ERROR_FALLBACK_SIGNUP)}
               </p>
             )}
 

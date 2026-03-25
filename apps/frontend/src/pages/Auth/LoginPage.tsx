@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { WaveeLogo } from "@/components/ui/WaveeLogo";
+import {
+  AUTH_ERROR_FALLBACK_SIGNIN,
+  formatAuthErrorMessage,
+} from "@/utils/authErrorMessage";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
@@ -70,7 +74,7 @@ export function LoginPage() {
 
             {mutation.error && (
               <p className="text-sm text-wavee-danger">
-                {(mutation.error as Error).message}
+                {formatAuthErrorMessage(mutation.error, AUTH_ERROR_FALLBACK_SIGNIN)}
               </p>
             )}
 

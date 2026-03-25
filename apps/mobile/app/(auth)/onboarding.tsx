@@ -4,6 +4,7 @@ import Toast from "react-native-toast-message";
 import { Screen } from "@/components/ui/Screen";
 import { authService } from "@/services/auth.service";
 import { colors } from "@/theme/colors";
+import { formatAuthErrorMessage } from "@/utils/authErrorMessage";
 
 export default function OnboardingScreen() {
   const [email, setEmail] = useState("");
@@ -44,7 +45,7 @@ export default function OnboardingScreen() {
         });
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Authentication failed";
+      const message = formatAuthErrorMessage(e, isSignUp ? "signup" : "signin");
       setError(message);
       Toast.show({
         type: "error",
