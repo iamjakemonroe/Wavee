@@ -14,6 +14,7 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),
   STORAGE_BUCKET_SONGS: z.string().default("songs"),
   STORAGE_BUCKET_COVERS: z.string().default("covers"),
+  STORAGE_BUCKET_AVATARS: z.string().default("avatars"),
 });
 
 const parsed = envSchema.safeParse(process.env);

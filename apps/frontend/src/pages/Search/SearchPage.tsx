@@ -29,7 +29,7 @@ export function SearchPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="What do you want to listen to?"
-          className="w-full rounded-2xl border border-white/[0.06] bg-wavee-surface px-4 py-3.5 pl-11 text-sm outline-none transition-colors placeholder:text-wavee-muted/50 focus:border-wavee-primary/40"
+          className="w-full rounded-2xl border border-white/[0.06] bg-wavee-surface px-4 py-3.5 pl-11 text-base outline-none transition-colors placeholder:text-wavee-muted/50 focus:border-wavee-primary/40 md:text-sm"
         />
       </div>
 

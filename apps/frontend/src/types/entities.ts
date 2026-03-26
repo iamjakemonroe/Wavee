@@ -1,3 +1,5 @@
+import type { MusicRole } from "@/constants/musicRoles";
+
 export interface Song {
   id: string;
   user_id: string;
@@ -22,6 +24,7 @@ export interface UserProfile {
   avatar_url: string | null;
   bio: string | null;
   is_artist: boolean;
+  music_roles?: MusicRole[];
   created_at: string;
 }
 

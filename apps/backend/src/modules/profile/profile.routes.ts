@@ -1,12 +1,37 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { musicRolesArraySchema } from "../../constants/musicRoles.js";
+import { env } from "../../config/env.js";
 import { supabaseAdmin } from "../../config/supabase.js";
 import { requireAuth } from "../../plugins/auth.js";
 import { fail } from "../../utils/http.js";
+import { mapProfileUpdateError } from "../../utils/profileErrors.js";
+import {
+  inferAvatarMimeFromExt,
+  isAllowedAvatarMime,
+  normalizeAvatarMimeType,
+  uploadUserAvatar,
+} from "../../utils/avatarStorage.js";
 
 const followSchema = z.object({
   artistId: z.string().uuid(),
 });
+
+const patchProfileSchema = z
+  .object({
+    username: z.string().min(3).max(24).optional(),
+    bio: z.union([z.string().max(500), z.null()]).optional(),
+    music_roles: musicRolesArraySchema.optional(),
+  })
+  .refine(
+    (o) =>
+      o.username !== undefined ||
+      o.bio !== undefined ||
+      o.music_roles !== undefined,
+    { message: "At least one field is required" }
+  );
+
+const maxAvatarBytes = 5 * 1024 * 1024;
 
 export async function profileRoutes(app: FastifyInstance) {
   app.get("/me", { preHandler: [requireAuth] }, async (request, reply) => {
@@ -18,8 +43,126 @@ export async function profileRoutes(app: FastifyInstance) {
       .eq("id", request.userId)
       .single();
 
-    if (error) return fail(reply, 404, error.message);
+    if (error) return fail(reply, 404, "We couldn't load your profile.");
     return reply.send({ ok: true, data });
+  });
+
+  app.patch("/me", { preHandler: [requireAuth] }, async (request, reply) => {
+    const userId = request.userId;
+    if (!userId) return fail(reply, 401, "Not authenticated");
+
+    const parsed = patchProfileSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return fail(reply, 400, parsed.error.issues[0]?.message ?? "Invalid payload");
+    }
+
+    const { username, bio, music_roles } = parsed.data;
+    const updates: Record<string, unknown> = {};
+
+    if (username !== undefined) updates.username = username;
+    if (bio !== undefined) updates.bio = bio === "" ? null : bio;
+    if (music_roles !== undefined) {
+      updates.music_roles = music_roles;
+      updates.is_artist = music_roles.includes("artist");
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .update(updates)
+      .eq("id", userId)
+      .select("*")
+      .single();
+
+    if (error) {
+      request.log.warn(
+        { route: "profile.patch", user_id: userId, supabase_error: error },
+        "Profile update failed"
+      );
+      return fail(reply, 400, mapProfileUpdateError(error.message, error.code));
+    }
+
+    return reply.send({ ok: true, data });
+  });
+
+  app.post("/avatar", { preHandler: [requireAuth] }, async (request, reply) => {
+    const userId = request.userId;
+    if (!userId) return fail(reply, 401, "Not authenticated");
+
+    const parts = request.parts();
+    let fileBuffer: Buffer | null = null;
+    let mime = "";
+    let ext = "jpg";
+
+    for await (const part of parts) {
+      if (part.type === "field") continue;
+      if (part.fieldname !== "avatar") continue;
+
+      const chunks: Buffer[] = [];
+      for await (const chunk of part.file) chunks.push(chunk as Buffer);
+      const buf = Buffer.concat(chunks);
+
+      if (buf.byteLength > maxAvatarBytes) {
+        return fail(reply, 400, "Image must be 5MB or smaller.");
+      }
+      ext = part.filename.split(".").pop() ?? "jpg";
+      let resolvedMime = normalizeAvatarMimeType(part.mimetype?.trim() ?? "");
+      if (!isAllowedAvatarMime(resolvedMime)) {
+        resolvedMime = inferAvatarMimeFromExt(ext) ?? "";
+      }
+      if (!isAllowedAvatarMime(resolvedMime)) {
+        return fail(reply, 400, "Use a JPEG, PNG, or WebP image.");
+      }
+      fileBuffer = buf;
+      mime = resolvedMime;
+      break;
+    }
+
+    if (!fileBuffer) return fail(reply, 400, "Image file is required");
+
+    const uploadResult = await uploadUserAvatar(
+      supabaseAdmin,
+      userId,
+      fileBuffer,
+      mime,
+      ext
+    );
+
+    if (!uploadResult.ok) {
+      request.log.error(
+        {
+          route: "profile.avatar",
+          user_id: userId,
+          err: uploadResult.error,
+        },
+        "Avatar storage upload failed"
+      );
+      let message = "We couldn't upload your photo. Try again later.";
+      if (uploadResult.bucketMissing) {
+        message = `Avatar storage is not set up yet. In Supabase → Storage, create a public bucket named "${env.STORAGE_BUCKET_AVATARS}" (same as STORAGE_BUCKET_AVATARS in your API env).`;
+      } else if (env.NODE_ENV !== "production") {
+        message += ` (${uploadResult.error.message})`;
+      }
+      return fail(reply, uploadResult.bucketMissing ? 503 : 500, message);
+    }
+
+    const publicUrl = uploadResult.publicUrl;
+
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .update({ avatar_url: publicUrl })
+      .eq("id", userId)
+      .select("avatar_url")
+      .single();
+
+    if (error) {
+      request.log.error(
+        { route: "profile.avatar", user_id: userId, supabase_error: error },
+        "Avatar URL update failed"
+      );
+      return fail(reply, 500, "We couldn't save your photo. Try again later.");
+    }
+
+    return reply.send({ ok: true, data: { avatar_url: data.avatar_url } });
   });
 
   app.post("/follow", { preHandler: [requireAuth] }, async (request, reply) => {

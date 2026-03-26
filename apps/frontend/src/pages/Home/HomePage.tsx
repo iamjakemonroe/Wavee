@@ -116,26 +116,26 @@ export function HomePage() {
     [isAuthenticated],
   );
 
-  if (feedQuery.isLoading && isAuthenticated) {
-    return (
-      <section>
-        <header className="mb-4 sm:mb-6">
-          <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
-            For You
-          </h2>
-          <p className="mt-1 text-xs text-wavee-muted sm:text-sm">
-            Discover your next favorite track
-          </p>
-        </header>
-        <FeedSkeleton />
-      </section>
-    );
-  }
+  // if (feedQuery.isLoading && isAuthenticated) {
+  //   return (
+  //     <section>
+  //       <header className="mb-4 sm:mb-6">
+  //         <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
+  //           For You
+  //         </h2>
+  //         <p className="mt-1 text-xs text-wavee-muted sm:text-sm">
+  //           Discover your next favorite track
+  //         </p>
+  //       </header>
+  //       <FeedSkeleton />
+  //     </section>
+  //   );
+  // }
 
   return (
     <>
       <section className="flex h-feed flex-col">
-        <header className="mb-2 shrink-0 sm:mb-4">
+        {/* <header className="mb-2 shrink-0 sm:mb-4">
           <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
             For You
           </h2>
@@ -144,7 +144,7 @@ export function HomePage() {
               ? "Personalized discovery feed"
               : "Sign in to get personalized recommendations"}
           </p>
-        </header>
+        </header> */}
 
         <div
           ref={feedRef}

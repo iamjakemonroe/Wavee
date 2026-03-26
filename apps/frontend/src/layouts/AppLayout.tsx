@@ -34,7 +34,7 @@ export function AppLayout() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className={`p-4 sm:p-6 ${hasPlayer
+                className={`${location.pathname === "/" ? "p-0" : "p-4 sm:p-6"} ${hasPlayer
                   ? "pb-with-player-nav lg:pb-24"
                   : "pb-with-nav-only lg:pb-6"
                   }`}

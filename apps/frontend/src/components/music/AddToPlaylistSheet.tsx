@@ -100,7 +100,7 @@ export function AddToPlaylistSheet({
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="Create new playlist..."
-                  className="flex-1 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-wavee-muted/50 focus:border-wavee-primary/40"
+                  className="flex-1 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-base outline-none transition-colors placeholder:text-wavee-muted/50 focus:border-wavee-primary/40 md:text-sm"
                 />
                 <button
                   type="submit"

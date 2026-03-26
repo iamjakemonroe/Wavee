@@ -24,5 +24,7 @@ export const apiEndpoints = {
   },
   profile: {
     me: "/v1/profile/me",
+    patch: "/v1/profile/me",
+    avatar: "/v1/profile/avatar",
   },
 } as const;

@@ -7,6 +7,7 @@ export interface AppUser {
   avatar_url: string | null;
   bio: string | null;
   is_artist: boolean;
+  music_roles?: string[];
   created_at: string;
 }
 

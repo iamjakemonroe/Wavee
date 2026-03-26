@@ -128,18 +128,16 @@ export const FeedItem = memo(function FeedItem({
           <motion.div
             animate={isLiked ? { scale: [1, 1.3, 1] } : { scale: 1 }}
             transition={{ duration: 0.3 }}
-            className={`rounded-full p-2.5 backdrop-blur-sm transition-colors sm:p-3 ${
-              isLiked
-                ? "bg-wavee-primary/20"
-                : "bg-white/10 group-hover/btn:bg-wavee-primary/20"
-            }`}
+            className={`rounded-full p-2.5 backdrop-blur-sm transition-colors sm:p-3 ${isLiked
+              ? "bg-wavee-primary/20"
+              : "bg-white/10 group-hover/btn:bg-wavee-primary/20"
+              }`}
           >
             <FiHeart
-              className={`transition-colors ${
-                isLiked
-                  ? "fill-wavee-primary text-wavee-primary"
-                  : "text-white group-hover/btn:text-wavee-primary"
-              }`}
+              className={`transition-colors ${isLiked
+                ? "fill-wavee-primary text-wavee-primary"
+                : "text-white group-hover/btn:text-wavee-primary"
+                }`}
               size={18}
             />
           </motion.div>
