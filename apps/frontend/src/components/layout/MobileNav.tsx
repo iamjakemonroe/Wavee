@@ -22,8 +22,7 @@ export function MobileNav() {
             to={to}
             end={to === "/"}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 rounded-lg px-3 py-1 text-[10px] font-medium transition-colors ${
-                isActive ? "text-wavee-primary" : "text-wavee-muted"
+              `flex flex-col items-center gap-0.5 rounded-lg px-3 py-1 text-[10px] font-medium transition-colors ${isActive ? "text-wavee-primary" : "text-wavee-muted"
               }`
             }
           >

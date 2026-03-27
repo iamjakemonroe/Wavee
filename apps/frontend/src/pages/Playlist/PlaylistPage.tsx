@@ -1,95 +1,108 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiPlus, FiMusic, FiChevronRight } from "react-icons/fi";
-import { useCreatePlaylistMutation } from "@/hooks/mutations/useCreatePlaylistMutation";
-import { usePlaylistsQuery } from "@/hooks/queries/usePlaylistsQuery";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { FiPlus, FiMusic } from "react-icons/fi";
+import { PlaylistFormSheet } from "@/components/playlist/PlaylistFormSheet";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { usePlaylistsQuery } from "@/hooks/queries/usePlaylistsQuery";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export function PlaylistPage() {
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
-  const [name, setName] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
   const playlistsQuery = usePlaylistsQuery(isAuthenticated);
-  const createMutation = useCreatePlaylistMutation();
-
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    createMutation.mutate(name.trim(), {
-      onSuccess: () => setName(""),
-    });
-  };
 
   return (
     <section>
-      <header className="mb-6">
-        <h2 className="text-3xl font-black tracking-tight">Playlists</h2>
-        <p className="mt-1 text-sm text-wavee-muted">
-          Organize your music collection
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-black tracking-tight">Playlists</h2>
+          <p className="mt-1 text-sm text-wavee-muted">
+            Organize your music collection
+          </p>
+        </div>
+        {isAuthenticated && (
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            aria-label="Create playlist"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-wavee-primary transition-all hover:border-wavee-primary/25 hover:bg-wavee-primary/10 active:scale-95"
+          >
+            <FiPlus size={22} strokeWidth={2.25} />
+          </button>
+        )}
       </header>
 
       {isAuthenticated && (
-        <GlassPanel className="mb-6 p-4">
-          <form className="flex items-end gap-3" onSubmit={onSubmit}>
-            <div className="flex-1">
-              <Input
-                id="playlist-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="New playlist name"
-              />
-            </div>
-            <Button type="submit" isLoading={createMutation.isPending}>
-              <FiPlus size={16} />
-              Create
-            </Button>
-          </form>
-        </GlassPanel>
+        <PlaylistFormSheet
+          mode="create"
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+        />
       )}
 
       {playlistsQuery.isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))] [&>*]:min-w-0">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square w-full rounded-2xl" />
           ))}
         </div>
       ) : playlistsQuery.data?.length ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))] [&>*]:min-w-0">
           {playlistsQuery.data.map((playlist) => (
-            <GlassPanel
+            <button
               key={playlist.id}
+              type="button"
               onClick={() => navigate(`/playlists/${playlist.id}`)}
-              className="group cursor-pointer p-5 transition-all hover:border-wavee-primary/20 hover:shadow-neon"
+              className="group relative aspect-square w-full min-w-0 overflow-hidden rounded-2xl border border-white/[0.08] text-left shadow-[0_0_0_1px_rgba(0,209,160,0.06)] transition-all hover:border-wavee-primary/25 hover:shadow-neon/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wavee-primary/45"
             >
-              <div className="flex items-start justify-between">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-wavee-primary/10 transition-colors group-hover:bg-wavee-primary/20">
-                  <FiMusic className="text-wavee-primary" size={18} />
-                </div>
-                <FiChevronRight
-                  className="text-wavee-muted/40 transition-colors group-hover:text-wavee-primary"
-                  size={18}
+              {playlist.cover_image_url ? (
+                <img
+                  src={playlist.cover_image_url}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.04]"
+                  loading="lazy"
                 />
+              ) : (
+                <div
+                  className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-wavee-primary/35 via-wavee-secondary/20 to-wavee-surface"
+                  aria-hidden
+                >
+                  <FiMusic className="text-wavee-primary/90" size={40} strokeWidth={1.5} />
+                </div>
+              )}
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/88 via-black/35 via-45% to-black/10"
+                aria-hidden
+              />
+              <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-3.5">
+                <p className="truncate text-sm font-bold leading-tight text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)] sm:text-[0.95rem]">
+                  {playlist.name}
+                </p>
               </div>
-              <p className="font-semibold">{playlist.name}</p>
-              <p className="mt-1 text-xs text-wavee-muted">
-                {new Date(playlist.created_at).toLocaleDateString()}
-              </p>
-            </GlassPanel>
+            </button>
           ))}
         </div>
       ) : (
         <GlassPanel className="p-12 text-center">
           <FiMusic className="mx-auto mb-3 text-wavee-muted/30" size={48} />
           <p className="text-wavee-muted">
-            {isAuthenticated
-              ? "No playlists yet. Create one above!"
-              : "Sign in to see your playlists"}
+            {isAuthenticated ? (
+              <>
+                No playlists yet. Tap{" "}
+                <button
+                  type="button"
+                  onClick={() => setCreateOpen(true)}
+                  className="font-medium text-wavee-primary underline-offset-2 hover:underline"
+                >
+                  +
+                </button>{" "}
+                to create one.
+              </>
+            ) : (
+              "Sign in to see your playlists"
+            )}
           </p>
         </GlassPanel>
       )}

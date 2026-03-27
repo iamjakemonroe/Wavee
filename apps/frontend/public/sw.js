@@ -1,9 +1,10 @@
-const CACHE_NAME = "wavee-v2";
+const CACHE_NAME = "wavee-v5";
 const OFFLINE_URLS = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
   "/favicon.svg",
+  "/wavee-mark.svg",
   "/icon-192.png",
   "/icon-512.png",
 ];

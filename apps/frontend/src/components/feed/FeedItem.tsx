@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useState, type MouseEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiHeart,
@@ -10,6 +10,7 @@ import {
 } from "react-icons/fi";
 import type { Song } from "@/types/entities";
 import { WaveformBar } from "@/components/music/WaveformBar";
+import { getSongShareUrl, useShare } from "@/hooks/useShare";
 
 const COVER_FALLBACK = "/cover-placeholder.svg";
 
@@ -33,30 +34,21 @@ export const FeedItem = memo(function FeedItem({
   onAddToPlaylist,
 }: FeedItemProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const { handleShare } = useShare();
 
-  const handleShare = useCallback(async () => {
-    const shareData = {
-      title: song.title,
-      text: `Check out "${song.title}" on Wavee!`,
-      url: window.location.origin,
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch {
-        /* user cancelled */
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(
-          `${shareData.text} ${shareData.url}`,
-        );
-      } catch {
-        /* clipboard not available */
-      }
-    }
-  }, [song.title]);
+  const onShareClick = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const url = getSongShareUrl(song.id);
+      const artist = song.artist_name?.trim();
+      const text = artist
+        ? `Listen to "${song.title}" by ${artist} on Wavee\n${url}`
+        : `Listen to "${song.title}" on Wavee\n${url}`;
+      handleShare({ title: song.title, text, url });
+    },
+    [song.id, song.title, song.artist_name, handleShare],
+  );
 
   return (
     <motion.div
@@ -64,7 +56,7 @@ export const FeedItem = memo(function FeedItem({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="relative h-full shrink-0 snap-start overflow-hidden"
+      className="relative h-full shrink-0 snap-start overflow-hidden touch-pan-y"
     >
       <img
         src={song.cover_image_url || COVER_FALLBACK}
@@ -76,8 +68,9 @@ export const FeedItem = memo(function FeedItem({
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/10" />
 
       <button
+        type="button"
         onClick={onToggle}
-        className="absolute inset-0 flex items-center justify-center"
+        className="absolute inset-0 z-0 flex items-center justify-center"
       >
         <motion.div
           key={isPlaying ? "pause" : "play"}
@@ -94,7 +87,7 @@ export const FeedItem = memo(function FeedItem({
         </motion.div>
       </button>
 
-      <div className="absolute bottom-4 left-0 right-14 px-4 sm:bottom-6 sm:right-16 sm:px-5">
+      <div className="absolute bottom-4 left-0 right-14 z-10 px-4 sm:bottom-6 sm:right-16 sm:px-5">
         <div className="flex items-center gap-2">
           {isActive && isPlaying && (
             <WaveformBar isPlaying barCount={5} className="h-4" />
@@ -117,8 +110,9 @@ export const FeedItem = memo(function FeedItem({
         </p>
       </div>
 
-      <div className="absolute bottom-6 right-3 flex flex-col items-center gap-3 sm:bottom-8 sm:right-4 sm:gap-4">
+      <div className="absolute bottom-6 right-3 z-20 flex flex-col items-center gap-3 sm:bottom-8 sm:right-4 sm:gap-4">
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             onLike();
@@ -145,10 +139,8 @@ export const FeedItem = memo(function FeedItem({
         </button>
 
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            void handleShare();
-          }}
+          type="button"
+          onClick={onShareClick}
           className="group/btn flex flex-col items-center gap-1 transition-transform active:scale-90"
         >
           <div className="rounded-full bg-white/10 p-2.5 backdrop-blur-sm transition-colors group-hover/btn:bg-white/20 sm:p-3">
@@ -159,6 +151,7 @@ export const FeedItem = memo(function FeedItem({
 
         <div className="relative">
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               setShowMenu((prev) => !prev);
@@ -180,6 +173,7 @@ export const FeedItem = memo(function FeedItem({
                 className="absolute bottom-full right-0 mb-2 w-44 overflow-hidden rounded-xl border border-white/10 bg-wavee-surface/95 shadow-2xl backdrop-blur-xl"
               >
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowMenu(false);
@@ -206,6 +200,7 @@ export const FeedItem = memo(function FeedItem({
           }}
         />
       )}
+
     </motion.div>
   );
 });

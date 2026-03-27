@@ -27,7 +27,7 @@ export default {
         glow: "0 0 30px rgba(124, 92, 255, 0.2)",
         "glow-lg": "0 0 60px rgba(124, 92, 255, 0.3)",
         neon: "0 0 20px rgba(0, 209, 160, 0.2)",
-        "neon-lg": "0 0 40px rgba(0, 209, 160, 0.3)",
+        "neon-lg": "0 0 26px rgba(0, 209, 160, 0.22)",
       },
       backgroundImage: {
         "wavee-gradient":

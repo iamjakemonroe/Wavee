@@ -56,7 +56,10 @@ class AudioManager {
   pause() {
     ++this.generation;
     this.cancelFade();
-    this.startFade("out");
+    // Pause immediately — volume fade used rAF; on mobile, throttled frames could delay
+    // pause() indefinitely so audio kept playing while the UI showed “paused”.
+    this.audio.pause();
+    this.audio.volume = this.targetVolume;
   }
 
   resume() {

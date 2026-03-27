@@ -5,9 +5,10 @@ import { env } from "../../config/env.js";
 import { supabaseAdmin } from "../../config/supabase.js";
 import { requireAuth } from "../../plugins/auth.js";
 import { fail } from "../../utils/http.js";
+import { sanitizeSearchTerm } from "../../utils/searchSanitize.js";
 
 const searchQuerySchema = z.object({
-  q: z.string().min(1),
+  q: z.string().min(1).max(120),
 });
 
 const uploadBodySchema = z.object({
@@ -27,11 +28,15 @@ export async function songsRoutes(app: FastifyInstance) {
       return fail(reply, 400, parsed.error.issues[0]?.message ?? "Invalid query");
     }
 
-    const { q } = parsed.data;
+    const term = sanitizeSearchTerm(parsed.data.q);
+    if (term.length < 1) {
+      return reply.send({ ok: true, data: [] });
+    }
+    const pattern = `%${term}%`;
     const { data, error } = await supabaseAdmin
       .from("songs")
       .select("*, artist:users!user_id(username)")
-      .or(`title.ilike.%${q}%,genre.ilike.%${q}%`)
+      .or(`title.ilike.${pattern},genre.ilike.${pattern}`)
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -162,6 +167,35 @@ export async function songsRoutes(app: FastifyInstance) {
       data,
       ai: {
         genre_detection: "pending",
+      },
+    });
+  });
+
+  const songIdParamSchema = z.object({
+    songId: z.string().uuid(),
+  });
+
+  /** Public read for share links (no auth). */
+  app.get("/:songId", async (request, reply) => {
+    const parsed = songIdParamSchema.safeParse(request.params);
+    if (!parsed.success) return fail(reply, 400, "Invalid song id");
+
+    const { data, error } = await supabaseAdmin
+      .from("songs")
+      .select("*, artist:users!user_id(username)")
+      .eq("id", parsed.data.songId)
+      .single();
+
+    if (error || !data) return fail(reply, 404, "Song not found");
+
+    const row = data as Record<string, unknown>;
+    const artist = row.artist as { username: string } | null;
+    return reply.send({
+      ok: true,
+      data: {
+        ...row,
+        artist_name: artist?.username ?? "Unknown",
+        artist: undefined,
       },
     });
   });

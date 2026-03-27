@@ -12,6 +12,7 @@ import {
   normalizeAvatarMimeType,
   uploadUserAvatar,
 } from "../../utils/avatarStorage.js";
+import { sanitizeSearchTerm } from "../../utils/searchSanitize.js";
 
 const followSchema = z.object({
   artistId: z.string().uuid(),
@@ -33,7 +34,34 @@ const patchProfileSchema = z
 
 const maxAvatarBytes = 5 * 1024 * 1024;
 
+const profileSearchQuerySchema = z.object({
+  q: z.string().min(1).max(120),
+});
+
 export async function profileRoutes(app: FastifyInstance) {
+  app.get("/search", { preHandler: [requireAuth] }, async (request, reply) => {
+    const parsed = profileSearchQuerySchema.safeParse(request.query);
+    if (!parsed.success) {
+      return fail(reply, 400, parsed.error.issues[0]?.message ?? "Invalid query");
+    }
+
+    const term = sanitizeSearchTerm(parsed.data.q);
+    if (term.length < 1) {
+      return reply.send({ ok: true, data: [] });
+    }
+
+    const pattern = `%${term}%`;
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .select("id, username, avatar_url, music_roles, is_artist")
+      .ilike("username", pattern)
+      .order("username", { ascending: true })
+      .limit(24);
+
+    if (error) return fail(reply, 500, error.message);
+    return reply.send({ ok: true, data: data ?? [] });
+  });
+
   app.get("/me", { preHandler: [requireAuth] }, async (request, reply) => {
     if (!request.userId) return fail(reply, 401, "Not authenticated");
 
@@ -179,5 +207,105 @@ export async function profileRoutes(app: FastifyInstance) {
     if (error) return fail(reply, 500, error.message);
 
     return reply.send({ ok: true });
+  });
+
+  const userIdParamSchema = z.object({
+    userId: z.string().uuid(),
+  });
+
+  const userSongSearchQuerySchema = z.object({
+    q: z.string().min(1).max(120),
+  });
+
+  app.get(
+    "/:userId/songs/search",
+    { preHandler: [requireAuth] },
+    async (request, reply) => {
+      const paramsParsed = userIdParamSchema.safeParse(request.params);
+      if (!paramsParsed.success) return fail(reply, 400, "Invalid user id");
+
+      const queryParsed = userSongSearchQuerySchema.safeParse(request.query);
+      if (!queryParsed.success) {
+        return fail(reply, 400, queryParsed.error.issues[0]?.message ?? "Invalid search query");
+      }
+
+      const { userId } = paramsParsed.data;
+      const term = sanitizeSearchTerm(queryParsed.data.q);
+      if (term.length < 1) {
+        return reply.send({ ok: true, data: [] });
+      }
+
+      const { data: userRow, error: userErr } = await supabaseAdmin
+        .from("users")
+        .select("id")
+        .eq("id", userId)
+        .single();
+
+      if (userErr || !userRow) return fail(reply, 404, "User not found");
+
+      const { data: songs, error: songsError } = await supabaseAdmin
+        .from("songs")
+        .select("*, artist:users!user_id(username)")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (songsError) return fail(reply, 500, songsError.message);
+
+      const lower = term.toLowerCase();
+      const mapped: Record<string, unknown>[] = (songs ?? []).map((s: Record<string, unknown>) => {
+        const artist = s.artist as { username: string } | null;
+        return {
+          ...s,
+          artist_name: artist?.username ?? "Unknown",
+          artist: undefined,
+        };
+      });
+
+      const filtered = mapped.filter((s) => {
+        const title = String(s.title ?? "").toLowerCase();
+        const genre = String(s.genre ?? "").toLowerCase();
+        const artistName = String(s.artist_name ?? "").toLowerCase();
+        return (
+          title.includes(lower) || genre.includes(lower) || artistName.includes(lower)
+        );
+      });
+
+      const limit = 80;
+      return reply.send({ ok: true, data: filtered.slice(0, limit) });
+    },
+  );
+
+  app.get("/:userId/songs", { preHandler: [requireAuth] }, async (request, reply) => {
+    const paramsParsed = userIdParamSchema.safeParse(request.params);
+    if (!paramsParsed.success) return fail(reply, 400, "Invalid user id");
+
+    const { userId } = paramsParsed.data;
+
+    const { data: user, error: userError } = await supabaseAdmin
+      .from("users")
+      .select("id, username, avatar_url, bio, music_roles, is_artist, created_at")
+      .eq("id", userId)
+      .single();
+
+    if (userError || !user) return fail(reply, 404, "User not found");
+
+    const { data: songs, error: songsError } = await supabaseAdmin
+      .from("songs")
+      .select("*, artist:users!user_id(username)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (songsError) return fail(reply, 500, songsError.message);
+
+    const mapped = (songs ?? []).map((s: Record<string, unknown>) => {
+      const artist = s.artist as { username: string } | null;
+      return {
+        ...s,
+        artist_name: artist?.username ?? "Unknown",
+        artist: undefined,
+      };
+    });
+
+    return reply.send({ ok: true, data: { user, songs: mapped } });
   });
 }

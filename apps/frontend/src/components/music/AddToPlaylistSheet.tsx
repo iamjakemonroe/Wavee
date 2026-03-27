@@ -125,18 +125,16 @@ export function AddToPlaylistSheet({
                         key={playlist.id}
                         onClick={() => !isAdded && handleAdd(playlist.id)}
                         disabled={isAdded || addMutation.isPending}
-                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-all ${
-                          isAdded
-                            ? "border border-wavee-primary/30 bg-wavee-primary/[0.06] shadow-[0_0_12px_rgba(0,209,160,0.15)]"
-                            : "border border-transparent hover:bg-white/[0.04]"
-                        }`}
+                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-all ${isAdded
+                          ? "border border-wavee-primary/30 bg-wavee-primary/[0.06] shadow-[0_0_12px_rgba(0,209,160,0.15)]"
+                          : "border border-transparent hover:bg-white/[0.04]"
+                          }`}
                       >
                         <div
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                            isAdded
-                              ? "bg-wavee-primary/20"
-                              : "bg-white/[0.06]"
-                          }`}
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${isAdded
+                            ? "bg-wavee-primary/20"
+                            : "bg-white/[0.06]"
+                            }`}
                         >
                           {isAdded ? (
                             <FiCheck className="text-wavee-primary" size={16} />
@@ -149,9 +147,8 @@ export function AddToPlaylistSheet({
                             {playlist.name}
                           </p>
                           <p
-                            className={`text-[11px] ${
-                              isAdded ? "text-wavee-primary" : "text-wavee-muted"
-                            }`}
+                            className={`text-[11px] ${isAdded ? "text-wavee-primary" : "text-wavee-muted"
+                              }`}
                           >
                             {isAdded ? "Already added" : "Tap to add"}
                           </p>

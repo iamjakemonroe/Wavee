@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import { getAuthToken, setAuthToken, clearAuthToken } from "@/utils/authToken";
+import { clearAuthToken, getAuthToken, setAuthTokens } from "@/utils/authToken";
 
 interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
-  login: (token: string) => void;
+  login: (accessToken: string, refreshToken?: string | null) => void;
+  syncFromStorage: () => void;
   logout: () => void;
 }
 
@@ -12,9 +13,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: getAuthToken(),
   isAuthenticated: Boolean(getAuthToken()),
 
-  login: (token) => {
-    setAuthToken(token);
-    set({ token, isAuthenticated: true });
+  login: (accessToken, refreshToken) => {
+    setAuthTokens(accessToken, refreshToken ?? undefined);
+    set({ token: accessToken, isAuthenticated: true });
+  },
+
+  syncFromStorage: () => {
+    const token = getAuthToken();
+    set({ token, isAuthenticated: Boolean(token) });
   },
 
   logout: () => {

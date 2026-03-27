@@ -9,6 +9,8 @@ export interface Song {
   cover_image_url: string | null;
   plays_count: number;
   likes_count: number;
+  /** Length in seconds when known (e.g. from metadata). */
+  duration_seconds?: number | null;
   created_at: string;
   artist_name?: string;
   score?: number;
@@ -28,9 +30,23 @@ export interface UserProfile {
   created_at: string;
 }
 
+/** Profile fields exposed for other users (no email). */
+export interface PublicUserProfile {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  bio: string | null;
+  is_artist: boolean;
+  music_roles?: MusicRole[];
+  created_at: string;
+}
+
 export interface Playlist {
   id: string;
   user_id: string;
   name: string;
+  description: string | null;
+  cover_image_url: string | null;
+  is_private: boolean;
   created_at: string;
 }

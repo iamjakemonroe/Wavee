@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FeedItem } from "@/components/feed/FeedItem";
-import { FeedSkeleton } from "@/components/feed/FeedSkeleton";
 import { AddToPlaylistSheet } from "@/components/music/AddToPlaylistSheet";
 import { useLikeSongMutation } from "@/hooks/mutations/useLikeSongMutation";
 import { useMyLikesQuery } from "@/hooks/queries/useMyLikesQuery";
@@ -23,6 +22,10 @@ export function HomePage() {
     usePlayerStore();
   const feedRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  /** Skip intersection-driven play while we align the snap feed to the player (avoids wrong track). */
+  const suppressIntersectionPlayRef = useRef(false);
+  const prevSyncedSongIdRef = useRef<string | null>(null);
+  const hasAlignedFeedOnceRef = useRef(false);
   const [playlistSheet, setPlaylistSheet] = useState<{
     songId: string;
     title: string;
@@ -37,12 +40,44 @@ export function HomePage() {
     if (songs.length > 0) setQueue(songs);
   }, [songs, setQueue]);
 
+  /** Keep the snap-scrolled card aligned with whatever the global player is playing. */
+  useEffect(() => {
+    const container = feedRef.current;
+    if (!container || songs.length === 0 || !currentSongId) return;
+    if (!songs.some((s) => s.id === currentSongId)) return;
+
+    const el = container.querySelector<HTMLElement>(
+      `[data-song-id="${CSS.escape(currentSongId)}"]`,
+    );
+    if (!el) return;
+
+    const idChanged = prevSyncedSongIdRef.current !== currentSongId;
+    const shouldAlign = !hasAlignedFeedOnceRef.current || idChanged;
+    if (!shouldAlign) return;
+
+    prevSyncedSongIdRef.current = currentSongId;
+    hasAlignedFeedOnceRef.current = true;
+
+    suppressIntersectionPlayRef.current = true;
+    const top =
+      el.getBoundingClientRect().top -
+      container.getBoundingClientRect().top +
+      container.scrollTop;
+    container.scrollTo({ top, behavior: "instant" });
+
+    const t = window.setTimeout(() => {
+      suppressIntersectionPlayRef.current = false;
+    }, 450);
+    return () => window.clearTimeout(t);
+  }, [currentSongId, songs]);
+
   useEffect(() => {
     const container = feedRef.current;
     if (!container || songs.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
+        if (suppressIntersectionPlayRef.current) return;
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           const songId = (entry.target as HTMLElement).dataset.songId;
@@ -116,39 +151,12 @@ export function HomePage() {
     [isAuthenticated],
   );
 
-  // if (feedQuery.isLoading && isAuthenticated) {
-  //   return (
-  //     <section>
-  //       <header className="mb-4 sm:mb-6">
-  //         <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
-  //           For You
-  //         </h2>
-  //         <p className="mt-1 text-xs text-wavee-muted sm:text-sm">
-  //           Discover your next favorite track
-  //         </p>
-  //       </header>
-  //       <FeedSkeleton />
-  //     </section>
-  //   );
-  // }
-
   return (
     <>
       <section className="flex h-feed flex-col">
-        {/* <header className="mb-2 shrink-0 sm:mb-4">
-          <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
-            For You
-          </h2>
-          <p className="mt-1 text-xs text-wavee-muted sm:text-sm">
-            {isAuthenticated
-              ? "Personalized discovery feed"
-              : "Sign in to get personalized recommendations"}
-          </p>
-        </header> */}
-
         <div
           ref={feedRef}
-          className="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto scrollbar-hide"
+          className="feed-snap-scroll min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain touch-pan-y scrollbar-hide"
         >
           {songs.map((song) => (
             <FeedItem

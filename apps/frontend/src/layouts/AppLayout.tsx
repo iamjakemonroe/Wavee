@@ -25,7 +25,13 @@ export function AppLayout() {
           </h1>
         </header>
 
-        <main className="relative flex-1 overflow-y-auto">
+        <main
+          className={
+            location.pathname === "/"
+              ? "relative flex-1 overflow-hidden"
+              : "relative flex-1 overflow-y-auto"
+          }
+        >
           <div className="min-h-full bg-wavee-gradient">
             <AnimatePresence mode="wait">
               <motion.div

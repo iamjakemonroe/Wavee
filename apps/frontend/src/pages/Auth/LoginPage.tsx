@@ -27,7 +27,7 @@ export function LoginPage() {
       {
         onSuccess: (data) => {
           if (data.session?.access_token) {
-            login(data.session.access_token);
+            login(data.session.access_token, data.session.refresh_token);
             navigate("/");
           }
         },
@@ -37,13 +37,9 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-wavee-bg bg-wavee-gradient p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-sm"
-      >
-        <div className="mb-8 flex flex-col items-center gap-3">
+      <div className="w-full max-w-sm">
+        {/* Logo + title outside motion: transform/opacity layers clip box-shadow until repaint (e.g. full reload). */}
+        <div className="mb-8 flex flex-col items-center gap-3 pt-1">
           <WaveeLogo size={48} className="rounded-2xl shadow-neon" />
           <h1 className="text-2xl font-black tracking-tight text-gradient">
             Welcome back
@@ -51,6 +47,12 @@ export function LoginPage() {
           <p className="text-sm text-wavee-muted">Sign in to continue listening</p>
         </div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="overflow-visible"
+        >
         <GlassPanel className="p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
@@ -95,7 +97,8 @@ export function LoginPage() {
             Sign up
           </Link>
         </p>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }

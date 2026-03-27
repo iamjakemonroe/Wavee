@@ -1,18 +1,212 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { FormEvent } from "react";
 import { motion } from "framer-motion";
 import { FiUploadCloud, FiMusic, FiImage, FiCheck } from "react-icons/fi";
 import { useUploadSongMutation } from "@/hooks/mutations/useUploadSongMutation";
+import { clearUploadDraft, loadUploadDraft, saveUploadDraft } from "@/lib/uploadDraftIDB";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { AUDIO_ACCEPT_ATTR, isAllowedAudioFile } from "@/utils/audioFileAccept";
+
+const DRAFT_SAVE_MS = 450;
+
+function recordFromState(args: {
+  title: string;
+  genre: string;
+  audioFile: File;
+  coverFile: File | null;
+}) {
+  return {
+    title: args.title,
+    genre: args.genre,
+    audioName: args.audioFile.name,
+    audioType: args.audioFile.type || "audio/mpeg",
+    audioBlob: args.audioFile,
+    coverName: args.coverFile?.name,
+    coverType: args.coverFile?.type,
+    coverBlob: args.coverFile ?? undefined,
+  };
+}
 
 export function UploadPage() {
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [audioHint, setAudioHint] = useState<string | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef(title);
+  const genreRef = useRef(genre);
   const mutation = useUploadSongMutation();
+
+  titleRef.current = title;
+  genreRef.current = genre;
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadUploadDraft().then((d) => {
+      if (cancelled || !d) {
+        if (!cancelled) setDraftReady(true);
+        return;
+      }
+      setTitle(d.title);
+      setGenre(d.genre);
+      setAudioFile(
+        new File([d.audioBlob], d.audioName, {
+          type: d.audioType || "audio/mpeg",
+        }),
+      );
+      if (d.coverBlob && d.coverName) {
+        setCoverFile(
+          new File([d.coverBlob], d.coverName, {
+            type: d.coverType || "image/jpeg",
+          }),
+        );
+      }
+      setDraftReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Persist audio/cover the same frame they are set — before paint — so Android can’t kill the tab before a debounced write. */
+  useLayoutEffect(() => {
+    if (!draftReady || !audioFile) return;
+    void saveUploadDraft(
+      recordFromState({
+        title: titleRef.current,
+        genre: genreRef.current,
+        audioFile,
+        coverFile,
+      }),
+    );
+  }, [draftReady, audioFile, coverFile]);
+
+  /** Debounced save when only title/genre change (large blobs already flushed above). */
+  useEffect(() => {
+    if (!draftReady || !audioFile) return;
+    const t = window.setTimeout(() => {
+      void saveUploadDraft(
+        recordFromState({ title, genre, audioFile, coverFile }),
+      );
+    }, DRAFT_SAVE_MS);
+    return () => window.clearTimeout(t);
+  }, [draftReady, title, genre, audioFile, coverFile]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    if (audioFile) return;
+    const t = window.setTimeout(() => {
+      void clearUploadDraft();
+    }, DRAFT_SAVE_MS);
+    return () => window.clearTimeout(t);
+  }, [draftReady, audioFile]);
+
+  /** Some Android WebViews drop in-memory File state when returning from the picker; rehydrate from IndexedDB. */
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      void loadUploadDraft().then((d) => {
+        if (!d?.audioBlob) return;
+        setAudioFile((prev) => {
+          if (prev != null) return prev;
+          queueMicrotask(() => {
+            setTitle(d.title);
+            setGenre(d.genre);
+            if (d.coverBlob && d.coverName) {
+              setCoverFile(
+                new File([d.coverBlob], d.coverName, {
+                  type: d.coverType || "image/jpeg",
+                }),
+              );
+            } else {
+              setCoverFile(null);
+            }
+          });
+          return new File([d.audioBlob], d.audioName, {
+            type: d.audioType || "audio/mpeg",
+          });
+        });
+      });
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  /** Flush when the page is hidden (picker, tab switch) in case layout effect hasn’t run yet. */
+  useEffect(() => {
+    if (!draftReady || !audioFile) return;
+    const persist = () => {
+      void saveUploadDraft(
+        recordFromState({
+          title: titleRef.current,
+          genre: genreRef.current,
+          audioFile,
+          coverFile,
+        }),
+      );
+    };
+    const onVis = () => {
+      if (document.visibilityState === "hidden") persist();
+    };
+    window.addEventListener("pagehide", persist);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("pagehide", persist);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [draftReady, audioFile, coverFile]);
+
+  const onAudioPick = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    setAudioHint(null);
+    if (!f) {
+      setAudioFile(null);
+      return;
+    }
+    if (!isAllowedAudioFile(f)) {
+      setAudioHint("Please choose an MP3 or WAV file.");
+      setAudioFile(null);
+      e.target.value = "";
+      return;
+    }
+    setAudioFile(f);
+    void saveUploadDraft(
+      recordFromState({
+        title: titleRef.current,
+        genre: genreRef.current,
+        audioFile: f,
+        coverFile: coverFile,
+      }),
+    );
+  }, [coverFile]);
+
+  const onCoverPick = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const f = e.target.files?.[0] ?? null;
+      setCoverFile(f);
+      const audio = audioFile;
+      if (!audio || !f) return;
+      void saveUploadDraft(
+        recordFromState({
+          title: titleRef.current,
+          genre: genreRef.current,
+          audioFile: audio,
+          coverFile: f,
+        }),
+      );
+    },
+    [audioFile],
+  );
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -21,10 +215,13 @@ export function UploadPage() {
       { title, genre, audioFile, coverFile: coverFile ?? undefined },
       {
         onSuccess: () => {
+          void clearUploadDraft();
           setTitle("");
           setGenre("");
           setAudioFile(null);
           setCoverFile(null);
+          setAudioHint(null);
+          if (audioInputRef.current) audioInputRef.current.value = "";
         },
       },
     );
@@ -83,13 +280,14 @@ export function UploadPage() {
                   {audioFile ? audioFile.name : "Choose audio file (MP3, WAV)"}
                 </span>
                 <input
+                  ref={audioInputRef}
                   type="file"
-                  accept="audio/*"
+                  accept={AUDIO_ACCEPT_ATTR}
                   className="hidden"
-                  onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
-                  required
+                  onChange={onAudioPick}
                 />
               </label>
+              {audioHint ? <p className="mt-1.5 text-xs text-wavee-danger">{audioHint}</p> : null}
             </div>
 
             <div>
@@ -103,9 +301,9 @@ export function UploadPage() {
                 </span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/*"
                   className="hidden"
-                  onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                  onChange={onCoverPick}
                 />
               </label>
             </div>
@@ -121,6 +319,7 @@ export function UploadPage() {
               className="w-full"
               size="lg"
               isLoading={mutation.isPending}
+              disabled={!audioFile}
             >
               <FiUploadCloud size={18} />
               {mutation.isPending ? "Uploading..." : "Upload Track"}

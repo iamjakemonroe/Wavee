@@ -1,16 +1,14 @@
 import { Suspense, lazy } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "@/layouts/AppLayout";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { WaveeRouteLoader } from "@/components/ui/WaveeLogo";
+import { UploadPage } from "@/pages/Upload/UploadPage";
 
 const HomePage = lazy(() =>
   import("@/pages/Home/HomePage").then((m) => ({ default: m.HomePage })),
 );
 const SearchPage = lazy(() =>
   import("@/pages/Search/SearchPage").then((m) => ({ default: m.SearchPage })),
-);
-const UploadPage = lazy(() =>
-  import("@/pages/Upload/UploadPage").then((m) => ({ default: m.UploadPage })),
 );
 const ProfilePage = lazy(() =>
   import("@/pages/Profile/ProfilePage").then((m) => ({
@@ -26,6 +24,14 @@ const PlaylistDetailPage = lazy(() =>
   import("@/pages/Playlist/PlaylistDetailPage").then((m) => ({
     default: m.PlaylistDetailPage,
   })),
+);
+const UserDetailPage = lazy(() =>
+  import("@/pages/User/UserDetailPage").then((m) => ({
+    default: m.UserDetailPage,
+  })),
+);
+const SongLinkPage = lazy(() =>
+  import("@/pages/Song/SongLinkPage").then((m) => ({ default: m.SongLinkPage })),
 );
 const PlayerPage = lazy(() =>
   import("@/pages/Player/PlayerPage").then((m) => ({
@@ -44,18 +50,10 @@ const AuthCallbackPage = lazy(() =>
   })),
 );
 
-function PageLoader() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-wavee-bg">
-      <Skeleton className="h-8 w-32" />
-    </div>
-  );
-}
-
 function App() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<PageLoader />}>
+      <Suspense fallback={<WaveeRouteLoader />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
@@ -68,6 +66,8 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/playlists" element={<PlaylistPage />} />
             <Route path="/playlists/:playlistId" element={<PlaylistDetailPage />} />
+            <Route path="/users/:userId" element={<UserDetailPage />} />
+            <Route path="/songs/:songId" element={<SongLinkPage />} />
             <Route path="/player" element={<PlayerPage />} />
           </Route>
 

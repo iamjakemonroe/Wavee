@@ -15,6 +15,10 @@ const credentialsSchema = z.object({
   username: z.string().min(3).max(24).optional(),
 });
 
+const refreshSchema = z.object({
+  refresh_token: z.string().min(1),
+});
+
 function maskEmail(email: string) {
   const [local, domain] = email.split("@");
   if (!local || !domain) return "***";
@@ -139,6 +143,33 @@ export async function authRoutes(app: FastifyInstance) {
       data: {
         user: data.user,
         session: data.session,
+      },
+    });
+  });
+
+  app.post("/refresh", async (request, reply) => {
+    const parsed = refreshSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return fail(reply, 400, parsed.error.issues[0]?.message ?? "Invalid payload");
+    }
+
+    const { data, error } = await supabaseAnon.auth.refreshSession({
+      refresh_token: parsed.data.refresh_token,
+    });
+
+    if (error || !data.session) {
+      request.log.warn({ route: "auth.refresh", reason: "refresh_failed" }, "Session refresh failed");
+      return fail(reply, 401, "Session expired. Please sign in again.");
+    }
+
+    return reply.send({
+      ok: true,
+      data: {
+        user: data.user,
+        session: {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        },
       },
     });
   });

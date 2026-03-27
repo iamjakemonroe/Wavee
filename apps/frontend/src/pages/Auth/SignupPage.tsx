@@ -34,30 +34,29 @@ export function SignupPage() {
   if (success) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-wavee-bg bg-wavee-gradient p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <WaveeLogo size={64} className="mx-auto mb-4 rounded-2xl shadow-neon" />
-          <h2 className="text-2xl font-bold">Check your email</h2>
-          <p className="mt-2 text-wavee-muted">
-            We sent a confirmation link
-          </p>
-        </motion.div>
+        <div className="text-center">
+          <div className="pt-1">
+            <WaveeLogo size={64} className="mx-auto mb-4 rounded-2xl shadow-neon" />
+          </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="overflow-visible"
+          >
+            <h2 className="text-2xl font-bold">Check your email</h2>
+            <p className="mt-2 text-wavee-muted">
+              We sent a confirmation link
+            </p>
+          </motion.div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-wavee-bg bg-wavee-gradient p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-sm"
-      >
-        <div className="mb-8 flex flex-col items-center gap-3">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center gap-3 pt-1">
           <WaveeLogo size={48} className="rounded-2xl shadow-neon" />
           <h1 className="text-2xl font-black tracking-tight text-gradient">
             Create account
@@ -65,6 +64,12 @@ export function SignupPage() {
           <p className="text-sm text-wavee-muted">Join the next wave of music</p>
         </div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="overflow-visible"
+        >
         <GlassPanel className="p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
@@ -118,7 +123,8 @@ export function SignupPage() {
             Sign in
           </Link>
         </p>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }

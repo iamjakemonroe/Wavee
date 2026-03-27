@@ -13,6 +13,7 @@ export function AuthCallbackPage() {
     const hash = window.location.hash.substring(1);
     const params = new URLSearchParams(hash);
     const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
     const errorDescription = params.get("error_description");
 
     if (errorDescription) {
@@ -21,7 +22,7 @@ export function AuthCallbackPage() {
     }
 
     if (accessToken) {
-      login(accessToken);
+      login(accessToken, refreshToken);
       navigate("/", { replace: true });
     } else {
       setError("No authentication token received. Please try signing in again.");

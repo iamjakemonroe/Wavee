@@ -8,9 +8,11 @@
    * Force a 16px minimum on narrow screens for text-like controls (Tailwind text-sm is 14px).
    */
   @media (max-width: 1023px) {
-    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not(
-        [type="button"]
-      ):not([type="submit"]):not([type="reset"]):not([type="image"]):not([type="hidden"]),
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+        [type="file"]
+      ):not([type="button"]):not([type="submit"]):not([type="reset"]):not(
+        [type="image"]
+      ):not([type="hidden"]),
     textarea,
     select {
       font-size: max(1rem, 100%) !important;
@@ -18,7 +20,15 @@
   }
 
   :root {
-    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    font-family:
+      Inter,
+      system-ui,
+      -apple-system,
+      Segoe UI,
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif;
     color-scheme: dark;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -111,41 +121,92 @@
 
 /* Waveform bar animations — each has a unique organic rhythm */
 @keyframes wave-1 {
-  0%, 100% { transform: scaleY(0.3) }
-  25% { transform: scaleY(0.8) }
-  50% { transform: scaleY(0.5) }
-  75% { transform: scaleY(1) }
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  25% {
+    transform: scaleY(0.8);
+  }
+  50% {
+    transform: scaleY(0.5);
+  }
+  75% {
+    transform: scaleY(1);
+  }
 }
 
 @keyframes wave-2 {
-  0%, 100% { transform: scaleY(0.2) }
-  20% { transform: scaleY(0.9) }
-  40% { transform: scaleY(0.4) }
-  60% { transform: scaleY(1) }
-  80% { transform: scaleY(0.55) }
+  0%,
+  100% {
+    transform: scaleY(0.2);
+  }
+  20% {
+    transform: scaleY(0.9);
+  }
+  40% {
+    transform: scaleY(0.4);
+  }
+  60% {
+    transform: scaleY(1);
+  }
+  80% {
+    transform: scaleY(0.55);
+  }
 }
 
 @keyframes wave-3 {
-  0%, 100% { transform: scaleY(0.4) }
-  30% { transform: scaleY(1) }
-  55% { transform: scaleY(0.55) }
-  80% { transform: scaleY(0.85) }
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  30% {
+    transform: scaleY(1);
+  }
+  55% {
+    transform: scaleY(0.55);
+  }
+  80% {
+    transform: scaleY(0.85);
+  }
 }
 
 @keyframes wave-4 {
-  0%, 100% { transform: scaleY(0.25) }
-  15% { transform: scaleY(0.7) }
-  35% { transform: scaleY(1) }
-  55% { transform: scaleY(0.4) }
-  75% { transform: scaleY(0.85) }
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  15% {
+    transform: scaleY(0.7);
+  }
+  35% {
+    transform: scaleY(1);
+  }
+  55% {
+    transform: scaleY(0.4);
+  }
+  75% {
+    transform: scaleY(0.85);
+  }
 }
 
 @keyframes wave-5 {
-  0%, 100% { transform: scaleY(0.35) }
-  20% { transform: scaleY(0.95) }
-  45% { transform: scaleY(0.45) }
-  65% { transform: scaleY(0.8) }
-  85% { transform: scaleY(0.6) }
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  20% {
+    transform: scaleY(0.95);
+  }
+  45% {
+    transform: scaleY(0.45);
+  }
+  65% {
+    transform: scaleY(0.8);
+  }
+  85% {
+    transform: scaleY(0.6);
+  }
 }
 
 @layer utilities {
@@ -177,18 +238,18 @@
     padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Feed section: fills viewport minus mobile header + parent padding (top & bottom) */
+  /* Feed section: fills viewport minus mobile header + parent padding (top & bottom).
+     Slight positive offset pulls the feed toward the player so the scrubber ring does not sit in a dead gap. */
   .h-feed {
     height: calc(
-      100dvh - 3.25rem - 1rem - 8.5rem
-      - env(safe-area-inset-top, 0px)
-      - env(safe-area-inset-bottom, 0px)
+      100dvh - 3.25rem - 1rem - 8.5rem + 1rem - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
     );
   }
 
   @media (min-width: 1024px) {
     .h-feed {
-      height: calc(100dvh - 7.5rem);
+      height: calc(100dvh - 7.5rem + 1rem);
     }
   }
 
@@ -198,5 +259,10 @@
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Home feed: single scroll container; iOS momentum + less gesture fighting with parents */
+  .feed-snap-scroll {
+    -webkit-overflow-scrolling: touch;
   }
 }

@@ -15,6 +15,7 @@ const envSchema = z.object({
   STORAGE_BUCKET_SONGS: z.string().default("songs"),
   STORAGE_BUCKET_COVERS: z.string().default("covers"),
   STORAGE_BUCKET_AVATARS: z.string().default("avatars"),
+  STORAGE_BUCKET_PLAYLIST_COVERS: z.string().default("playlist-covers"),
 });
 
 const parsed = envSchema.safeParse(process.env);

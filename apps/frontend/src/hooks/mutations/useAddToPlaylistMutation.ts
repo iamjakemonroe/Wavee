@@ -14,8 +14,17 @@ export function useAddToPlaylistMutation() {
   return useMutation({
     mutationFn: ({ playlistId, songId }: AddToPlaylistParams) =>
       httpService.post(apiEndpoints.playlists.songs(playlistId), { songId }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.playlists });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.playlistsContaining(variables.songId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.playlistSongs(variables.playlistId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["playlist-songs-search", variables.playlistId],
+      });
     },
   });
 }

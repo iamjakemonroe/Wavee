@@ -80,7 +80,7 @@ export function GlobalPlayer() {
             <div className="flex shrink-0 items-center gap-1 sm:gap-3">
               <button
                 onClick={previous}
-                className="rounded-full p-2 text-wavee-muted transition-colors hover:bg-white/[0.06] hover:text-wavee-text"
+                className="hidden rounded-full p-2 text-wavee-muted transition-colors hover:bg-white/[0.06] hover:text-wavee-text sm:block"
               >
                 <FiSkipBack size={18} />
               </button>
