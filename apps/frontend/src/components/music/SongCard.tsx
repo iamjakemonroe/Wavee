@@ -3,6 +3,7 @@ import { FiMoreHorizontal, FiPlay } from "react-icons/fi";
 import type { Song } from "@/types/entities";
 import { WaveformBar } from "@/components/music/WaveformBar";
 import { useAudioMetadataDuration } from "@/hooks/useAudioMetadataDuration";
+import { usePlaybackUiState } from "@/hooks/usePlaybackUiState";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import { formatTime } from "@/utils/format";
 
@@ -11,7 +12,6 @@ const COVER_FALLBACK = "/cover-placeholder.svg";
 interface SongCardProps {
   song: Song;
   isActive: boolean;
-  isPlaying: boolean;
   onPlay: () => void;
   /** Right column: play count (default), duration, or hidden. */
   meta?: "plays" | "duration" | "none";
@@ -24,13 +24,13 @@ interface SongCardProps {
 export const SongCard = memo(function SongCard({
   song,
   isActive,
-  isPlaying,
   onPlay,
   meta: metaProp,
   showDuration = false,
   onMore,
 }: SongCardProps) {
   const meta = showDuration ? "duration" : metaProp ?? "plays";
+  const { showPauseIcon } = usePlaybackUiState(song.id);
 
   const playerDuration = usePlayerStore((s) =>
     meta === "duration" && isActive && s.currentSongId === song.id ? s.duration : 0,
@@ -76,7 +76,7 @@ export const SongCard = memo(function SongCard({
         >
           <FiPlay className="text-white" size={18} />
         </button>
-        {isActive && isPlaying && (
+        {isActive && showPauseIcon && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
             <WaveformBar isPlaying barCount={3} className="h-4" />
           </div>

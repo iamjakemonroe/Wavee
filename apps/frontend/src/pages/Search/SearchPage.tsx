@@ -15,7 +15,7 @@ export function SearchPage() {
   const songsQuery = useSearchSongsQuery(query, enabled);
   const usersQuery = useSearchUsersQuery(query, enabled);
 
-  const { currentSongId, isPlaying, setQueue, playSong } = usePlayerStore();
+  const { currentSongId, setQueue, playSong } = usePlayerStore();
   const { run: withAuth } = useRequireAuthAction();
   const songs = songsQuery.data ?? [];
   const users = usersQuery.data ?? [];
@@ -98,7 +98,6 @@ export function SearchPage() {
                     key={song.id}
                     song={song}
                     isActive={currentSongId === song.id}
-                    isPlaying={currentSongId === song.id && isPlaying}
                     showDuration
                     onPlay={() =>
                       withAuth(() => {

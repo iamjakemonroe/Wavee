@@ -115,11 +115,23 @@ export function GlobalPlayer() {
               <button
                 onClick={togglePlay}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-wavee-primary text-black transition-all hover:shadow-neon active:scale-95 sm:h-10 sm:w-10"
+                aria-label={
+                  !isPlaying
+                    ? "Play"
+                    : progressIndeterminate
+                      ? "Loading"
+                      : "Pause"
+                }
               >
-                {isPlaying ? (
-                  <FiPause size={16} />
-                ) : (
+                {!isPlaying ? (
                   <FiPlay size={16} className="ml-0.5" />
+                ) : progressIndeterminate ? (
+                  <span
+                    className="inline-block h-4 w-4 shrink-0 rounded-full border-2 border-black/25 border-t-black/80 animate-spin"
+                    aria-hidden
+                  />
+                ) : (
+                  <FiPause size={16} />
                 )}
               </button>
               <button

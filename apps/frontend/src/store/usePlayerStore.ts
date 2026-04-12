@@ -34,6 +34,8 @@ interface PlayerState {
   }) => void;
   /** Pause audio + sync store (e.g. PWA hidden / page unload). Keeps queue & current track. */
   pauseFromLifecycle: () => void;
+  /** Align `isPlaying` / `userPaused` with the real audio element (OS media controls, notifications). */
+  syncPlaybackFromMediaElement: () => void;
   setNowPlayingExpanded: (open: boolean) => void;
 }
 
@@ -57,7 +59,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (state.currentSongId === song.id) {
       if (!state.isPlaying) {
         set({ isPlaying: true, userPaused: false });
-        audioManager.resume();
+        if (audioManager.paused) {
+          audioManager.resume();
+        }
       }
       return;
     }
@@ -84,6 +88,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   togglePlay: () => {
     if (!get().currentSongId) return;
     const willPlay = !get().isPlaying;
+    const actuallyPaused = audioManager.paused;
+
+    if (willPlay && !actuallyPaused) {
+      set({ isPlaying: true, userPaused: false });
+      return;
+    }
+    if (!willPlay && actuallyPaused) {
+      set({ isPlaying: false, userPaused: true });
+      return;
+    }
+
     set({ isPlaying: willPlay, userPaused: !willPlay });
     if (willPlay) {
       audioManager.resume();
@@ -160,5 +175,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!currentSongId || !isPlaying) return;
     audioManager.pause();
     set({ isPlaying: false, userPaused: true });
+  },
+
+  syncPlaybackFromMediaElement: () => {
+    const { currentSongId } = get();
+    if (!currentSongId) return;
+    const paused = audioManager.paused;
+    set({
+      isPlaying: !paused,
+      userPaused: paused,
+    });
   },
 }));

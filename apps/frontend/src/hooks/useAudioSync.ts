@@ -4,6 +4,49 @@ import { usePlayerStore } from "@/store/usePlayerStore";
 import { httpService } from "@/services/httpService";
 import { apiEndpoints } from "@/services/apiEndpoints";
 
+function scheduleSyncPlaybackFromMedia() {
+  queueMicrotask(() => {
+    if (audioManager.seeking) return;
+    usePlayerStore.getState().syncPlaybackFromMediaElement();
+  });
+}
+
+function updateMediaSessionFromState() {
+  if (!("mediaSession" in navigator)) return;
+  const state = usePlayerStore.getState();
+  const song = state.currentSongId
+    ? state.queue.find((s) => s.id === state.currentSongId)
+    : undefined;
+
+  if (song && state.currentSongId) {
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: song.title,
+        artist: song.artist_name ?? song.genre ?? "",
+        album: "Wavee",
+        artwork: song.cover_image_url
+          ? [
+              {
+                src: song.cover_image_url,
+                sizes: "512x512",
+                type: "image/jpeg",
+              },
+            ]
+          : [],
+      });
+    } catch {
+      /* MediaMetadata unsupported or bad artwork URL */
+    }
+  } else {
+    navigator.mediaSession.metadata = null;
+  }
+
+  const playing = Boolean(
+    state.currentSongId && !audioManager.paused,
+  );
+  navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+}
+
 export function useAudioSync() {
   const playSessionRef = useRef<{ songId: string; started: number } | null>(
     null,
@@ -91,12 +134,16 @@ export function useAudioSync() {
             started: Date.now(),
           };
         }
+        scheduleSyncPlaybackFromMedia();
+        updateMediaSessionFromState();
       }),
       audioManager.on("pause", () => {
         store().setAudioPlaybackFlags({
           audioElementPlaying: false,
           audioBuffering: false,
         });
+        scheduleSyncPlaybackFromMedia();
+        updateMediaSessionFromState();
       }),
       audioManager.on("waiting", () => {
         store().setAudioPlaybackFlags({ audioBuffering: true });
@@ -107,12 +154,59 @@ export function useAudioSync() {
       }),
     ];
 
+    const mediaSessionSupported = "mediaSession" in navigator;
+    if (mediaSessionSupported) {
+      navigator.mediaSession.setActionHandler("play", () => {
+        if (!store().currentSongId) return;
+        if (audioManager.paused) {
+          usePlayerStore.setState({ isPlaying: true, userPaused: false });
+          audioManager.resume();
+        }
+        updateMediaSessionFromState();
+      });
+      navigator.mediaSession.setActionHandler("pause", () => {
+        if (!store().currentSongId) return;
+        audioManager.pause();
+        usePlayerStore.setState({
+          isPlaying: false,
+          userPaused: true,
+        });
+        updateMediaSessionFromState();
+      });
+      navigator.mediaSession.setActionHandler("previoustrack", () => {
+        store().previous();
+        updateMediaSessionFromState();
+      });
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
+        store().next();
+        updateMediaSessionFromState();
+      });
+    }
+
+    updateMediaSessionFromState();
+    let mediaSessionSig: string | null = null;
+    const unsubStore = usePlayerStore.subscribe((state) => {
+      const sig = `${state.currentSongId ?? ""}:${state.isPlaying}`;
+      if (sig === mediaSessionSig) return;
+      mediaSessionSig = sig;
+      updateMediaSessionFromState();
+    });
+
     return () => {
       window.removeEventListener("wavee:playback-blocked", onPlaybackBlocked);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("freeze", onFreeze);
       unsubs.forEach((u) => u());
+      unsubStore();
+      if (mediaSessionSupported) {
+        navigator.mediaSession.setActionHandler("play", null);
+        navigator.mediaSession.setActionHandler("pause", null);
+        navigator.mediaSession.setActionHandler("previoustrack", null);
+        navigator.mediaSession.setActionHandler("nexttrack", null);
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.playbackState = "none";
+      }
     };
   }, []);
 }

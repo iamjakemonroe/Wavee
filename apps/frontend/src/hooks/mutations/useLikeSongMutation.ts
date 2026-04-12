@@ -79,7 +79,8 @@ export function useLikeSongMutation() {
 
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.myLikes });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.homeFeed });
+      // Do not invalidate home feed here: refetch re-runs the feed IntersectionObserver
+      // and can auto-play the next visible card. Likes are already updated in onMutate.
     },
   });
 }

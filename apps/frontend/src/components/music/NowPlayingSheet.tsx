@@ -117,42 +117,48 @@ export function NowPlayingSheet() {
             className="absolute inset-x-0 bottom-0 top-0 flex max-h-[100dvh] flex-col border-l border-white/[0.06] bg-wavee-bg bg-wavee-gradient shadow-[0_-12px_48px_rgba(0,0,0,0.55)] safe-top safe-bottom lg:border-l-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <header className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-3 py-3 sm:px-4">
+            <div
+              className="pointer-events-none h-px shrink-0 bg-gradient-to-r from-transparent via-wavee-primary/45 to-transparent"
+              aria-hidden
+            />
+            <header className="flex shrink-0 items-center justify-between px-3 py-2.5 sm:px-4">
               <button
                 type="button"
                 onClick={close}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/[0.08]"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-white/75 transition-colors hover:bg-white/[0.06] hover:text-white"
               >
-                <FiChevronDown size={26} strokeWidth={2} />
+                <FiChevronDown size={20} strokeWidth={2} />
               </button>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-wavee-muted">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.38em] text-white/35">
                 Now playing
               </span>
-              <div className="h-10 w-10" aria-hidden />
+              <div className="h-9 w-9" aria-hidden />
             </header>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-8 pt-2 sm:px-6">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-8 pt-1 sm:px-6">
               <div className="mx-auto flex w-full max-w-md flex-col items-center">
-                <div className="relative aspect-square w-full max-w-[min(100%,22rem)] overflow-hidden rounded-2xl border border-white/[0.08] shadow-[0_8px_40px_rgba(0,209,160,0.08)]">
+                <div
+                  className="relative aspect-square w-full max-w-[min(100%,20rem)] overflow-hidden rounded-2xl border border-white/[0.07] ring-1 ring-white/[0.04] shadow-[0_0_48px_-16px_rgba(0,209,160,0.22),0_16px_48px_rgba(0,0,0,0.45)]"
+                >
                   <img
                     src={currentSong.cover_image_url || COVER_FALLBACK}
                     alt=""
                     className="h-full w-full object-cover"
                   />
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-white/[0.03]" />
                   {isPlaying && !progressIndeterminate && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/35">
-                      <WaveformBar isPlaying barCount={5} className="h-8" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
+                      <WaveformBar isPlaying barCount={5} className="h-5" />
                     </div>
                   )}
                 </div>
 
-                <div className="mt-6 flex w-full items-start gap-3">
+                <div className="mt-5 flex w-full items-start gap-3">
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-xl font-bold leading-tight text-white sm:text-2xl">
+                    <h2 className="text-lg font-bold leading-snug tracking-tight text-white sm:text-xl">
                       {currentSong.title}
                     </h2>
-                    <p className="mt-1 text-sm text-wavee-muted">
+                    <p className="mt-0.5 text-[13px] text-white/45">
                       {currentSong.artist_name ?? currentSong.genre}
                     </p>
                   </div>
@@ -164,76 +170,86 @@ export function NowPlayingSheet() {
                         "Sign in to like songs",
                       )
                     }
-                    className={`mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${
                       isLiked
-                        ? "border-wavee-primary/40 bg-wavee-primary/15 text-wavee-primary"
-                        : "border-white/[0.1] bg-white/[0.05] text-white/80 hover:border-wavee-primary/30 hover:text-wavee-primary"
+                        ? "border-wavee-primary/35 bg-wavee-primary/12 text-wavee-primary shadow-[0_0_20px_-8px_rgba(0,209,160,0.5)]"
+                        : "border-white/[0.08] bg-white/[0.04] text-white/65 hover:border-wavee-primary/25 hover:text-wavee-primary"
                     }`}
                     aria-label={isLiked ? "Unlike" : "Like"}
                   >
                     <FiHeart
-                      size={22}
+                      size={17}
+                      strokeWidth={2}
                       className={isLiked ? "fill-current" : ""}
                     />
                   </button>
                 </div>
 
-                <div className="mt-6 w-full">
+                <div className="mt-5 w-full">
                   <ProgressBar
                     progress={progress}
                     duration={duration}
                     onSeek={seek}
                     indeterminate={progressIndeterminate}
-                    className="!h-6"
+                    className="!h-5"
                   />
-                  <div className="mt-2 flex justify-between text-xs tabular-nums text-wavee-muted">
+                  <div className="mt-1.5 flex justify-between text-[11px] tabular-nums tracking-wide text-white/35">
                     <span>
-                      {progressIndeterminate ? (
-                        <span className="text-wavee-primary/90">Loading…</span>
-                      ) : (
-                        formatTime(progress)
-                      )}
+                      {progressIndeterminate ? "--:--" : formatTime(progress)}
                     </span>
                     <span>
-                      {duration > 0 ? `-${formatTime(remaining)}` : "--:--"}
+                      {duration > 0 && !progressIndeterminate
+                        ? `-${formatTime(remaining)}`
+                        : "--:--"}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-8 flex w-full items-center justify-center gap-4 sm:gap-8">
+                <div className="mt-7 flex w-full items-center justify-center gap-6 sm:gap-10">
                   <button
                     type="button"
                     onClick={previous}
-                    className="rounded-full p-3 text-wavee-muted transition-colors hover:bg-white/[0.06] hover:text-wavee-text"
+                    className="rounded-full p-2 text-white/40 transition-colors hover:bg-white/[0.05] hover:text-white/90"
                     aria-label="Previous"
                   >
-                    <FiSkipBack size={28} />
+                    <FiSkipBack size={20} strokeWidth={2} />
                   </button>
                   <button
                     type="button"
                     onClick={togglePlay}
-                    className="flex h-16 w-16 items-center justify-center rounded-full bg-wavee-primary text-black shadow-neon-lg transition-transform hover:scale-[1.03] active:scale-95"
-                    aria-label={isPlaying ? "Pause" : "Play"}
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-wavee-primary text-black shadow-[0_0_24px_-6px_rgba(0,209,160,0.65)] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                    aria-label={
+                      !isPlaying
+                        ? "Play"
+                        : progressIndeterminate
+                          ? "Loading"
+                          : "Pause"
+                    }
                   >
-                    {isPlaying ? (
-                      <FiPause size={28} />
+                    {!isPlaying ? (
+                      <FiPlay size={20} className="ml-0.5" strokeWidth={2.25} />
+                    ) : progressIndeterminate ? (
+                      <span
+                        className="inline-block h-5 w-5 shrink-0 rounded-full border-2 border-black/20 border-t-black/70 animate-spin"
+                        aria-hidden
+                      />
                     ) : (
-                      <FiPlay size={28} className="ml-1" />
+                      <FiPause size={20} strokeWidth={2.25} />
                     )}
                   </button>
                   <button
                     type="button"
                     onClick={next}
-                    className="rounded-full p-3 text-wavee-muted transition-colors hover:bg-white/[0.06] hover:text-wavee-text"
+                    className="rounded-full p-2 text-white/40 transition-colors hover:bg-white/[0.05] hover:text-white/90"
                     aria-label="Next"
                   >
-                    <FiSkipForward size={28} />
+                    <FiSkipForward size={20} strokeWidth={2} />
                   </button>
                 </div>
               </div>
 
-              <section className="mx-auto mt-10 w-full max-w-md">
-                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-wavee-muted">
+              <section className="mx-auto mt-9 w-full max-w-md">
+                <h3 className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/30">
                   About the artist
                 </h3>
                 {profileQuery.isLoading && (

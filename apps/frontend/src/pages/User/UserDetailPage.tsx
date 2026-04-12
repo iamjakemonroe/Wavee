@@ -46,7 +46,15 @@ export function UserDetailPage() {
   );
   const myLikesQuery = useMyLikesQuery(isAuthenticated);
   const likeMutation = useLikeSongMutation();
-  const { currentSongId, isPlaying, setQueue, playSong, togglePlay } = usePlayerStore();
+  const {
+    currentSongId,
+    isPlaying,
+    audioElementPlaying,
+    audioBuffering,
+    setQueue,
+    playSong,
+    togglePlay,
+  } = usePlayerStore();
 
   const profile = data?.user;
   const songs = data?.songs ?? [];
@@ -71,7 +79,8 @@ export function UserDetailPage() {
     () => Boolean(currentSongId && songs.some((s) => s.id === currentSongId)),
     [currentSongId, songs],
   );
-  const heroShowsPause = playingThisProfile && isPlaying;
+  const profileProgressIndeterminate =
+    playingThisProfile && isPlaying && (!audioElementPlaying || audioBuffering);
 
   const playAll = () => {
     withAuth(() => {
@@ -201,17 +210,24 @@ export function UserDetailPage() {
                 }}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wavee-primary text-black shadow-[0_0_18px_rgba(0,209,160,0.28)] transition-transform hover:scale-105 active:scale-95"
                 aria-label={
-                  heroShowsPause
+                  playingThisProfile && isPlaying && !profileProgressIndeterminate
                     ? "Pause"
                     : playingThisProfile
-                      ? "Resume"
+                      ? profileProgressIndeterminate
+                        ? "Loading"
+                        : "Resume"
                       : "Play all"
                 }
               >
-                {heroShowsPause ? (
-                  <FiPause size={18} strokeWidth={2.5} />
-                ) : (
+                {!playingThisProfile || !isPlaying ? (
                   <FiPlay size={18} className="ml-0.5" fill="currentColor" />
+                ) : profileProgressIndeterminate ? (
+                  <span
+                    className="inline-block h-4 w-4 shrink-0 rounded-full border-2 border-black/25 border-t-black/80 animate-spin"
+                    aria-hidden
+                  />
+                ) : (
+                  <FiPause size={18} strokeWidth={2.5} />
                 )}
               </button>
             ) : (
@@ -311,7 +327,6 @@ export function UserDetailPage() {
                   key={song.id}
                   song={song}
                   isActive={currentSongId === song.id}
-                  isPlaying={currentSongId === song.id && isPlaying}
                   meta="none"
                   onPlay={() => playSongFromProfile(song.id)}
                   onMore={isAuthenticated ? () => setOptionsSong(song) : undefined}

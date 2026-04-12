@@ -26,8 +26,7 @@ export function HomePage() {
     [myLikesQuery.data],
   );
 
-  const { currentSongId, isPlaying, setQueue, playSong, togglePlay } =
-    usePlayerStore();
+  const { currentSongId, setQueue, playSong, togglePlay } = usePlayerStore();
   const feedRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   /** Skip intersection-driven play while we align the snap feed to the player (avoids wrong track). */
@@ -148,7 +147,16 @@ export function HomePage() {
 
   const handleLike = useCallback(
     (songId: string) => {
-      withAuth(() => likeMutation.mutate(songId), "Sign in to like songs");
+      withAuth(() => {
+        suppressIntersectionPlayRef.current = true;
+        likeMutation.mutate(songId, {
+          onSettled: () => {
+            window.setTimeout(() => {
+              suppressIntersectionPlayRef.current = false;
+            }, 500);
+          },
+        });
+      }, "Sign in to like songs");
     },
     [likeMutation, withAuth],
   );
@@ -206,7 +214,6 @@ export function HomePage() {
                   key={song.id}
                   song={song}
                   isActive={currentSongId === song.id}
-                  isPlaying={currentSongId === song.id && isPlaying}
                   isLiked={likedSet.has(song.id)}
                   onToggle={() => handleToggle(song.id)}
                   onLike={() => handleLike(song.id)}

@@ -24,6 +24,10 @@ class AudioManager {
     return this.audio.paused;
   }
 
+  get seeking() {
+    return this.audio.seeking;
+  }
+
   setVolume(v: number) {
     this.targetVolume = Math.max(0, Math.min(1, v));
     if (this.fadeRaf === null) {
@@ -37,19 +41,30 @@ class AudioManager {
     const gen = ++this.generation;
 
     if (this.currentUrl !== url) {
+      this.audio.pause();
       this.currentUrl = url;
       this.audio.src = url;
     } else {
       this.audio.currentTime = 0;
     }
 
-    this.audio
+    void this.audio
       .play()
       .then(() => {
         if (gen === this.generation) this.startFade("in");
       })
       .catch(() => {
         window.dispatchEvent(new CustomEvent("wavee:playback-blocked"));
+      })
+      .finally(() => {
+        if (
+          gen === this.generation &&
+          !this.audio.paused &&
+          this.audio.volume < 0.02 &&
+          this.fadeRaf === null
+        ) {
+          this.audio.volume = this.targetVolume;
+        }
       });
   }
 
@@ -82,11 +97,31 @@ class AudioManager {
       return;
     }
 
-    this.audio.volume = 0;
-    this.audio
+    /** Full volume before play — do not ramp from 0 here. A volume fade after `play()`
+     *  can be skipped if `generation` changes before the promise runs, leaving volume at 0
+     *  while `currentTime` still advances (silent playback). New tracks still use fade in `play()`. */
+    this.audio.volume = this.targetVolume;
+
+    const kickDecoder = () => {
+      if (gen !== this.generation) return;
+      const t = this.audio.currentTime;
+      const dur = this.audio.duration;
+      if (!Number.isFinite(t) || t < 0) return;
+      if (Number.isFinite(dur) && dur > 0 && t < dur - 0.02) {
+        this.audio.currentTime = t + 1e-5;
+      } else {
+        this.audio.currentTime = t;
+      }
+    };
+
+    void this.audio
       .play()
       .then(() => {
-        if (gen === this.generation) this.startFade("in");
+        if (gen !== this.generation) return;
+        kickDecoder();
+        if (this.audio.volume < 0.01) {
+          this.audio.volume = this.targetVolume;
+        }
       })
       .catch(() => {
         window.dispatchEvent(new CustomEvent("wavee:playback-blocked"));

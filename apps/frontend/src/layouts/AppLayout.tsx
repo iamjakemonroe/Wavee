@@ -4,14 +4,18 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { GlobalPlayer } from "@/components/music/GlobalPlayer";
 import { NowPlayingSheet } from "@/components/music/NowPlayingSheet";
+import { PwaInstallBanner } from "@/components/ui/PwaInstallBanner";
 import { WaveeLogo } from "@/components/ui/WaveeLogo";
 import { useAudioSync } from "@/hooks/useAudioSync";
 import { useAuthStore } from "@/store/useAuthStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
 
+const AUTH_PATHS = new Set(["/login", "/signup", "/auth/callback"]);
+
 export function AppLayout() {
   const location = useLocation();
   const { isAuthenticated } = useAuthStore();
+  const showPwaBanner = !AUTH_PATHS.has(location.pathname);
   const hasPlayer = Boolean(usePlayerStore((s) => s.currentSongId));
   useAudioSync();
 
@@ -65,6 +69,7 @@ export function AppLayout() {
         </main>
       </div>
 
+      {showPwaBanner && <PwaInstallBanner />}
       <GlobalPlayer />
       <NowPlayingSheet />
       <MobileNav />

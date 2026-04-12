@@ -11,13 +11,13 @@ import {
 import type { Song } from "@/types/entities";
 import { WaveformBar } from "@/components/music/WaveformBar";
 import { getSongShareUrl, useShare } from "@/hooks/useShare";
+import { usePlaybackUiState } from "@/hooks/usePlaybackUiState";
 
 const COVER_FALLBACK = "/cover-placeholder.svg";
 
 interface FeedItemProps {
   song: Song;
   isActive: boolean;
-  isPlaying: boolean;
   isLiked: boolean;
   onToggle: () => void;
   onLike: () => void;
@@ -27,7 +27,6 @@ interface FeedItemProps {
 export const FeedItem = memo(function FeedItem({
   song,
   isActive,
-  isPlaying,
   isLiked,
   onToggle,
   onLike,
@@ -35,6 +34,8 @@ export const FeedItem = memo(function FeedItem({
 }: FeedItemProps) {
   const [showMenu, setShowMenu] = useState(false);
   const { handleShare } = useShare();
+  const { intentPlaying, progressIndeterminate, showPauseIcon } =
+    usePlaybackUiState(song.id);
 
   const onShareClick = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {
@@ -43,9 +44,9 @@ export const FeedItem = memo(function FeedItem({
       const url = getSongShareUrl(song.id);
       const artist = song.artist_name?.trim();
       const text = artist
-        ? `Listen to "${song.title}" by ${artist} on Wavee\n${url}`
-        : `Listen to "${song.title}" on Wavee\n${url}`;
-      handleShare({ title: song.title, text, url });
+        ? `Listen to "${song.title}" by ${artist} on Wavee`
+        : `Listen to "${song.title}" on Wavee`;
+      handleShare({ title: song.title || "Wavee", text, url });
     },
     [song.id, song.title, song.artist_name, handleShare],
   );
@@ -73,14 +74,22 @@ export const FeedItem = memo(function FeedItem({
         className="absolute inset-0 z-0 flex items-center justify-center"
       >
         <motion.div
-          key={isPlaying ? "pause" : "play"}
+          key={showPauseIcon ? "pause" : progressIndeterminate ? "load" : "play"}
           initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: isActive && isPlaying ? 0 : 0.7 }}
+          animate={{
+            scale: 1,
+            opacity: isActive && showPauseIcon ? 0 : 0.7,
+          }}
           whileHover={{ opacity: 0.9 }}
           className="rounded-full bg-black/50 p-4 backdrop-blur-sm sm:p-5"
         >
-          {isActive && isPlaying ? (
+          {isActive && showPauseIcon ? (
             <FiPause className="text-white" size={28} />
+          ) : isActive && intentPlaying && progressIndeterminate ? (
+            <div
+              className="h-7 w-7 shrink-0 rounded-full border-2 border-white/25 border-t-wavee-primary animate-spin"
+              aria-hidden
+            />
           ) : (
             <FiPlay className="text-white" size={28} />
           )}
@@ -89,11 +98,11 @@ export const FeedItem = memo(function FeedItem({
 
       <div className="absolute bottom-4 left-0 right-14 z-10 px-4 sm:bottom-6 sm:right-16 sm:px-5">
         <div className="flex items-center gap-2">
-          {isActive && isPlaying && (
+          {isActive && showPauseIcon && (
             <WaveformBar isPlaying barCount={5} className="h-4" />
           )}
           <span className="text-[10px] font-medium uppercase tracking-wider text-wavee-primary sm:text-xs">
-            {isActive && isPlaying ? "Now Playing" : song.genre}
+            {isActive && intentPlaying ? "Now Playing" : song.genre}
           </span>
         </div>
         <h3 className="mt-1 text-xl font-bold text-white sm:text-2xl">

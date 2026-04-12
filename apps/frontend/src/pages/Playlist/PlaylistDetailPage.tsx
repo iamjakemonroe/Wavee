@@ -48,7 +48,15 @@ export function PlaylistDetailPage() {
   const myLikesQuery = useMyLikesQuery(isAuthenticated);
   const likeMutation = useLikeSongMutation();
   const removeMutation = useRemoveSongFromPlaylistMutation();
-  const { currentSongId, isPlaying, setQueue, playSong, togglePlay } = usePlayerStore();
+  const {
+    currentSongId,
+    isPlaying,
+    audioElementPlaying,
+    audioBuffering,
+    setQueue,
+    playSong,
+    togglePlay,
+  } = usePlayerStore();
 
   const playlist = data?.playlist;
   const songs = data?.songs ?? [];
@@ -73,7 +81,8 @@ export function PlaylistDetailPage() {
     () => Boolean(currentSongId && songs.some((s) => s.id === currentSongId)),
     [currentSongId, songs],
   );
-  const heroShowsPause = playingThisPlaylist && isPlaying;
+  const playlistProgressIndeterminate =
+    playingThisPlaylist && isPlaying && (!audioElementPlaying || audioBuffering);
 
   const playAll = () => {
     if (songs.length === 0) return;
@@ -199,17 +208,24 @@ export function PlaylistDetailPage() {
                 }}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wavee-primary text-black shadow-[0_0_18px_rgba(0,209,160,0.28)] transition-transform hover:scale-105 active:scale-95"
                 aria-label={
-                  heroShowsPause
+                  playingThisPlaylist && isPlaying && !playlistProgressIndeterminate
                     ? "Pause"
                     : playingThisPlaylist
-                      ? "Resume playlist"
+                      ? playlistProgressIndeterminate
+                        ? "Loading"
+                        : "Resume playlist"
                       : "Play playlist"
                 }
               >
-                {heroShowsPause ? (
-                  <FiPause size={18} strokeWidth={2.5} />
-                ) : (
+                {!playingThisPlaylist || !isPlaying ? (
                   <FiPlay size={18} className="ml-0.5" fill="currentColor" />
+                ) : playlistProgressIndeterminate ? (
+                  <span
+                    className="inline-block h-4 w-4 shrink-0 rounded-full border-2 border-black/25 border-t-black/80 animate-spin"
+                    aria-hidden
+                  />
+                ) : (
+                  <FiPause size={18} strokeWidth={2.5} />
                 )}
               </button>
             ) : (
@@ -317,7 +333,6 @@ export function PlaylistDetailPage() {
                   key={song.id}
                   song={song}
                   isActive={currentSongId === song.id}
-                  isPlaying={currentSongId === song.id && isPlaying}
                   meta="none"
                   onPlay={() => playSongFromPlaylist(song.id)}
                   onMore={isAuthenticated ? () => setOptionsSong(song) : undefined}

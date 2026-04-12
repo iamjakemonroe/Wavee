@@ -5,7 +5,7 @@ import { GlassPanel } from "@/components/ui/GlassPanel";
 import { SongCard } from "@/components/music/SongCard";
 
 export function PlayerPage() {
-  const { queue, currentSongId, isPlaying, playSong } = usePlayerStore();
+  const { queue, currentSongId, playSong } = usePlayerStore();
 
   const currentSong = useMemo(
     () => queue.find((s) => s.id === currentSongId) ?? null,
@@ -49,7 +49,6 @@ export function PlayerPage() {
                   key={song.id}
                   song={song}
                   isActive={song.id === currentSongId}
-                  isPlaying={song.id === currentSongId && isPlaying}
                   onPlay={() => playSong(song)}
                 />
               ))}

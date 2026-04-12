@@ -77,9 +77,9 @@ export function PlaylistSongOptionsSheet({
     const url = getSongShareUrl(song.id);
     const artist = song.artist_name?.trim();
     const text = artist
-      ? `Listen to "${song.title}" by ${artist} on Wavee\n${url}`
-      : `Listen to "${song.title}" on Wavee\n${url}`;
-    handleShare({ title: song.title, text, url });
+      ? `Listen to "${song.title}" by ${artist} on Wavee`
+      : `Listen to "${song.title}" on Wavee`;
+    handleShare({ title: song.title || "Wavee", text, url });
   }, [song, handleShare]);
 
   if (!song) return null;
