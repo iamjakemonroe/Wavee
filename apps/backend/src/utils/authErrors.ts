@@ -8,14 +8,14 @@ const GENERIC_SIGNIN = "We couldn't sign you in. Please try again.";
 
 function looksLikeTechnicalError(message: string): boolean {
   return /constraint|duplicate key|violates unique|postgres|postgrest|sqlstate|pgrst/i.test(
-    message
+    message,
   );
 }
 
 /** Supabase Auth (GoTrue) signup / sign-in error strings */
 export function mapSupabaseAuthErrorMessage(
   raw: string | undefined,
-  context: "signup" | "signin"
+  context: "signup" | "signin",
 ): string {
   if (!raw || !raw.trim()) {
     return context === "signin" ? GENERIC_SIGNIN : GENERIC_SIGNUP;
@@ -27,14 +27,17 @@ export function mapSupabaseAuthErrorMessage(
     if (
       lower.includes("already registered") ||
       lower.includes("user already") ||
-      lower.includes("email") && lower.includes("already")
+      (lower.includes("email") && lower.includes("already"))
     ) {
       return "An account with this email already exists. Try signing in instead.";
     }
     if (lower.includes("rate limit") || lower.includes("too many")) {
       return "Too many attempts. Please wait a few minutes and try again.";
     }
-    if (lower.includes("password") && (lower.includes("short") || lower.includes("least"))) {
+    if (
+      lower.includes("password") &&
+      (lower.includes("short") || lower.includes("least"))
+    ) {
       return "Your password doesn't meet the requirements. Use at least 8 characters.";
     }
     if (lower.includes("invalid") && lower.includes("email")) {
@@ -50,7 +53,10 @@ export function mapSupabaseAuthErrorMessage(
     ) {
       return "Incorrect email or password.";
     }
-    if (lower.includes("email not confirmed") || lower.includes("not verified")) {
+    if (
+      lower.includes("email not confirmed") ||
+      lower.includes("not verified")
+    ) {
       return "Confirm your email before signing in. Check your inbox for the link.";
     }
     if (lower.includes("user not found")) {
@@ -69,10 +75,15 @@ export function mapSupabaseAuthErrorMessage(
 }
 
 /** PostgREST / Postgres errors from public.users upsert after auth signup */
-export function mapProfileUpsertError(raw: string | undefined, code?: string): string {
+export function mapProfileUpsertError(
+  raw: string | undefined,
+  code?: string,
+): string {
   const msg = (raw ?? "").toLowerCase();
   const isUnique =
-    code === "23505" || msg.includes("duplicate key") || msg.includes("unique constraint");
+    code === "23505" ||
+    msg.includes("duplicate key") ||
+    msg.includes("unique constraint");
 
   if (!isUnique) {
     return looksLikeTechnicalError(raw ?? "")
@@ -83,9 +94,9 @@ export function mapProfileUpsertError(raw: string | undefined, code?: string): s
   if (msg.includes("users_email_key") || msg.includes("(email)")) {
     return "An account with this email already exists. Try signing in instead.";
   }
-  if (msg.includes("users_username_key") || msg.includes("(username)")) {
-    return "This username is already taken. Try a different one.";
-  }
+  // if (msg.includes("users_username_key") || msg.includes("(username)")) {
+  //   return "This username is already taken. Try a different one.";
+  // }
 
   return "This email or username is already in use. Try signing in or choose different details.";
 }

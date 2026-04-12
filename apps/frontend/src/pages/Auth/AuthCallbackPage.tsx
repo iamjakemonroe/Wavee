@@ -1,61 +1,65 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/useAuthStore";
 import { WaveeLogo } from "@/components/ui/WaveeLogo";
-import { formatVerificationCallbackError } from "@/utils/authErrorMessage";
+
+function hashParams(): URLSearchParams {
+  const raw = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  return new URLSearchParams(raw);
+}
+
+function redirectQueryForAuthError(params: URLSearchParams): "expired" | "failed" {
+  const code = params.get("error_code");
+  const desc = params.get("error_description") ?? "";
+  const err = params.get("error") ?? "";
+  const combined = `${code} ${desc} ${err}`.toLowerCase();
+  if (
+    code === "otp_expired" ||
+    /expired|invalid.*link|link.*invalid/.test(combined)
+  ) {
+    return "expired";
+  }
+  return "failed";
+}
 
 export function AuthCallbackPage() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
-  const [error, setError] = useState<string | null>(null);
+  const handled = useRef(false);
 
   useEffect(() => {
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
+    if (handled.current) return;
+    handled.current = true;
+
+    const params = hashParams();
+    const error = params.get("error");
     const errorDescription = params.get("error_description");
 
-    if (errorDescription) {
-      setError(formatVerificationCallbackError(decodeURIComponent(errorDescription)));
+    if (error || errorDescription) {
+      const q = redirectQueryForAuthError(params);
+      navigate(`/login?verification=${q}`, { replace: true });
       return;
     }
+
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
 
     if (accessToken) {
       login(accessToken, refreshToken);
       navigate("/", { replace: true });
-    } else {
-      setError("No authentication token received. Please try signing in again.");
+      return;
     }
-  }, [login, navigate]);
 
-  if (error) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-wavee-bg p-6">
-        <div className="max-w-sm text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-wavee-danger/10">
-            <span className="text-2xl">✕</span>
-          </div>
-          <h2 className="mb-2 text-lg font-bold text-wavee-text">
-            Verification Failed
-          </h2>
-          <p className="mb-6 text-sm text-wavee-muted">{error}</p>
-          <a
-            href="/login"
-            className="inline-block rounded-xl bg-wavee-primary px-6 py-3 font-semibold text-black transition-all hover:shadow-neon"
-          >
-            Go to Sign In
-          </a>
-        </div>
-      </div>
-    );
-  }
+    navigate("/login?verification=failed", { replace: true });
+  }, [login, navigate]);
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-wavee-bg">
       <div className="text-center">
         <WaveeLogo size={48} className="mx-auto mb-4 animate-pulse rounded-2xl" />
-        <p className="text-sm text-wavee-muted">Confirming your account...</p>
+        <p className="text-sm text-wavee-muted">Confirming your account…</p>
       </div>
     </div>
   );

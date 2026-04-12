@@ -1,0 +1,3 @@
+# SPA fallback (Netlify-style; some hosts honor this). On Render, add the same rule in the dashboard:
+# Redirects/Rewrites → Rewrite source /* → destination /index.html
+/*    /index.html   200

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLoginMutation } from "@/hooks/mutations/useAuthMutation";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -17,6 +17,8 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const verification = searchParams.get("verification");
   const { login } = useAuthStore();
   const mutation = useLoginMutation();
 
@@ -54,6 +56,24 @@ export function LoginPage() {
           className="overflow-visible"
         >
         <GlassPanel className="p-6">
+          {verification === "expired" && (
+            <p
+              className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-sm leading-snug text-amber-100/95"
+              role="status"
+            >
+              That confirmation link has expired or was already used. Sign in below, or sign
+              up again and we&apos;ll send a new email.
+            </p>
+          )}
+          {verification === "failed" && (
+            <p
+              className="mb-4 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm leading-snug text-wavee-muted"
+              role="status"
+            >
+              We couldn&apos;t verify your email from that link. Try signing in, or request a
+              new confirmation from the sign-up page.
+            </p>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               id="email"
