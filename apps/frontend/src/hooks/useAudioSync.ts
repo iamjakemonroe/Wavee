@@ -5,7 +5,9 @@ import { httpService } from "@/services/httpService";
 import { apiEndpoints } from "@/services/apiEndpoints";
 
 export function useAudioSync() {
-  const playSessionRef = useRef<{ songId: string; started: number } | null>(null);
+  const playSessionRef = useRef<{ songId: string; started: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     const store = usePlayerStore.getState;
@@ -42,6 +44,29 @@ export function useAudioSync() {
 
     window.addEventListener("wavee:playback-blocked", onPlaybackBlocked);
 
+    /** PWA / mobile: stop audible playback when the app is backgrounded or unloaded (swipe-away). */
+    const pauseIfPlaying = () => {
+      store().pauseFromLifecycle();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        pauseIfPlaying();
+      }
+    };
+
+    const onPageHide = () => {
+      pauseIfPlaying();
+    };
+
+    const onFreeze = () => {
+      pauseIfPlaying();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("freeze", onFreeze);
+
     const unsubs = [
       audioManager.on("timeupdate", () => {
         store().setProgress(audioManager.time);
@@ -49,13 +74,32 @@ export function useAudioSync() {
       }),
       audioManager.on("loadedmetadata", syncDuration),
       audioManager.on("durationchange", syncDuration),
+      audioManager.on("loadstart", () => {
+        store().setAudioPlaybackFlags({ audioElementPlaying: false });
+      }),
       audioManager.on("playing", () => {
+        store().setAudioPlaybackFlags({
+          audioElementPlaying: true,
+          audioBuffering: false,
+        });
         syncDuration();
         const { currentSongId } = store();
         if (currentSongId && playSessionRef.current?.songId !== currentSongId) {
           reportPlay(true);
-          playSessionRef.current = { songId: currentSongId, started: Date.now() };
+          playSessionRef.current = {
+            songId: currentSongId,
+            started: Date.now(),
+          };
         }
+      }),
+      audioManager.on("pause", () => {
+        store().setAudioPlaybackFlags({
+          audioElementPlaying: false,
+          audioBuffering: false,
+        });
+      }),
+      audioManager.on("waiting", () => {
+        store().setAudioPlaybackFlags({ audioBuffering: true });
       }),
       audioManager.on("ended", () => {
         reportPlay(false);
@@ -65,6 +109,9 @@ export function useAudioSync() {
 
     return () => {
       window.removeEventListener("wavee:playback-blocked", onPlaybackBlocked);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("freeze", onFreeze);
       unsubs.forEach((u) => u());
     };
   }, []);

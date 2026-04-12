@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "@/layouts/AppLayout";
+import { LoginPromptModal } from "@/components/auth/LoginPromptModal";
 import { WaveeRouteLoader } from "@/components/ui/WaveeLogo";
 import { UploadPage } from "@/pages/Upload/UploadPage";
 
@@ -53,6 +54,7 @@ const AuthCallbackPage = lazy(() =>
 function App() {
   return (
     <BrowserRouter>
+      <LoginPromptModal />
       <Suspense fallback={<WaveeRouteLoader />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

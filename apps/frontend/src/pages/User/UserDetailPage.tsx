@@ -16,6 +16,7 @@ import { useLikeSongMutation } from "@/hooks/mutations/useLikeSongMutation";
 import { useMyLikesQuery } from "@/hooks/queries/useMyLikesQuery";
 import { useUserSongsQuery } from "@/hooks/queries/useUserSongsQuery";
 import { useUserSongsSearchQuery } from "@/hooks/queries/useUserSongsSearchQuery";
+import { useRequireAuthAction } from "@/hooks/useRequireAuthAction";
 import { useAuthStore } from "@/store/useAuthStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import type { Song } from "@/types/entities";
@@ -29,6 +30,7 @@ export function UserDetailPage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
+  const { run: withAuth } = useRequireAuthAction();
   const [optionsSong, setOptionsSong] = useState<Song | null>(null);
   const [addToPlaylist, setAddToPlaylist] = useState<{ songId: string; title: string } | null>(
     null,
@@ -40,7 +42,7 @@ export function UserDetailPage() {
   const searchQuery = useUserSongsSearchQuery(
     userId ?? "",
     debouncedSearch,
-    isAuthenticated && !!userId,
+    !!userId,
   );
   const myLikesQuery = useMyLikesQuery(isAuthenticated);
   const likeMutation = useLikeSongMutation();
@@ -72,16 +74,20 @@ export function UserDetailPage() {
   const heroShowsPause = playingThisProfile && isPlaying;
 
   const playAll = () => {
-    if (songs.length === 0) return;
-    setQueue(songs);
-    playSong(songs[0]!);
+    withAuth(() => {
+      if (songs.length === 0) return;
+      setQueue(songs);
+      playSong(songs[0]!);
+    }, "Sign in to play tracks");
   };
 
   const playSongFromProfile = (songId: string) => {
-    const song = songs.find((s) => s.id === songId);
-    if (!song) return;
-    setQueue(songs);
-    playSong(song);
+    withAuth(() => {
+      const song = songs.find((s) => s.id === songId);
+      if (!song) return;
+      setQueue(songs);
+      playSong(song);
+    }, "Sign in to play tracks");
   };
 
   const roleLabel =
@@ -259,13 +265,13 @@ export function UserDetailPage() {
         <PlaylistSongSearchBar
           value={searchInput}
           onChange={setSearchInput}
-          hint={
-            isSearchMode
-              ? searchQuery.isFetching
-                ? "Searching…"
-                : searchHint
-              : "Filter tracks from this artist"
-          }
+        // hint={
+        //   isSearchMode
+        //     ? searchQuery.isFetching
+        //       ? "Searching…"
+        //       : searchHint
+        //     : "Filter tracks from this artist"
+        // }
         />
       )}
 

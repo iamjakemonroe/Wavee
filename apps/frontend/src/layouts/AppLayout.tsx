@@ -1,14 +1,17 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { GlobalPlayer } from "@/components/music/GlobalPlayer";
+import { NowPlayingSheet } from "@/components/music/NowPlayingSheet";
 import { WaveeLogo } from "@/components/ui/WaveeLogo";
 import { useAudioSync } from "@/hooks/useAudioSync";
+import { useAuthStore } from "@/store/useAuthStore";
 import { usePlayerStore } from "@/store/usePlayerStore";
 
 export function AppLayout() {
   const location = useLocation();
+  const { isAuthenticated } = useAuthStore();
   const hasPlayer = Boolean(usePlayerStore((s) => s.currentSongId));
   useAudioSync();
 
@@ -18,11 +21,21 @@ export function AppLayout() {
 
       <div className="flex min-h-[100dvh] flex-1 flex-col pt-3">
         {/* Mobile header with safe-area-inset-top */}
-        <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-white/[0.06] bg-wavee-bg/80 px-4 py-3 backdrop-blur-xl safe-top lg:hidden">
-          <WaveeLogo size={28} className="rounded-lg" />
-          <h1 className="text-lg font-black tracking-tight text-gradient">
-            Wavee
-          </h1>
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-white/[0.06] bg-wavee-bg/80 px-4 py-3 backdrop-blur-xl safe-top lg:hidden">
+          <div className="flex min-w-0 items-center gap-2">
+            <WaveeLogo size={28} className="rounded-lg" />
+            <h1 className="text-lg font-black tracking-tight text-gradient">
+              Wavee
+            </h1>
+          </div>
+          {!isAuthenticated && (
+            <Link
+              to="/login"
+              className="shrink-0 rounded-full border border-wavee-primary/35 bg-wavee-primary/10 px-3.5 py-1.5 text-sm font-semibold text-wavee-primary shadow-[0_0_20px_rgba(0,209,160,0.12)] transition-all hover:border-wavee-primary/55 hover:bg-wavee-primary/18 active:scale-[0.98]"
+            >
+              Sign in
+            </Link>
+          )}
         </header>
 
         <main
@@ -53,6 +66,7 @@ export function AppLayout() {
       </div>
 
       <GlobalPlayer />
+      <NowPlayingSheet />
       <MobileNav />
     </div>
   );

@@ -10,6 +10,12 @@ interface PlayerState {
   progress: number;
   duration: number;
   volume: number;
+  /** `<audio>` has fired `playing` (not stalled before first frame). */
+  audioElementPlaying: boolean;
+  /** `<audio>` fired `waiting` (rebuffering). */
+  audioBuffering: boolean;
+  /** Fullscreen now-playing sheet open (from mini player). */
+  nowPlayingExpanded: boolean;
 
   setQueue: (songs: Song[]) => void;
   playSong: (song: Song) => void;
@@ -21,6 +27,14 @@ interface PlayerState {
   setDuration: (d: number) => void;
   setVolume: (v: number) => void;
   seek: (t: number) => void;
+  reset: () => void;
+  setAudioPlaybackFlags: (flags: {
+    audioElementPlaying?: boolean;
+    audioBuffering?: boolean;
+  }) => void;
+  /** Pause audio + sync store (e.g. PWA hidden / page unload). Keeps queue & current track. */
+  pauseFromLifecycle: () => void;
+  setNowPlayingExpanded: (open: boolean) => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -31,6 +45,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   progress: 0,
   duration: 0,
   volume: 1,
+  audioElementPlaying: false,
+  audioBuffering: false,
+  nowPlayingExpanded: false,
 
   setQueue: (songs) => set({ queue: songs }),
 
@@ -117,5 +134,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   seek: (t) => {
     audioManager.seek(t);
     set({ progress: t });
+  },
+
+  reset: () => {
+    audioManager.stop();
+    set({
+      queue: [],
+      currentSongId: null,
+      isPlaying: false,
+      userPaused: false,
+      progress: 0,
+      duration: 0,
+      audioElementPlaying: false,
+      audioBuffering: false,
+      nowPlayingExpanded: false,
+    });
+  },
+
+  setNowPlayingExpanded: (open) => set({ nowPlayingExpanded: open }),
+
+  setAudioPlaybackFlags: (flags) => set(flags),
+
+  pauseFromLifecycle: () => {
+    const { currentSongId, isPlaying } = get();
+    if (!currentSongId || !isPlaying) return;
+    audioManager.pause();
+    set({ isPlaying: false, userPaused: true });
   },
 }));

@@ -209,6 +209,16 @@
   }
 }
 
+/* Global player: indeterminate — soft light sweeps along the full track */
+@keyframes wavee-progress-shimmer {
+  0% {
+    background-position: 125% 50%;
+  }
+  100% {
+    background-position: -125% 50%;
+  }
+}
+
 @layer utilities {
   .text-gradient {
     @apply bg-gradient-to-r from-wavee-primary to-wavee-secondary bg-clip-text text-transparent;
@@ -239,7 +249,7 @@
   }
 
   /* Feed section: fills viewport minus mobile header + parent padding (top & bottom).
-     Slight positive offset pulls the feed toward the player so the scrubber ring does not sit in a dead gap. */
+     8.5rem reserves space for global player + bottom nav (see pb-with-player-nav). */
   .h-feed {
     height: calc(
       100dvh - 3.25rem - 1rem - 8.5rem + 1rem - env(safe-area-inset-top, 0px) -
@@ -247,9 +257,21 @@
     );
   }
 
+  /* Logged-out home: no global player — match pb-with-nav-only (5rem) instead of player+nav (8.5rem). */
+  .h-feed-expanded {
+    height: calc(
+      100dvh - 3.25rem - 1rem - 5rem + 2.4rem - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+    );
+  }
+
   @media (min-width: 1024px) {
     .h-feed {
       height: calc(100dvh - 7.5rem + 1rem);
+    }
+
+    .h-feed-expanded {
+      height: calc(100dvh - 4rem + 3rem);
     }
   }
 
@@ -264,5 +286,31 @@
   /* Home feed: single scroll container; iOS momentum + less gesture fighting with parents */
   .feed-snap-scroll {
     -webkit-overflow-scrolling: touch;
+  }
+
+  .wavee-progress-indeterminate-shimmer {
+    background-image: linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.04) 18%,
+      rgba(0, 209, 160, 0.2) 38%,
+      rgba(0, 209, 160, 0.95) 48%,
+      rgba(124, 92, 255, 0.75) 54%,
+      rgba(0, 209, 160, 0.35) 62%,
+      rgba(255, 255, 255, 0.05) 82%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 225% 100%;
+    background-position: 125% 50%;
+    animation: wavee-progress-shimmer 1.85s cubic-bezier(0.45, 0.05, 0.2, 1) infinite;
+    will-change: background-position;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wavee-progress-indeterminate-shimmer {
+      animation: none;
+      background-position: 50% 50%;
+      opacity: 0.85;
+    }
   }
 }

@@ -1,5 +1,9 @@
 export const queryKeys = {
+  /** Prefix: invalidates all home feed variants (logged-in vs logged-out). */
   homeFeed: ["home-feed"] as const,
+  /** Exact key for `useInfiniteQuery` home feed — use for get/setQueryData. */
+  homeFeedQuery: (isAuthenticated: boolean) =>
+    [...queryKeys.homeFeed, isAuthenticated] as const,
   myLikes: ["my-likes"] as const,
   profile: ["profile"] as const,
   playlists: ["playlists"] as const,

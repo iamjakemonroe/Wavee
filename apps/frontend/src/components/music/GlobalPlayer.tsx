@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  FiChevronUp,
   FiPause,
   FiPlay,
   FiSkipBack,
@@ -22,12 +23,18 @@ export function GlobalPlayer() {
     progress,
     duration,
     volume,
+    audioElementPlaying,
+    audioBuffering,
     togglePlay,
     next,
     previous,
     seek,
     setVolume,
+    setNowPlayingExpanded,
   } = usePlayerStore();
+
+  const progressIndeterminate =
+    isPlaying && (!audioElementPlaying || audioBuffering);
 
   const currentSong = useMemo(
     () => queue.find((s) => s.id === currentSongId) ?? null,
@@ -48,21 +55,33 @@ export function GlobalPlayer() {
             progress={progress}
             duration={duration}
             onSeek={seek}
+            indeterminate={progressIndeterminate}
             className="absolute -top-2.5 left-0 right-0"
           />
 
-          <div className="flex items-center gap-3 px-3 pb-4 sm:gap-4 sm:px-5 sm:py-3">
-            {/* Song info */}
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex items-center gap-2 px-3 pb-4 sm:gap-3 sm:px-5 sm:py-3">
+            <button
+              type="button"
+              onClick={() => setNowPlayingExpanded(true)}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-xl py-1 text-left transition-colors hover:bg-white/[0.04]"
+              aria-label="Open now playing"
+            >
               <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg sm:h-11 sm:w-11">
                 <img
                   src={currentSong.cover_image_url || COVER_FALLBACK}
-                  alt={currentSong.title}
+                  alt=""
                   className="h-full w-full object-cover"
                 />
                 {isPlaying && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                    <WaveformBar isPlaying barCount={3} className="h-3" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/45">
+                    {progressIndeterminate ? (
+                      <div
+                        className="h-4 w-4 shrink-0 rounded-full border-2 border-white/25 border-t-wavee-primary animate-spin"
+                        aria-hidden
+                      />
+                    ) : (
+                      <WaveformBar isPlaying barCount={3} className="h-3" />
+                    )}
                   </div>
                 )}
               </div>
@@ -74,7 +93,16 @@ export function GlobalPlayer() {
                   {currentSong.artist_name ?? currentSong.genre}
                 </p>
               </div>
-            </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setNowPlayingExpanded(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-wavee-muted transition-colors hover:bg-white/[0.06] hover:text-wavee-text"
+              aria-label="Expand player"
+            >
+              <FiChevronUp size={22} strokeWidth={2.25} />
+            </button>
 
             {/* Controls */}
             <div className="flex shrink-0 items-center gap-1 sm:gap-3">

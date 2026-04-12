@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FiSearch } from "react-icons/fi";
 import { useSearchSongsQuery } from "@/hooks/queries/useSearchSongsQuery";
 import { useSearchUsersQuery } from "@/hooks/queries/useSearchUsersQuery";
+import { useRequireAuthAction } from "@/hooks/useRequireAuthAction";
 import { usePlayerStore } from "@/store/usePlayerStore";
 import { SongCard } from "@/components/music/SongCard";
 import { SearchUserCard } from "@/components/search/SearchUserCard";
@@ -15,6 +16,7 @@ export function SearchPage() {
   const usersQuery = useSearchUsersQuery(query, enabled);
 
   const { currentSongId, isPlaying, setQueue, playSong } = usePlayerStore();
+  const { run: withAuth } = useRequireAuthAction();
   const songs = songsQuery.data ?? [];
   const users = usersQuery.data ?? [];
 
@@ -98,10 +100,12 @@ export function SearchPage() {
                     isActive={currentSongId === song.id}
                     isPlaying={currentSongId === song.id && isPlaying}
                     showDuration
-                    onPlay={() => {
-                      setQueue(songs);
-                      playSong(song);
-                    }}
+                    onPlay={() =>
+                      withAuth(() => {
+                        setQueue(songs);
+                        playSong(song);
+                      }, "Sign in to play tracks")
+                    }
                   />
                 ))}
               </div>

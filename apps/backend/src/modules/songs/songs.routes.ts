@@ -22,7 +22,8 @@ const maxAudioBytes = 20 * 1024 * 1024;
 const maxImageBytes = 5 * 1024 * 1024;
 
 export async function songsRoutes(app: FastifyInstance) {
-  app.get("/search", { preHandler: [requireAuth] }, async (request, reply) => {
+  /** Direct table search (no DB RPC). Works for anonymous + authenticated clients. */
+  app.get("/search", async (request, reply) => {
     const parsed = searchQuerySchema.safeParse(request.query);
     if (!parsed.success) {
       return fail(reply, 400, parsed.error.issues[0]?.message ?? "Invalid query");
@@ -32,11 +33,13 @@ export async function songsRoutes(app: FastifyInstance) {
     if (term.length < 1) {
       return reply.send({ ok: true, data: [] });
     }
+
     const pattern = `%${term}%`;
     const { data, error } = await supabaseAdmin
       .from("songs")
       .select("*, artist:users!user_id(username)")
       .or(`title.ilike.${pattern},genre.ilike.${pattern}`)
+      .order("likes_count", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(20);
 

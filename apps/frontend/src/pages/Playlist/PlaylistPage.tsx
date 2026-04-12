@@ -73,7 +73,7 @@ export function PlaylistPage() {
                 </div>
               )}
               <div
-                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/88 via-black/35 via-45% to-black/10"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10"
                 aria-hidden
               />
               <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-3.5">

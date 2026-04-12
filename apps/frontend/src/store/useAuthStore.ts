@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { clearAuthToken, getAuthToken, setAuthTokens } from "@/utils/authToken";
+import { usePlayerStore } from "@/store/usePlayerStore";
 
 interface AuthState {
   token: string | null;
@@ -25,6 +26,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     clearAuthToken();
+    usePlayerStore.getState().reset();
     set({ token: null, isAuthenticated: false });
   },
 }));

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/constants/queryKeys";
 import { apiEndpoints } from "@/services/apiEndpoints";
 import { httpService } from "@/services/httpService";
+import { useAuthStore } from "@/store/useAuthStore";
 import type { Song } from "@/types/entities";
 
 interface ToggleLikeResult {
@@ -40,29 +41,28 @@ export function useLikeSongMutation() {
       ),
 
     onMutate: async (songId) => {
+      const { isAuthenticated } = useAuthStore.getState();
+      const feedKey = queryKeys.homeFeedQuery(isAuthenticated);
+
       await queryClient.cancelQueries({ queryKey: queryKeys.myLikes });
-      await queryClient.cancelQueries({ queryKey: queryKeys.homeFeed });
+      await queryClient.cancelQueries({ queryKey: feedKey });
 
       const previousMyLikes = queryClient.getQueryData<string[]>(
         queryKeys.myLikes,
       );
-      const previousHomeFeed = queryClient.getQueryData<InfiniteData<Song[]>>(
-        queryKeys.homeFeed,
-      );
+      const previousHomeFeed =
+        queryClient.getQueryData<InfiniteData<Song[]>>(feedKey);
 
       const wasLiked = previousMyLikes?.includes(songId) ?? false;
       const delta: 1 | -1 = wasLiked ? -1 : 1;
 
       queryClient.setQueryData<string[]>(queryKeys.myLikes, (old) => {
         if (!old) return wasLiked ? [] : [songId];
-        return wasLiked
-          ? old.filter((id) => id !== songId)
-          : [...old, songId];
+        return wasLiked ? old.filter((id) => id !== songId) : [...old, songId];
       });
 
-      queryClient.setQueryData<InfiniteData<Song[]>>(
-        queryKeys.homeFeed,
-        (old) => bumpLikesInFeed(old, songId, delta),
+      queryClient.setQueryData<InfiniteData<Song[]>>(feedKey, (old) =>
+        bumpLikesInFeed(old, songId, delta),
       );
 
       return { previousMyLikes, previousHomeFeed };
@@ -72,7 +72,7 @@ export function useLikeSongMutation() {
       if (!context) return;
       queryClient.setQueryData(queryKeys.myLikes, context.previousMyLikes);
       queryClient.setQueryData(
-        queryKeys.homeFeed,
+        queryKeys.homeFeedQuery(useAuthStore.getState().isAuthenticated),
         context.previousHomeFeed,
       );
     },

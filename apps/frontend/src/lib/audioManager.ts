@@ -62,6 +62,17 @@ class AudioManager {
     this.audio.volume = this.targetVolume;
   }
 
+  /** Stop playback and clear the source (e.g. logout). */
+  stop() {
+    ++this.generation;
+    this.cancelFade();
+    this.audio.pause();
+    this.audio.removeAttribute("src");
+    this.audio.load();
+    this.currentUrl = null;
+    this.audio.volume = this.targetVolume;
+  }
+
   resume() {
     this.cancelFade();
     const gen = ++this.generation;

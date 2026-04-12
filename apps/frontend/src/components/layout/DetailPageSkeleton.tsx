@@ -19,10 +19,6 @@ export function DetailPageHeroSkeleton() {
       />
       <div className="relative z-10 flex min-h-[200px] flex-col px-4 pb-5 pt-2 sm:min-h-[220px] sm:px-6 sm:pb-6 sm:pt-3">
         <div className="mb-4 flex items-start gap-3 sm:mb-5">
-          <div
-            className="mt-0.5 h-9 w-9 shrink-0 animate-pulse rounded-full bg-white/[0.14]"
-            aria-hidden
-          />
           <div className="min-w-0 flex-1 space-y-3 pt-0.5">
             <div
               className="h-[1.75rem] max-w-[min(92%,20rem)] animate-pulse rounded-md bg-white/[0.14] sm:h-9 sm:max-w-[18rem]"
@@ -37,12 +33,6 @@ export function DetailPageHeroSkeleton() {
               aria-hidden
             />
           </div>
-        </div>
-        <div className="mt-auto flex items-center pt-1">
-          <div
-            className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-white/[0.14]"
-            aria-hidden
-          />
         </div>
       </div>
     </div>

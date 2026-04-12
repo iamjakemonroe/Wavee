@@ -133,13 +133,15 @@ export function PlaylistDetailPage() {
           />
         ) : (
           <div
-            className="absolute inset-0 min-h-[200px] bg-gradient-to-b from-zinc-800 via-zinc-900 to-wavee-bg sm:min-h-[220px]"
+            className="absolute inset-0 flex min-h-[200px] items-center justify-center bg-gradient-to-b from-zinc-800 via-zinc-900 to-wavee-bg sm:min-h-[220px]"
             style={{
               maskImage: HERO_IMAGE_MASK,
               WebkitMaskImage: HERO_IMAGE_MASK,
             }}
             aria-hidden
-          />
+          >
+            <FiMusic className="text-white/20" size={80} strokeWidth={1.15} />
+          </div>
         )}
         <div
           className="pointer-events-none absolute inset-0 min-h-[200px] bg-gradient-to-b from-black/50 via-black/25 via-[45%] to-transparent sm:min-h-[220px]"
@@ -269,13 +271,13 @@ export function PlaylistDetailPage() {
         <PlaylistSongSearchBar
           value={searchInput}
           onChange={setSearchInput}
-          hint={
-            isSearchMode
-              ? searchQuery.isFetching
-                ? "Searching…"
-                : searchHint
-              : "Filter tracks in this playlist"
-          }
+        // hint={
+        //   isSearchMode
+        //     ? searchQuery.isFetching
+        //       ? "Searching…"
+        //       : searchHint
+        //     : "Filter tracks in this playlist"
+        // }
         />
       )}
 

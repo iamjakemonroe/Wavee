@@ -6,7 +6,10 @@ export const apiEndpoints = {
     me: "/v1/auth/me",
   },
   feed: {
+    /** Personalized feed (Bearer required). */
     home: "/v1/feed/home",
+    /** Public discovery feed (no auth). */
+    homePublic: "/v1/feed/home/public",
   },
   songs: {
     search: "/v1/songs/search",

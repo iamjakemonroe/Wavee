@@ -39,7 +39,8 @@ const profileSearchQuerySchema = z.object({
 });
 
 export async function profileRoutes(app: FastifyInstance) {
-  app.get("/search", { preHandler: [requireAuth] }, async (request, reply) => {
+  /** Direct table search (no DB RPC). Works for anonymous + authenticated clients. */
+  app.get("/search", async (request, reply) => {
     const parsed = profileSearchQuerySchema.safeParse(request.query);
     if (!parsed.success) {
       return fail(reply, 400, parsed.error.issues[0]?.message ?? "Invalid query");
@@ -219,7 +220,6 @@ export async function profileRoutes(app: FastifyInstance) {
 
   app.get(
     "/:userId/songs/search",
-    { preHandler: [requireAuth] },
     async (request, reply) => {
       const paramsParsed = userIdParamSchema.safeParse(request.params);
       if (!paramsParsed.success) return fail(reply, 400, "Invalid user id");
@@ -275,7 +275,8 @@ export async function profileRoutes(app: FastifyInstance) {
     },
   );
 
-  app.get("/:userId/songs", { preHandler: [requireAuth] }, async (request, reply) => {
+  /** Public read: artist profile + their songs (same data as in-app discovery). */
+  app.get("/:userId/songs", async (request, reply) => {
     const paramsParsed = userIdParamSchema.safeParse(request.params);
     if (!paramsParsed.success) return fail(reply, 400, "Invalid user id");
 

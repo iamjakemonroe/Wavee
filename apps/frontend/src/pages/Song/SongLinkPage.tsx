@@ -1,23 +1,26 @@
 import { useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { FiHome, FiMusic } from "react-icons/fi";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useSongByIdQuery } from "@/hooks/queries/useSongByIdQuery";
 import { usePlayerStore } from "@/store/usePlayerStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const COVER_FALLBACK = "/cover-placeholder.svg";
 
 export function SongLinkPage() {
+  const navigate = useNavigate();
   const { songId } = useParams<{ songId: string }>();
   const { data: song, isLoading, isError } = useSongByIdQuery(songId ?? "", !!songId);
   const { setQueue, playSong } = usePlayerStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
-    if (!song) return;
+    if (!song || !isAuthenticated) return;
     setQueue([song]);
     playSong(song);
-  }, [song, setQueue, playSong]);
+  }, [song, setQueue, playSong, isAuthenticated]);
 
   if (!songId) {
     return (
@@ -73,8 +76,19 @@ export function SongLinkPage() {
             <p className="mt-1 text-sm text-wavee-muted">{song.artist_name}</p>
           ) : null}
           <p className="mt-3 text-sm text-wavee-muted">
-            Playback has started. Use the player at the bottom to control audio.
+            {isAuthenticated
+              ? "Playback has started. Use the player at the bottom to control audio."
+              : "Sign in to play this track in the app."}
           </p>
+          {!isAuthenticated ? (
+            <button
+              type="button"
+              onClick={() => navigate("/login", { state: { from: `/songs/${songId}` } })}
+              className="mt-4 w-full rounded-xl bg-wavee-primary py-3 text-sm font-semibold text-black transition-opacity hover:opacity-90"
+            >
+              Log in to listen
+            </button>
+          ) : null}
           <Link
             to="/"
             className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-white/[0.06] py-3 text-sm font-medium text-wavee-text transition-colors hover:bg-white/[0.1]"

@@ -6,13 +6,15 @@ import {
   useState,
 } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiUploadCloud, FiMusic, FiImage, FiCheck } from "react-icons/fi";
+import { FiUploadCloud, FiMusic, FiImage, FiCheck, FiLogIn } from "react-icons/fi";
 import { useUploadSongMutation } from "@/hooks/mutations/useUploadSongMutation";
 import { clearUploadDraft, loadUploadDraft, saveUploadDraft } from "@/lib/uploadDraftIDB";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { GlassPanel } from "@/components/ui/GlassPanel";
+import { useAuthStore } from "@/store/useAuthStore";
 import { AUDIO_ACCEPT_ATTR, isAllowedAudioFile } from "@/utils/audioFileAccept";
 
 const DRAFT_SAVE_MS = 450;
@@ -35,7 +37,42 @@ function recordFromState(args: {
   };
 }
 
-export function UploadPage() {
+function UploadPageSignedOut() {
+  return (
+    <section>
+      <header className="mb-6">
+        <h2 className="text-3xl font-black tracking-tight">Upload</h2>
+        <p className="mt-1 text-sm text-wavee-muted">
+          Share your music with the world
+        </p>
+      </header>
+
+      <GlassPanel className="max-w-lg p-8 text-center">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.06] ring-1 ring-white/[0.08]">
+          <FiLogIn className="text-wavee-muted" size={28} />
+        </div>
+        <h3 className="text-lg font-semibold text-wavee-text">Sign in to upload</h3>
+        <p className="mt-2 text-sm text-wavee-muted">
+          Log in to add tracks, cover art, and share your sound with listeners.
+        </p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link to="/login" className="sm:flex-1 sm:max-w-[11rem]">
+            <Button type="button" className="w-full" size="lg">
+              Log in
+            </Button>
+          </Link>
+          <Link to="/signup" className="sm:flex-1 sm:max-w-[11rem]">
+            <Button type="button" variant="secondary" className="w-full" size="lg">
+              Create account
+            </Button>
+          </Link>
+        </div>
+      </GlassPanel>
+    </section>
+  );
+}
+
+function UploadPageForm() {
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -78,7 +115,6 @@ export function UploadPage() {
     };
   }, []);
 
-  /** Persist audio/cover the same frame they are set — before paint — so Android can’t kill the tab before a debounced write. */
   useLayoutEffect(() => {
     if (!draftReady || !audioFile) return;
     void saveUploadDraft(
@@ -91,7 +127,6 @@ export function UploadPage() {
     );
   }, [draftReady, audioFile, coverFile]);
 
-  /** Debounced save when only title/genre change (large blobs already flushed above). */
   useEffect(() => {
     if (!draftReady || !audioFile) return;
     const t = window.setTimeout(() => {
@@ -111,7 +146,6 @@ export function UploadPage() {
     return () => window.clearTimeout(t);
   }, [draftReady, audioFile]);
 
-  /** Some Android WebViews drop in-memory File state when returning from the picker; rehydrate from IndexedDB. */
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState !== "visible") return;
@@ -142,7 +176,6 @@ export function UploadPage() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  /** Flush when the page is hidden (picker, tab switch) in case layout effect hasn’t run yet. */
   useEffect(() => {
     if (!draftReady || !audioFile) return;
     const persist = () => {
@@ -288,6 +321,10 @@ export function UploadPage() {
                 />
               </label>
               {audioHint ? <p className="mt-1.5 text-xs text-wavee-danger">{audioHint}</p> : null}
+              <p className="mt-1 text-[11px] text-wavee-muted/80">
+                Only MP3 and WAV are supported. Your selection is saved on this device if the browser
+                reloads when you return from the file picker.
+              </p>
             </div>
 
             <div>
@@ -329,4 +366,12 @@ export function UploadPage() {
       </GlassPanel>
     </section>
   );
+}
+
+export function UploadPage() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  if (!isAuthenticated) {
+    return <UploadPageSignedOut />;
+  }
+  return <UploadPageForm />;
 }
