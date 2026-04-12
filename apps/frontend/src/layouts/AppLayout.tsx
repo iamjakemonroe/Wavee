@@ -17,6 +17,7 @@ export function AppLayout() {
   const { isAuthenticated } = useAuthStore();
   const showPwaBanner = !AUTH_PATHS.has(location.pathname);
   const hasPlayer = Boolean(usePlayerStore((s) => s.currentSongId));
+  const isHome = location.pathname === "/";
   useAudioSync();
 
   return (
@@ -44,7 +45,7 @@ export function AppLayout() {
 
         <main
           className={
-            location.pathname === "/"
+            isHome
               ? "relative flex-1 overflow-hidden"
               : "relative flex-1 overflow-y-auto"
           }
@@ -57,10 +58,13 @@ export function AppLayout() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className={`${location.pathname === "/" ? "p-0" : "p-4 sm:p-6"} ${hasPlayer
-                  ? "pb-with-player-nav lg:pb-24"
-                  : "pb-with-nav-only lg:pb-6"
-                  }`}
+                className={`${isHome ? "p-0" : "p-4 sm:p-6"} ${
+                  isHome
+                    ? ""
+                    : hasPlayer
+                      ? "pb-with-player-nav"
+                      : "pb-with-nav-only"
+                }`}
               >
                 <Outlet />
               </motion.div>

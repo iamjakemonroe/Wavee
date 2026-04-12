@@ -18,11 +18,6 @@ function isIos(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
 }
 
-function isAndroid(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Android/i.test(navigator.userAgent);
-}
-
 function readDismissState(): "permanent" | number | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);

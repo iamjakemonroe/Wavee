@@ -240,8 +240,15 @@
     bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Global player sits above the tab bar; ProgressBar uses -top-2.5 so extra headroom is required. */
   .pb-with-player-nav {
-    padding-bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(11rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  @media (min-width: 1024px) {
+    .pb-with-player-nav {
+      padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px));
+    }
   }
 
   .pb-with-nav-only {
@@ -249,18 +256,18 @@
   }
 
   /* Feed section: fills viewport minus mobile header + parent padding (top & bottom).
-     8.5rem reserves space for global player + bottom nav (see pb-with-player-nav). */
+     Must track .pb-with-player-nav: player + tab bar + progress bar overlap (~11rem). */
   .h-feed {
     height: calc(
-      100dvh - 3.25rem - 1rem - 8.5rem + 1rem - env(safe-area-inset-top, 0px) -
+      100dvh - 3.25rem - 1rem - 11rem + 3rem - env(safe-area-inset-top, 0px) -
         env(safe-area-inset-bottom, 0px)
     );
   }
 
-  /* Logged-out home: no global player — match pb-with-nav-only (5rem) instead of player+nav (8.5rem). */
+  /* Logged-out home: no global player — match pb-with-nav-only (5rem) instead of player+nav (~11rem). */
   .h-feed-expanded {
     height: calc(
-      100dvh - 3.25rem - 1rem - 5rem + 2.4rem - env(safe-area-inset-top, 0px) -
+      100dvh - 3.25rem - 1rem - 5rem + 2rem - env(safe-area-inset-top, 0px) -
         env(safe-area-inset-bottom, 0px)
     );
   }
@@ -302,7 +309,8 @@
     );
     background-size: 225% 100%;
     background-position: 125% 50%;
-    animation: wavee-progress-shimmer 1.85s cubic-bezier(0.45, 0.05, 0.2, 1) infinite;
+    animation: wavee-progress-shimmer 1.85s cubic-bezier(0.45, 0.05, 0.2, 1)
+      infinite;
     will-change: background-position;
   }
 

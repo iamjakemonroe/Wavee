@@ -287,13 +287,13 @@ export function PlaylistDetailPage() {
         <PlaylistSongSearchBar
           value={searchInput}
           onChange={setSearchInput}
-        // hint={
-        //   isSearchMode
-        //     ? searchQuery.isFetching
-        //       ? "Searching…"
-        //       : searchHint
-        //     : "Filter tracks in this playlist"
-        // }
+          hint={
+            isSearchMode
+              ? searchQuery.isFetching
+                ? "Searching…"
+                : searchHint
+              : "Filter tracks in this playlist"
+          }
         />
       )}
 

@@ -3,6 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.6.3",
   "scripts": {
+    "build": "pnpm --filter wavee-frontend run build",
     "backend": "pnpm --filter wavee-backend run dev",
     "backend:typecheck": "pnpm --filter wavee-backend run typecheck",
     "frontend": "pnpm --filter wavee-frontend run dev",
