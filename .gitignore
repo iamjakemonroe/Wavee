@@ -1,0 +1,4 @@
+# Local environment (never commit — copy from apps/*/.env.example)
+.env
+**/.env
+!**/.env.example
