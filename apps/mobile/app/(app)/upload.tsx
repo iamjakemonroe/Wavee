@@ -11,6 +11,8 @@ export default function UploadScreen() {
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("");
   const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [audioName, setAudioName] = useState<string | undefined>();
+  const [audioMime, setAudioMime] = useState<string | undefined>();
   const [coverUri, setCoverUri] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -18,12 +20,17 @@ export default function UploadScreen() {
     mutationFn: async () => {
       if (!accessToken) throw new Error("You must be logged in");
       if (!audioUri) throw new Error("Select an audio file");
-      return songService.createSong({ title, genre }, { audioUri, coverUri: coverUri ?? undefined });
+      return songService.createSong(
+        { title, genre },
+        { audioUri, audioName, audioMime, coverUri: coverUri ?? undefined },
+      );
     },
     onSuccess: () => {
       setTitle("");
       setGenre("");
       setAudioUri(null);
+      setAudioName(undefined);
+      setAudioMime(undefined);
       setCoverUri(null);
       setStatus("Song uploaded");
     },
@@ -54,10 +61,14 @@ export default function UploadScreen() {
         style={styles.pick}
         onPress={async () => {
           const file = await songService.pickAudioFile();
-          if (file) setAudioUri(file.uri);
+          if (file) {
+            setAudioUri(file.uri);
+            setAudioName(file.name);
+            setAudioMime(file.mimeType ?? undefined);
+          }
         }}
       >
-        <Text style={styles.pickLabel}>{audioUri ? "Audio selected" : "Pick MP3/WAV"}</Text>
+        <Text style={styles.pickLabel}>{audioUri ? "Audio selected" : "Pick MP3, WAV, or M4A"}</Text>
       </Pressable>
 
       <Pressable

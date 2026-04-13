@@ -310,7 +310,7 @@ function UploadPageForm() {
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-wavee-border p-4 transition-colors hover:border-wavee-primary/40">
                 <FiMusic className="shrink-0 text-wavee-muted" size={20} />
                 <span className="truncate text-sm text-wavee-muted">
-                  {audioFile ? audioFile.name : "Choose audio file (MP3, WAV)"}
+                  {audioFile ? audioFile.name : "Choose audio file (MP3, WAV, M4A)"}
                 </span>
                 <input
                   ref={audioInputRef}

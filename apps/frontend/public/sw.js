@@ -1,4 +1,4 @@
-const CACHE_NAME = "wavee-v5";
+const CACHE_NAME = "wavee-v6";
 const OFFLINE_URLS = [
   "/",
   "/index.html",
@@ -33,6 +33,22 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
   if (url.pathname.startsWith("/v1/")) return;
+
+  // Hashed bundles include `import.meta.env` (e.g. API URL). Cache-first would keep stale JS forever.
+  if (url.pathname.startsWith("/assets/")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === "basic") {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

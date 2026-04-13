@@ -16,7 +16,13 @@ const uploadBodySchema = z.object({
   genre: z.string().min(1).max(64),
 });
 
-const allowedAudioMimeTypes = new Set(["audio/mpeg", "audio/wav", "audio/x-wav"]);
+const allowedAudioMimeTypes = new Set([
+  "audio/mpeg",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/mp4",
+  "audio/x-m4a",
+]);
 const allowedImageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxAudioBytes = 20 * 1024 * 1024;
 const maxImageBytes = 5 * 1024 * 1024;

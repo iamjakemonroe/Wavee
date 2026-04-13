@@ -10,13 +10,16 @@ interface CreateSongPayload {
 
 interface UploadAssets {
   audioUri: string;
+  /** From DocumentPicker; used so M4A sends audio/mp4 + .m4a, not fake mp3. */
+  audioName?: string;
+  audioMime?: string;
   coverUri?: string;
 }
 
 export const songService = {
   async pickAudioFile() {
     const result = await DocumentPicker.getDocumentAsync({
-      type: ["audio/mpeg", "audio/wav", "audio/x-wav"],
+      type: ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/x-m4a"],
       copyToCacheDirectory: true,
       multiple: false,
     });
@@ -43,10 +46,26 @@ export const songService = {
     const formData = new FormData();
     formData.append("title", payload.title);
     formData.append("genre", payload.genre);
+
+    const mime = assets.audioMime?.toLowerCase() ?? "";
+    const nameLower = assets.audioName?.toLowerCase() ?? "";
+    let audioType = assets.audioMime ?? "audio/mpeg";
+    let audioName = assets.audioName ?? "song.mp3";
+    if (!assets.audioMime && nameLower.endsWith(".m4a")) {
+      audioType = "audio/mp4";
+      audioName = assets.audioName ?? "song.m4a";
+    } else if (!assets.audioMime && (nameLower.endsWith(".wav") || nameLower.endsWith(".wave"))) {
+      audioType = "audio/wav";
+      audioName = assets.audioName ?? "song.wav";
+    } else if (mime.includes("mp4") || mime.includes("m4a")) {
+      audioType = assets.audioMime ?? "audio/mp4";
+      if (!audioName.toLowerCase().endsWith(".m4a")) audioName = "song.m4a";
+    }
+
     formData.append("audio", {
       uri: assets.audioUri,
-      name: "song.mp3",
-      type: "audio/mpeg",
+      name: audioName,
+      type: audioType,
     } as unknown as Blob);
     if (assets.coverUri) {
       formData.append("cover", {
