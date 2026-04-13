@@ -10,6 +10,7 @@ import {
   inferAvatarMimeFromExt,
   isAllowedAvatarMime,
   normalizeAvatarMimeType,
+  removePreviousAvatarFromBucket,
   uploadUserAvatar,
 } from "../../utils/avatarStorage.js";
 import { sanitizeSearchTerm } from "../../utils/searchSanitize.js";
@@ -148,6 +149,12 @@ export async function profileRoutes(app: FastifyInstance) {
 
     if (!fileBuffer) return fail(reply, 400, "Image file is required");
 
+    const { data: beforeAvatar } = await supabaseAdmin
+      .from("users")
+      .select("avatar_url")
+      .eq("id", userId)
+      .maybeSingle();
+
     const uploadResult = await uploadUserAvatar(
       supabaseAdmin,
       userId,
@@ -189,6 +196,22 @@ export async function profileRoutes(app: FastifyInstance) {
         "Avatar URL update failed"
       );
       return fail(reply, 500, "We couldn't save your photo. Try again later.");
+    }
+
+    const removed = await removePreviousAvatarFromBucket(
+      supabaseAdmin,
+      userId,
+      beforeAvatar?.avatar_url
+    );
+    if (!removed.ok) {
+      request.log.warn(
+        {
+          route: "profile.avatar",
+          user_id: userId,
+          err: removed.error,
+        },
+        "Old avatar storage delete failed (new avatar is saved)"
+      );
     }
 
     return reply.send({ ok: true, data: { avatar_url: data.avatar_url } });

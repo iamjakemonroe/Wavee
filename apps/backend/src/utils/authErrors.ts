@@ -94,9 +94,6 @@ export function mapProfileUpsertError(
   if (msg.includes("users_email_key") || msg.includes("(email)")) {
     return "An account with this email already exists. Try signing in instead.";
   }
-  // if (msg.includes("users_username_key") || msg.includes("(username)")) {
-  //   return "This username is already taken. Try a different one.";
-  // }
 
-  return "This email or username is already in use. Try signing in or choose different details.";
+  return "An account with this email already exists. Try signing in instead.";
 }

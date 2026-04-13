@@ -75,3 +75,44 @@ export async function uploadUserAvatar(
   const publicUrl = client.storage.from(bucket).getPublicUrl(objectPath).data.publicUrl;
   return { ok: true, publicUrl };
 }
+
+/**
+ * Parse a public avatar URL into the storage object path for our bucket.
+ * Shape: .../object/public/{bucket}/{userId}/...
+ */
+function extractAvatarObjectPath(url: string, bucket: string): string | null {
+  try {
+    const u = new URL(url.trim());
+    const marker = `/object/public/${bucket}/`;
+    const idx = u.pathname.indexOf(marker);
+    if (idx === -1) return null;
+    return decodeURIComponent(u.pathname.slice(idx + marker.length));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deletes a user's previous avatar object after a successful new upload.
+ * No-ops if there is no URL, it is not in our bucket, or the path is not under {@link userId}/.
+ */
+export async function removePreviousAvatarFromBucket(
+  client: SupabaseClient,
+  userId: string,
+  previousPublicUrl: string | null | undefined
+): Promise<{ ok: true } | { ok: false; error: { message: string } }> {
+  if (!previousPublicUrl?.trim()) return { ok: true };
+
+  const bucket = env.STORAGE_BUCKET_AVATARS;
+  const objectPath = extractAvatarObjectPath(previousPublicUrl, bucket);
+  if (!objectPath) return { ok: true };
+
+  const prefix = `${userId}/`;
+  if (!objectPath.startsWith(prefix)) return { ok: true };
+
+  const { error } = await client.storage.from(bucket).remove([objectPath]);
+  if (error) {
+    return { ok: false, error: { message: error.message } };
+  }
+  return { ok: true };
+}
