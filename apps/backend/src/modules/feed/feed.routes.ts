@@ -38,8 +38,8 @@ export async function feedRoutes(app: FastifyInstance) {
       .select(
         "id, user_id, title, audio_url, cover_image_url, genre, plays_count, likes_count, created_at, artist:users!user_id(username)"
       )
-      .order("likes_count", { ascending: false })
       .order("created_at", { ascending: false })
+      .order("likes_count", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (error) return fail(reply, 500, error.message);
