@@ -102,12 +102,12 @@ export function UserDetailPage() {
   const roleLabel =
     profile && (formatMusicRoles(profile.music_roles) ?? (profile.is_artist ? "Artist" : null));
 
-  const searchHint =
-    isSearchMode && !searchQuery.isFetching
-      ? searchResults.length === 0
-        ? "No matches for this artist"
-        : `${searchResults.length} ${searchResults.length === 1 ? "match" : "matches"}`
-      : undefined;
+  // const searchHint =
+  //   isSearchMode && !searchQuery.isFetching
+  //     ? searchResults.length === 0
+  //       ? "No matches for this artist"
+  //       : `${searchResults.length} ${searchResults.length === 1 ? "match" : "matches"}`
+  //     : undefined;
 
   if (isLoading) {
     return (

@@ -103,12 +103,12 @@ export function PlaylistDetailPage() {
     setOptionsSong(null);
   };
 
-  const searchHint =
-    isSearchMode && !searchQuery.isFetching
-      ? searchResults.length === 0
-        ? "No matches in this playlist"
-        : `${searchResults.length} ${searchResults.length === 1 ? "match" : "matches"}`
-      : undefined;
+  // const searchHint =
+  //   isSearchMode && !searchQuery.isFetching
+  //     ? searchResults.length === 0
+  //       ? "No matches in this playlist"
+  //       : `${searchResults.length} ${searchResults.length === 1 ? "match" : "matches"}`
+  //     : undefined;
 
   if (isLoading) {
     return (
