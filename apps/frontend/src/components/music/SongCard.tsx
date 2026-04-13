@@ -47,50 +47,42 @@ export const SongCard = memo(function SongCard({
 
   return (
     <div
-      className={`group flex items-center gap-3 rounded-xl border p-3 transition-all hover:bg-white/[0.03] ${isActive
+      className={`group flex items-center gap-2 rounded-xl border p-3 transition-all hover:bg-white/[0.03] ${isActive
           ? "border-wavee-primary/30 bg-wavee-primary/[0.05] shadow-neon"
           : "border-white/[0.06]"
         }`}
     >
-      <div
-        className="relative h-12 w-12 shrink-0 cursor-pointer overflow-hidden rounded-lg max-[1023px]:active:opacity-90"
-        onClick={(e) => {
-          if (typeof window !== "undefined" && window.matchMedia("(hover: none)").matches) {
-            e.stopPropagation();
-            onPlay();
-          }
-        }}
-        role="presentation"
+      <button
+        type="button"
+        aria-label={`Play ${song.title} by ${song.artist_name}`}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-wavee-primary/40"
+        onClick={onPlay}
       >
-        <img
-          src={song.cover_image_url || COVER_FALLBACK}
-          alt={song.title}
-          className="h-full w-full object-cover"
-          loading="lazy"
-        />
-        <button
-          type="button"
-          onClick={onPlay}
-          className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 pointer-events-none transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:none)]:hidden"
-          aria-hidden
-        >
-          <FiPlay className="text-white" size={18} />
-        </button>
-        {isActive && showPauseIcon && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <WaveformBar isPlaying barCount={3} className="h-4" />
+        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg max-[1023px]:active:opacity-90">
+          <img
+            src={song.cover_image_url || COVER_FALLBACK}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+          <div
+            className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 [@media(hover:none)]:hidden"
+            aria-hidden
+          >
+            <FiPlay className="text-white" size={18} />
           </div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-wavee-text">{song.title}</p>
-        <p className="truncate text-xs text-wavee-muted">
-          {song.artist_name}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
+          {isActive && showPauseIcon && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <WaveformBar isPlaying barCount={3} className="h-4" />
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-wavee-text">{song.title}</p>
+          <p className="truncate text-xs text-wavee-muted">{song.artist_name}</p>
+        </div>
         {meta !== "none" && (
-          <div className="min-w-[3rem] text-right text-xs tabular-nums text-wavee-muted">
+          <div className="min-w-[3rem] shrink-0 text-right text-xs tabular-nums text-wavee-muted">
             {meta === "duration" ? (
               <span>
                 {durationSeconds != null ? formatTime(durationSeconds) : "--:--"}
@@ -100,20 +92,17 @@ export const SongCard = memo(function SongCard({
             )}
           </div>
         )}
-        {onMore && (
-          <button
-            type="button"
-            aria-label="More options"
-            className="relative z-10 flex h-9 w-9 cursor-pointer touch-manipulation items-center justify-center rounded-full text-wavee-muted transition-colors hover:bg-white/[0.08] hover:text-wavee-text"
-            onClick={(e) => {
-              e.stopPropagation();
-              onMore();
-            }}
-          >
-            <FiMoreHorizontal size={20} strokeWidth={2} />
-          </button>
-        )}
-      </div>
+      </button>
+      {onMore && (
+        <button
+          type="button"
+          aria-label="More options"
+          className="flex h-9 w-9 shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-full text-wavee-muted transition-colors hover:bg-white/[0.08] hover:text-wavee-text"
+          onClick={onMore}
+        >
+          <FiMoreHorizontal size={20} strokeWidth={2} />
+        </button>
+      )}
     </div>
   );
 });

@@ -20,6 +20,8 @@ export function AppLayout() {
   const isHome = location.pathname === "/";
   useAudioSync();
 
+  const mainPaddingClass = hasPlayer ? "pb-with-player-nav" : "pb-with-nav-only";
+
   return (
     <div className="flex min-h-[100dvh] bg-wavee-bg text-wavee-text">
       <Sidebar />
@@ -58,13 +60,7 @@ export function AppLayout() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className={`${isHome ? "p-0" : "p-4 sm:p-6"} ${
-                  isHome
-                    ? ""
-                    : hasPlayer
-                      ? "pb-with-player-nav"
-                      : "pb-with-nav-only"
-                }`}
+                className={`p-4 sm:p-6 ${mainPaddingClass}`}
               >
                 <Outlet />
               </motion.div>

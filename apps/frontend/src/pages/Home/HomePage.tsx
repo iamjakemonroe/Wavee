@@ -180,7 +180,13 @@ export function HomePage() {
 
   return (
     <>
-      <section className={`flex flex-col ${feedSectionHeightClass}`}>
+      {/*
+        AppLayout always applies main padding; pull the feed flush to edges (home only).
+        Avoids pathname-based padding on the animated outlet wrapper, which could race with Framer Motion.
+      */}
+      <section
+        className={`-mx-4 -mt-4 flex flex-col sm:-mx-6 sm:-mt-6 ${feedSectionHeightClass}`}
+      >
         <div
           ref={feedRef}
           className="feed-snap-scroll min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain touch-pan-y scrollbar-hide"

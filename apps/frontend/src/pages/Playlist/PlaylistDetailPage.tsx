@@ -177,8 +177,9 @@ export function PlaylistDetailPage() {
                 </h1>
                 {isAuthenticated && playlist && (
                   <FiChevronRight
-                    className="shrink-0 text-white/45 opacity-0 transition-opacity group-hover:opacity-100"
+                    className="shrink-0 text-white/55"
                     size={22}
+                    aria-hidden
                   />
                 )}
               </button>
