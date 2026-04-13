@@ -1,0 +1,19 @@
+# Optional Render Blueprint — sync from the dashboard only if you use Infrastructure as Code.
+# If the static site already exists, do NOT duplicate the service: add the rewrite below in the UI instead.
+#
+# Dashboard (recommended for existing sites): Static Site → Settings → Redirects/Rewrites → Add rule
+#   Action: Rewrite  |  Source: /*  |  Destination: /index.html
+# Without this, deep links like /auth/callback return 404 and email verification never reaches the React app.
+#
+# https://render.com/docs/redirects-rewrites
+
+services:
+  - type: web
+    name: wavee-frontend
+    runtime: static
+    buildCommand: corepack enable && corepack prepare pnpm@10.6.3 --activate && pnpm install && pnpm --filter wavee-frontend run build
+    staticPublishPath: apps/frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
