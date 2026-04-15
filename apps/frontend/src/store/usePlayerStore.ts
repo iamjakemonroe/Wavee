@@ -32,7 +32,7 @@ interface PlayerState {
     audioElementPlaying?: boolean;
     audioBuffering?: boolean;
   }) => void;
-  /** Pause audio + sync store (e.g. PWA hidden / page unload). Keeps queue & current track. */
+  /** Pause audio + sync store (e.g. tab close / real page unload). Keeps queue & current track. */
   pauseFromLifecycle: () => void;
   /** Align `isPlaying` / `userPaused` with the real audio element (OS media controls, notifications). */
   syncPlaybackFromMediaElement: () => void;

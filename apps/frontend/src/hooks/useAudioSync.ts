@@ -87,28 +87,23 @@ export function useAudioSync() {
 
     window.addEventListener("wavee:playback-blocked", onPlaybackBlocked);
 
-    /** PWA / mobile: stop audible playback when the app is backgrounded or unloaded (swipe-away). */
+    /**
+     * Pause only when the page is actually going away — not when minimized or tab backgrounded.
+     * - `visibilitychange` → hidden: fires for minimize, alt-tab, lock screen — must NOT pause if we want background audio.
+     * - `pagehide` with `persisted === true`: page enters back/forward cache — do not pause (user may return).
+     * - `pagehide` with `persisted === false`: real unload (close tab, navigate away) — pause so state matches teardown.
+     * - `freeze`: Chrome may fire when backgrounding; pausing here also stopped playback in PWA — skip.
+     */
     const pauseIfPlaying = () => {
       store().pauseFromLifecycle();
     };
 
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        pauseIfPlaying();
-      }
-    };
-
-    const onPageHide = () => {
+    const onPageHide = (e: PageTransitionEvent) => {
+      if (e.persisted) return;
       pauseIfPlaying();
     };
 
-    const onFreeze = () => {
-      pauseIfPlaying();
-    };
-
-    document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("pagehide", onPageHide);
-    document.addEventListener("freeze", onFreeze);
 
     const unsubs = [
       audioManager.on("timeupdate", () => {
@@ -194,9 +189,7 @@ export function useAudioSync() {
 
     return () => {
       window.removeEventListener("wavee:playback-blocked", onPlaybackBlocked);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("pagehide", onPageHide);
-      document.removeEventListener("freeze", onFreeze);
       unsubs.forEach((u) => u());
       unsubStore();
       if (mediaSessionSupported) {
