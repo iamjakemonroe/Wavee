@@ -87,6 +87,7 @@ export function HomePage() {
       (entries) => {
         if (suppressIntersectionPlayRef.current) return;
         if (!isAuthedRef.current) return;
+        if (document.visibilityState !== "visible") return;
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           const songId = (entry.target as HTMLElement).dataset.songId;

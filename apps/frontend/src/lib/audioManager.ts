@@ -1,15 +1,27 @@
 const FADE_STEP = 0.08;
+const FADE_TICK_MS = 20;
 
 class AudioManager {
   private audio: HTMLAudioElement;
   private targetVolume = 1;
   private currentUrl: string | null = null;
-  private fadeRaf: number | null = null;
+  /** `setTimeout` (not rAF) so volume fade still runs when the tab is backgrounded — rAF can pause and leave volume at 0. */
+  private fadeTimeout: ReturnType<typeof setTimeout> | null = null;
   private generation = 0;
 
   constructor() {
     this.audio = new Audio();
     this.audio.preload = "auto";
+    this.audio.setAttribute("playsinline", "true");
+    this.audio.setAttribute("webkit-playsinline", "true");
+    if (typeof document !== "undefined") {
+      this.audio.style.display = "none";
+      const mount = () => {
+        if (this.audio.parentNode !== document.body) document.body.appendChild(this.audio);
+      };
+      if (document.body) mount();
+      else document.addEventListener("DOMContentLoaded", mount, { once: true });
+    }
   }
 
   get time() {
@@ -30,7 +42,7 @@ class AudioManager {
 
   setVolume(v: number) {
     this.targetVolume = Math.max(0, Math.min(1, v));
-    if (this.fadeRaf === null) {
+    if (this.fadeTimeout === null) {
       this.audio.volume = this.targetVolume;
     }
   }
@@ -61,18 +73,24 @@ class AudioManager {
           gen === this.generation &&
           !this.audio.paused &&
           this.audio.volume < 0.02 &&
-          this.fadeRaf === null
+          this.fadeTimeout === null
         ) {
           this.audio.volume = this.targetVolume;
         }
+        window.setTimeout(() => {
+          if (gen !== this.generation) return;
+          if (this.audio.paused) return;
+          if (this.audio.volume >= 0.99) return;
+          this.cancelFade();
+          this.audio.volume = this.targetVolume;
+        }, 500);
       });
   }
 
   pause() {
     ++this.generation;
     this.cancelFade();
-    // Pause immediately — volume fade used rAF; on mobile, throttled frames could delay
-    // pause() indefinitely so audio kept playing while the UI showed “paused”.
+    // Pause immediately (fade uses setTimeout, but we cancel it here first).
     this.audio.pause();
     this.audio.volume = this.targetVolume;
   }
@@ -157,21 +175,21 @@ class AudioManager {
       if (direction === "in" ? next >= target : next <= 0) {
         this.audio.volume = Math.max(0, Math.min(1, target));
         if (direction === "out") this.audio.pause();
-        this.fadeRaf = null;
+        this.fadeTimeout = null;
         return;
       }
 
       this.audio.volume = Math.max(0, Math.min(1, next));
-      this.fadeRaf = requestAnimationFrame(tick);
+      this.fadeTimeout = window.setTimeout(tick, FADE_TICK_MS);
     };
 
-    this.fadeRaf = requestAnimationFrame(tick);
+    this.fadeTimeout = window.setTimeout(tick, FADE_TICK_MS);
   }
 
   private cancelFade() {
-    if (this.fadeRaf !== null) {
-      cancelAnimationFrame(this.fadeRaf);
-      this.fadeRaf = null;
+    if (this.fadeTimeout !== null) {
+      clearTimeout(this.fadeTimeout);
+      this.fadeTimeout = null;
     }
   }
 }

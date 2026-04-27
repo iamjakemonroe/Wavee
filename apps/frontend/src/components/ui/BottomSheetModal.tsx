@@ -166,6 +166,22 @@ export function BottomSheetModal({
             )}
             onClick={(e) => e.stopPropagation()}
           >
+            {isSaving ? (
+              <div
+                role="status"
+                className="absolute inset-0 z-20 flex items-center justify-center bg-[#0c0c0f]/65 backdrop-blur-sm"
+                aria-live="polite"
+                aria-label="Saving"
+              >
+                <div className="flex flex-col items-center gap-3">
+                  <span
+                    className="inline-block h-9 w-9 rounded-full border-2 border-white/20 border-t-wavee-primary shadow-[0_0_20px_rgba(0,209,160,0.25)] animate-spin"
+                    aria-hidden
+                  />
+                  <span className="text-xs font-medium text-white/50">Saving…</span>
+                </div>
+              </div>
+            ) : null}
             <div className="flex flex-col pt-2">
               {bareMenu ? (
                 <div
@@ -194,68 +210,68 @@ export function BottomSheetModal({
               )}
 
               {!bareMenu && (
-              <header
-                className={clsx(
-                  "flex shrink-0 flex-col gap-0.5 border-b border-white/[0.06] px-4 pb-3 pt-0",
-                  !isDesktop && !isSaving && "cursor-grab touch-none active:cursor-grabbing",
-                )}
-                onPointerDown={onHeaderPointerDown}
-              >
-                <div className="flex min-h-[2.25rem] items-center justify-between gap-2">
-                  {isMenu ? (
-                    <>
-                      <div className="min-w-[4rem] shrink-0" aria-hidden />
-                      <h2
-                        id={titleId}
-                        className="flex-1 truncate text-center text-sm font-semibold text-wavee-text"
-                      >
-                        {title}
-                      </h2>
-                      <button
-                        type="button"
-                        disabled={isSaving}
-                        onClick={() => onOpenChange(false)}
-                        className="min-w-[4rem] shrink-0 py-1 text-right text-sm font-semibold text-wavee-primary transition-opacity hover:opacity-90 disabled:opacity-50"
-                      >
-                        Done
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        disabled={isSaving}
-                        onClick={() => onOpenChange(false)}
-                        className="min-w-[4rem] shrink-0 py-1 text-left text-sm font-medium text-wavee-muted transition-colors hover:text-wavee-text disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
-                      <h2
-                        id={titleId}
-                        className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-wavee-text"
-                      >
-                        {title}
-                      </h2>
-                      <button
-                        type="button"
-                        disabled={isSaving || saveDisabled}
-                        onClick={() => void onSave?.()}
-                        className="min-w-[4rem] shrink-0 py-1 text-right text-sm font-semibold text-wavee-primary transition-opacity hover:opacity-90 disabled:opacity-40"
-                      >
-                        {isSaving ? "…" : saveLabel}
-                      </button>
-                    </>
+                <header
+                  className={clsx(
+                    "flex shrink-0 flex-col gap-0.5 border-b border-white/[0.06] px-4 pb-3 pt-0",
+                    !isDesktop && !isSaving && "cursor-grab touch-none active:cursor-grabbing",
                   )}
-                </div>
-                {subtitle ? (
-                  <p
-                    id={subtitleId}
-                    className="truncate px-2 text-center text-xs text-wavee-muted"
-                  >
-                    {subtitle}
-                  </p>
-                ) : null}
-              </header>
+                  onPointerDown={onHeaderPointerDown}
+                >
+                  <div className="flex min-h-[2.25rem] items-center justify-between gap-2">
+                    {isMenu ? (
+                      <>
+                        <div className="min-w-[4rem] shrink-0" aria-hidden />
+                        <h2
+                          id={titleId}
+                          className="flex-1 truncate text-center text-sm font-semibold text-wavee-text"
+                        >
+                          {title}
+                        </h2>
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() => onOpenChange(false)}
+                          className="min-w-[4rem] shrink-0 py-1 text-right text-sm font-semibold text-wavee-primary transition-opacity hover:opacity-90 disabled:opacity-50"
+                        >
+                          Done
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() => onOpenChange(false)}
+                          className="min-w-[4rem] shrink-0 py-1 text-left text-sm font-medium text-wavee-muted transition-colors hover:text-wavee-text disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                        <h2
+                          id={titleId}
+                          className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-wavee-text"
+                        >
+                          {title}
+                        </h2>
+                        <button
+                          type="button"
+                          disabled={isSaving || saveDisabled}
+                          onClick={() => void onSave?.()}
+                          className="min-w-[4rem] shrink-0 py-1 text-right text-sm font-semibold text-wavee-primary transition-opacity hover:opacity-90 disabled:opacity-40"
+                        >
+                          {isSaving ? "…" : saveLabel}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {subtitle ? (
+                    <p
+                      id={subtitleId}
+                      className="truncate px-2 text-center text-xs text-wavee-muted"
+                    >
+                      {subtitle}
+                    </p>
+                  ) : null}
+                </header>
               )}
 
               <div
