@@ -17,7 +17,6 @@ export async function buildApp() {
     logger: env.NODE_ENV !== "test",
     bodyLimit: 25 * 1024 * 1024,
   });
-  //
 
   await app.register(cors, {
     origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN,
