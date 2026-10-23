@@ -87,7 +87,7 @@ export function SongRow({
   index: number;
   source?: string;
   showNumber?: boolean;
-  extraMenu?: { label: string; onClick: () => void; danger?: boolean }[];
+  extraMenu?: { label: string; onClick: () => void; danger?: boolean; icon?: React.ReactNode }[];
 }) {
   const { isCurrent, playing } = useIsCurrent(song);
   const playList = usePlayer((s) => s.playList);
@@ -138,7 +138,7 @@ export function SongRow({
       <span className="hidden text-[13px] tabular-nums text-faint md:block">{count(song.plays_count)} plays</span>
       <div className="flex items-center gap-1">
         <span className="hidden w-12 text-right text-[13px] tabular-nums text-faint sm:block">
-          {duration(song.duration_seconds)}
+          {song.duration_seconds ? duration(song.duration_seconds) : ''}
         </span>
         <span className="opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:has-[[aria-pressed=true]]:opacity-100">
           <LikeButton song={song} size="sm" />

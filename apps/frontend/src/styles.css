@@ -109,6 +109,30 @@
   }
 }
 
+/* The hook picker's handle: a bright disc on the song's timeline. */
+.hook-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  width: 22px;
+  border-radius: 9999px;
+  background: rgb(var(--ink));
+  box-shadow: 0 0 0 4px rgb(var(--teal) / 0.25), 0 4px 14px rgb(0 0 0 / 0.5);
+  cursor: grab;
+}
+.hook-range::-moz-range-thumb {
+  height: 22px;
+  width: 22px;
+  border: 0;
+  border-radius: 9999px;
+  background: rgb(var(--ink));
+  box-shadow: 0 0 0 4px rgb(var(--teal) / 0.25), 0 4px 14px rgb(0 0 0 / 0.5);
+  cursor: grab;
+}
+.hook-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgb(var(--violet) / 0.6);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

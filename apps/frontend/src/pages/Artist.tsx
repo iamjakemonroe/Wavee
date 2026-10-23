@@ -1,12 +1,14 @@
 import clsx from 'clsx';
 import { useState } from 'react';
-import { LuFlag, LuMusic, LuPencil, LuPlay, LuShare2, LuUserCheck, LuUserPlus } from 'react-icons/lu';
+import { LuEar, LuFlag, LuMusic, LuPencil, LuPlay, LuShare2, LuUserCheck, LuUserPlus } from 'react-icons/lu';
 import { Link, useParams } from 'react-router-dom';
+import { LinkPills } from '../components/music/Links';
 import { SongRow } from '../components/music/Song';
 import { Menu, ReportDialog } from '../components/music/SongMenu';
 import { Avatar, Button, Cover, EmptyState, Skeleton } from '../components/ui';
 import { useFollow, useProfile, useUserPlaylists, useUserSongs } from '../hooks/data';
 import { count } from '../lib/format';
+import { ARTIST_PLATFORMS } from '../lib/platforms';
 import { useAuth, withAccount } from '../store/auth';
 import { usePlayer } from '../store/player';
 import { toast } from '../store/toast';
@@ -64,6 +66,15 @@ export function Artist() {
             <h1 className="mt-2 break-words text-[34px] leading-tight sm:text-5xl">{name}</h1>
             <p className="mt-1 text-muted">@{p.username}</p>
             {p.bio && <p className="mt-3 max-w-xl text-[15px] leading-6 text-ink/80">{p.bio}</p>}
+            {p.ear?.early_likes > 0 && (
+              <Link
+                to="/charts?tab=tastemakers"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-teal/30 bg-teal/10 px-3 py-1 text-[12px] font-medium text-teal"
+                title="Liked songs early, after really listening"
+              >
+                <LuEar /> Early Ear · {p.ear.hits ? `${count(p.ear.hits)} ${p.ear.hits === 1 ? 'hit' : 'hits'}` : `${count(p.ear.early_likes)} early ${p.ear.early_likes === 1 ? 'find' : 'finds'}`}
+              </Link>
+            )}
             <div className="mt-4 flex justify-center gap-6 text-sm sm:justify-start">
               <span><b className="text-ink">{count(p.followers_count)}</b> <span className="text-muted">followers</span></span>
               <span><b className="text-ink">{count(p.following_count)}</b> <span className="text-muted">following</span></span>
@@ -71,7 +82,8 @@ export function Artist() {
             </div>
           </div>
         </div>
-        <div className="relative mt-7 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+        <LinkPills links={p.links} order={ARTIST_PLATFORMS} className="relative mt-6 justify-center sm:justify-start" />
+        <div className="relative mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
           {list.length > 0 && (
             <Button variant="primary" icon={<LuPlay className="fill-current" />} onClick={() => playList(list, 0, name)}>
               Play

@@ -270,7 +270,15 @@ export function Home() {
         )}
       </Section>
 
-      <Section title="Trending this week" subtitle="The most played songs of the last seven days.">
+      <Section
+        title="Trending this week"
+        subtitle="The most played songs of the last seven days."
+        action={
+          <Link to="/charts" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
+            See the charts <LuArrowRight />
+          </Link>
+        }
+      >
         <TileRow songs={trending.data} loading={trending.isLoading} source="Trending this week" ranked />
       </Section>
 

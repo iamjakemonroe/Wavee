@@ -6,7 +6,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { api, type Song } from '../lib/api';
+import { api, type ChartKind, type Song } from '../lib/api';
 import { audio } from '../lib/audio';
 import { useAuth } from '../store/auth';
 import { usePlayer } from '../store/player';
@@ -27,6 +27,8 @@ export const keys = {
   playlist: (id: string) => ['playlist', id] as const,
   playlistSongs: (id: string) => ['playlist-songs', id] as const,
   search: (q: string) => ['search', q] as const,
+  chart: (kind: ChartKind, genre: string | null) => ['chart', kind, genre] as const,
+  tastemakers: ['tastemakers'] as const,
 };
 
 /** The For You feed, a page at a time: each page continues the same order. */
@@ -85,6 +87,17 @@ export const usePlaylist = (id: string) =>
 
 export const usePlaylistSongs = (id: string) =>
   useQuery({ queryKey: keys.playlistSongs(id), queryFn: () => api.playlistSongs(id), enabled: !!id });
+
+/** Charts change hourly (they're counted to the start of the hour). */
+export const useChart = (kind: ChartKind, genre: string | null, limit = 50) =>
+  useQuery({
+    queryKey: [...keys.chart(kind, genre), limit],
+    queryFn: () => api.chart(kind, genre, limit),
+    staleTime: 5 * 60_000,
+  });
+
+export const useTastemakers = () =>
+  useQuery({ queryKey: keys.tastemakers, queryFn: () => api.tastemakers(50), staleTime: 5 * 60_000 });
 
 /** Search, a beat after the typing stops. */
 export function useSearch(query: string) {

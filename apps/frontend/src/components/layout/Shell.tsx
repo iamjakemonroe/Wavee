@@ -11,6 +11,7 @@ import {
   LuSearch,
   LuSettings,
   LuShield,
+  LuTrophy,
   LuUpload,
 } from 'react-icons/lu';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -24,6 +25,7 @@ import { Avatar, Button, Cover, Logo, Modal } from '../ui';
 const nav = [
   { to: '/', label: 'Home', icon: <LuHouse />, end: true },
   { to: '/feed', label: 'Feed', icon: <LuCompass /> },
+  { to: '/charts', label: 'Charts', icon: <LuTrophy /> },
   { to: '/search', label: 'Search', icon: <LuSearch /> },
   { to: '/library', label: 'Library', icon: <LuLibrary /> },
 ];
@@ -171,7 +173,7 @@ function MobileNav() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(64px+env(safe-area-inset-bottom))] grid-cols-4 border-t border-line/[0.06] bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(64px+env(safe-area-inset-bottom))] grid-cols-5 border-t border-line/[0.06] bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl lg:hidden"
     >
       {nav.map((n) => (
         <NavLink

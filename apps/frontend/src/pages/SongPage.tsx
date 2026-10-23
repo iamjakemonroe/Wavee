@@ -1,16 +1,21 @@
-import { LuCalendar, LuFilm, LuHeadphones, LuHeart, LuShare2 } from 'react-icons/lu';
+import { useState } from 'react';
+import { LuCalendar, LuFilm, LuHeadphones, LuHeart, LuImage, LuShare2 } from 'react-icons/lu';
 import { Link, useParams } from 'react-router-dom';
+import { LinkPills } from '../components/music/Links';
+import { ShareCardDialog } from '../components/music/ShareCard';
 import { LikeButton, PlayToggle, SongRow } from '../components/music/Song';
 import { SongMenu, shareSong } from '../components/music/SongMenu';
 import { Avatar, Button, Cover, EmptyState, Skeleton } from '../components/ui';
 import { useSong, useUserSongs } from '../hooks/data';
 import { ago, artistName, count, duration } from '../lib/format';
+import { SONG_PLATFORMS } from '../lib/platforms';
 import { NotFound } from './NotFound';
 
 export function SongPage() {
   const { id = '' } = useParams();
   const song = useSong(id);
   const more = useUserSongs(song.data?.artist_id);
+  const [card, setCard] = useState(false);
 
   if (song.isLoading) {
     return (
@@ -51,16 +56,25 @@ export function SongPage() {
               <span className="inline-flex items-center gap-1.5"><LuHeadphones /> {count(s.plays_count)} plays</span>
               <span className="inline-flex items-center gap-1.5"><LuHeart /> {count(s.likes_count)} likes</span>
               <span className="inline-flex items-center gap-1.5"><LuCalendar /> {ago(s.created_at)}</span>
-              <span>{duration(s.duration_seconds)}</span>
+              {s.duration_seconds ? <span>{duration(s.duration_seconds)}</span> : null}
             </div>
             <div className="mt-7 flex items-center gap-2">
               <PlayToggle song={s} list={list} index={0} source={s.title} className="h-14 w-14 text-2xl" />
               <LikeButton song={s} size="lg" />
               <Button variant="ghost" icon={<LuShare2 />} onClick={() => void shareSong(s)}>
-                Share
+                <span className="max-sm:hidden">Share</span>
+              </Button>
+              <Button variant="ghost" icon={<LuImage />} onClick={() => setCard(true)}>
+                <span className="max-sm:hidden">Story card</span>
               </Button>
               <SongMenu song={s} />
             </div>
+            {s.links && Object.keys(s.links).length > 0 && (
+              <div className="mt-6">
+                <p className="mb-2 text-[12px] font-medium uppercase tracking-wider text-faint">Listen everywhere</p>
+                <LinkPills links={s.links} order={SONG_PLATFORMS} />
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -87,6 +101,7 @@ export function SongPage() {
           <EmptyState title="That’s all for now" text={`${artistName(s)} hasn’t uploaded anything else yet.`} />
         )}
       </section>
+      {card && <ShareCardDialog song={s} open={card} onClose={() => setCard(false)} />}
     </div>
   );
 }

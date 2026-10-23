@@ -1,3 +1,4 @@
+import type { Links } from './platforms';
 import { supabase } from './supabase';
 
 /** A song as every list shows it (the database's `song_card`). */
@@ -19,7 +20,11 @@ export interface Song {
   artist_display_name: string | null;
   artist_avatar_url: string | null;
   liked: boolean;
+  /** Where the best part starts, in seconds (the feed plays from here). */
+  hook_start: number | null;
   position?: number;
+  /** Only on a single song (get_song). */
+  links?: Links;
 }
 
 export interface UserCard {
@@ -37,6 +42,26 @@ export interface Profile extends UserCard {
   following_count: number;
   songs_count: number;
   is_following: boolean;
+  links: Links;
+  /** Tastemaker record: likes given early, and how many of those songs became hits. */
+  ear: { early_likes: number; hits: number };
+}
+
+export interface ChartEntry {
+  rank: number;
+  plays: number;
+  /** Position on last week's top chart (null when it had no plays then). */
+  last_rank: number | null;
+  song: Song;
+}
+
+export type ChartKind = 'top' | 'rising' | 'fresh';
+
+export interface Tastemaker {
+  rank: number;
+  hits: number;
+  early_likes: number;
+  user: Pick<UserCard, 'id' | 'username' | 'display_name' | 'avatar_url'>;
 }
 
 export interface Account {
@@ -49,6 +74,7 @@ export interface Account {
   is_artist: boolean;
   music_roles: string[];
   is_admin: boolean;
+  links: Links;
 }
 
 export interface Playlist {
@@ -142,6 +168,10 @@ export const api = {
   likedSongs: (limit = 100, offset = 0) =>
     rpc<Song[]>('get_liked_songs', { p_limit: limit, p_offset: offset }),
 
+  chart: (kind: ChartKind, genre: string | null, limit = 50) =>
+    rpc<ChartEntry[]>('get_chart', { p_chart: kind, p_genre: genre, p_limit: limit }),
+  tastemakers: (limit = 50) => rpc<Tastemaker[]>('get_tastemakers', { p_limit: limit }),
+
   recordPlay: (songId: string, listened: number, duration: number, skipped: boolean, session: string) =>
     rpc<void>('record_play', {
       p_song: songId,
@@ -159,7 +189,7 @@ export const api = {
 
   async updateProfile(
     userId: string,
-    changes: Partial<Pick<Account, 'username' | 'display_name' | 'bio' | 'avatar_url' | 'is_artist' | 'music_roles'>>,
+    changes: Partial<Pick<Account, 'username' | 'display_name' | 'bio' | 'avatar_url' | 'is_artist' | 'music_roles' | 'links'>>,
   ) {
     const { error } = await supabase.from('users').update(changes).eq('id', userId);
     if (error) throw new ApiError(friendly(error.message));
@@ -190,6 +220,8 @@ export const api = {
     video_url: string | null;
     video_key: string | null;
     user_id: string;
+    hook_start?: number;
+    links?: Links;
   }): Promise<string> {
     const { data, error } = await supabase
       .from('songs')
@@ -211,6 +243,9 @@ export const api = {
       cover_key: string | null;
       video_url: string | null;
       video_key: string | null;
+      hook_start: number | null;
+      duration_seconds: number;
+      links: Links;
     }>,
   ) {
     const { error } = await supabase.from('songs').update(changes).eq('id', id);

@@ -8,7 +8,7 @@ import { SongMenu, shareSong } from '../components/music/SongMenu';
 import { Bars, Button, Cover, EmptyState, IconButton, Spinner } from '../components/ui';
 import { useFeed } from '../hooks/data';
 import { api, type Song } from '../lib/api';
-import { artistName, count } from '../lib/format';
+import { artistName, count, duration } from '../lib/format';
 import { currentSong, usePlayer } from '../store/player';
 
 /** One song, filling the screen. */
@@ -44,6 +44,7 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
             </Link>
             <p className="mt-2 text-[13px] text-faint">
               {song.genre} · {count(song.plays_count)} plays
+              {song.hook_start ? <> · from the hook at {duration(song.hook_start)}</> : null}
             </p>
           </div>
           <div className="flex flex-col items-center gap-1">
@@ -84,10 +85,17 @@ export function Feed() {
 
   const playAt = (i: number) => {
     setListening(true);
-    playList(songs, i, 'Feed', async () => {
-      const extra = await more();
-      return extra.length ? extra : api.feed(20, songs.length);
-    });
+    // The feed plays each song from its hook, like a sound on TikTok.
+    playList(
+      songs,
+      i,
+      'Feed',
+      async () => {
+        const extra = await more();
+        return extra.length ? extra : api.feed(20, songs.length);
+      },
+      true,
+    );
   };
 
   // Scroll to a song and it plays (once you've started).

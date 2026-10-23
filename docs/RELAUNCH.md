@@ -68,8 +68,29 @@ Indexes on every foreign key, `songs(created_at desc)`, `songs(user_id, created_
 
 `user_card` columns: `id, username, display_name, avatar_url, bio, is_artist, music_roles, followers_count`.
 
+## Growth (migration `supabase/migrations/20261023120000_wavee_growth.sql`)
+
+See `docs/GROWTH.md` for why each of these exists.
+
+- **Links:** `users.links` and `songs.links` are `jsonb` objects mapping a platform to an https link. The database only accepts each platform's own domains (`wavee_link_domains`), mirrored in the app (`src/lib/platforms.tsx`).
+  - Profiles: spotify, apple_music, audiomack, boomplay, youtube, soundcloud, deezer, tidal, bandcamp, tiktok, instagram, x, website.
+  - Songs: spotify, apple_music, audiomack, boomplay, youtube, soundcloud, deezer, tidal, presave.
+  - `get_profile`, `my_account` and `get_song` return `links`. Owners update them directly on the table.
+- **Media links:** song audio, cover and video links, avatars and playlist covers written by a client must be the writer's own files on `media.wavee.kaivon.app` (`wavee_media_guard`). Links already in the database aren't affected.
+- **Hook:** `songs.hook_start` (seconds; 0 or more and before the song's end). It's on every `song_card` as `hook_start`, and the feed starts songs there.
+- **Early likes:** `likes.early` is set when the like is inserted, if the liker has a counted play of the song, the song has fewer than 50 counted plays, and it isn't the liker's own song.
+  - `get_profile` returns `ear: { early_likes, hits }`, where a hit is an early like on a song now at 250+ plays.
+  - `get_tastemakers(p_limit)` → `[{ rank, hits, early_likes, user: { id, username, display_name, avatar_url } }]`.
+- **Charts:** `get_chart(p_chart 'top' | 'rising' | 'fresh', p_genre text, p_limit)` → `[{ rank, plays, last_rank, song }]`.
+  - Counts plays of 30 seconds or half the song, over the 7 days before the start of the current hour, excluding the artist's own plays.
+  - Rising needs at least 3 plays this week, and more than last week.
+  - Fresh covers songs released in the last 14 days.
+  - Genres match loosely ("hip hop" = "Hip-Hop").
+
+`song_card` gains `hook_start` (last).
+
 ## Web app
 
-Pages: landing (signed out: trending tracks you can play without an account), Home (For you, Trending, New releases, Artists), Feed (vertical, swipe), Search, Library (Liked, Playlists, Uploads, Following), Upload (audio, details, cover, optional music video, rights confirmation), Song, Artist (`/u/:username`), Playlist, Settings (profile, account, password, delete account), Sign in, Sign up, Forgot password, Reset password, Check your email, Terms, Privacy, Copyright, Community guidelines, Report a bug, Admin (reports, bug reports), 404.
+Pages: landing (signed out: trending tracks you can play without an account), Home (For you, Trending, New releases, Artists), Feed (vertical, swipe, from each song's hook), Charts (Top 50, Rising, Fresh, Tastemakers), Search, Library (Liked, Playlists, Uploads, Following), Upload (audio, details, cover, optional music video, rights confirmation), Song, Artist (`/u/:username`), Playlist, Settings (profile, account, password, delete account), Sign in, Sign up, Forgot password, Reset password, Check your email, Terms, Privacy, Copyright, Community guidelines, Report a bug, Admin (reports, bug reports), 404.
 
 Player: one queue owned by the player (pages hand it a list when you press play; browsing never replaces it), skip on errors with a message, Media Session controls, keyboard shortcuts, background play, plays recorded through `record_play`, video playback for songs with a video.

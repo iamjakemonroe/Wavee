@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   LuFlag,
+  LuImage,
   LuListEnd,
   LuListPlus,
   LuListStart,
@@ -22,6 +23,7 @@ import { useAuth, withAccount } from '../../store/auth';
 import { usePlayer } from '../../store/player';
 import { toast } from '../../store/toast';
 import { Button, Checkbox, Cover, IconButton, Input, Modal, Spinner, Textarea } from '../ui';
+import { ShareCardDialog } from './ShareCard';
 
 interface Item {
   label: string;
@@ -149,7 +151,7 @@ export function SongMenu({
   extra,
 }: {
   song: Song;
-  extra?: { label: string; onClick: () => void; danger?: boolean }[];
+  extra?: { label: string; onClick: () => void; danger?: boolean; icon?: React.ReactNode }[];
 }) {
   const navigate = useNavigate();
   const me = useAuth((s) => s.session?.user.id);
@@ -158,6 +160,7 @@ export function SongMenu({
   const [adding, setAdding] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [card, setCard] = useState(false);
 
   const items: Item[] = [
     { label: 'Play next', icon: <LuListStart />, onClick: () => playNext(song) },
@@ -168,8 +171,9 @@ export function SongMenu({
       onClick: () => withAccount('Sign in to make playlists.', () => setAdding(true)),
     },
     { label: 'Share', icon: <LuShare2 />, onClick: () => void shareSong(song) },
+    { label: 'Story card', icon: <LuImage />, onClick: () => setCard(true) },
     { label: 'Go to artist', icon: <LuUser />, onClick: () => navigate(`/u/${song.artist_username}`) },
-    ...(extra ?? []).map((e) => ({ ...e, icon: <LuListEnd /> })),
+    ...(extra ?? []).map((e) => ({ icon: <LuListEnd />, ...e })),
     ...(me === song.artist_id
       ? [{ label: 'Delete song', icon: <LuTrash2 />, danger: true, onClick: () => setDeleting(true) }]
       : [{ label: 'Report', icon: <LuFlag />, danger: true, onClick: () => setReporting(true) }]),
@@ -187,6 +191,7 @@ export function SongMenu({
         targetName={song.title}
       />
       <DeleteSong song={song} open={deleting} onClose={() => setDeleting(false)} />
+      {card && <ShareCardDialog song={song} open={card} onClose={() => setCard(false)} />}
     </>
   );
 }

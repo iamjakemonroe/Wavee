@@ -23,10 +23,18 @@ interface PlayerState {
   queueOpen: boolean;
   /** When the queue runs out, more from where it came from (the feed). */
   more: (() => Promise<Song[]>) | null;
+  /** Songs start at their hook (the feed), not the beginning. */
+  fromHook: boolean;
 }
 
 interface PlayerActions {
-  playList: (songs: Song[], start?: number, source?: string, more?: (() => Promise<Song[]>) | null) => void;
+  playList: (
+    songs: Song[],
+    start?: number,
+    source?: string,
+    more?: (() => Promise<Song[]>) | null,
+    fromHook?: boolean,
+  ) => void;
   playSong: (song: Song, source?: string) => void;
   toggle: () => void;
   next: (skipped?: boolean) => Promise<void>;
@@ -76,8 +84,9 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
     if (!song) return;
     report(currentSong(get()), false);
     set({ index, buffering: true });
-    lastTime = 0;
-    audio.load(song.audio_url, autoplay);
+    const at = get().fromHook && song.hook_start ? song.hook_start : 0;
+    lastTime = at;
+    audio.load(song.audio_url, autoplay, at);
     updateSession(song);
   };
 
@@ -136,8 +145,9 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
     nowPlayingOpen: false,
     queueOpen: false,
     more: null,
+    fromHook: false,
 
-    playList(songs, startIndex = 0, source, more = null) {
+    playList(songs, startIndex = 0, source, more = null, fromHook = false) {
       if (!songs.length) return;
       const now = currentSong(get());
       const target = songs[startIndex];
@@ -146,7 +156,7 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
         get().toggle();
         return;
       }
-      set({ queue: songs, source: source ?? null, more });
+      set({ queue: songs, source: source ?? null, more, fromHook });
       start(startIndex);
     },
 
@@ -156,7 +166,7 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
         get().toggle();
         return;
       }
-      set({ queue: [song], source: source ?? null, more: null });
+      set({ queue: [song], source: source ?? null, more: null, fromHook: false });
       start(0);
     },
 

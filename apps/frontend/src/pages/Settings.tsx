@@ -1,12 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useEffect, useState, type ReactNode } from 'react';
-import { LuCamera, LuCheck, LuLogOut, LuTrash2 } from 'react-icons/lu';
+import { LuCamera, LuCheck, LuCopy, LuLogOut, LuTrash2 } from 'react-icons/lu';
 import { Link, useNavigate } from 'react-router-dom';
 import { passwordStrength, StrengthMeter } from '../components/auth/AuthLayout';
+import { LinksEditor, linksValid } from '../components/music/Links';
 import { Avatar, Button, Checkbox, EmptyState, Input, Modal, Spinner, Textarea } from '../components/ui';
 import { api } from '../lib/api';
 import { purgeMyMedia, uploadMedia } from '../lib/media';
+import { ARTIST_PLATFORMS, type Links } from '../lib/platforms';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../store/auth';
 import { toast } from '../store/toast';
@@ -43,6 +45,7 @@ export function Settings() {
     <div className="animate-rise space-y-5">
       <h1 className="mb-6 mt-2 text-3xl">Settings</h1>
       <ProfileForm key={account.id} />
+      <LinksForm key={`links-${account.id}`} />
       <PasswordForm />
       <DangerZone />
     </div>
@@ -180,6 +183,60 @@ function ProfileForm() {
           onClick={() => void save()}
         >
           Save profile
+        </Button>
+      </div>
+    </Panel>
+  );
+}
+
+/** Where else to find you, and your Wavee page as the one link for your bio. */
+function LinksForm() {
+  const account = useAuth((s) => s.account)!;
+  const refreshAccount = useAuth((s) => s.refreshAccount);
+  const client = useQueryClient();
+  const [links, setLinks] = useState<Links>(account.links ?? {});
+  const [saving, setSaving] = useState(false);
+  const page = `wavee.kaivon.app/u/${account.username}`;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.updateProfile(account.id, { links });
+      await refreshAccount();
+      void client.invalidateQueries({ queryKey: ['profile'] });
+      toast('Links saved', 'success');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(`https://${page}`);
+      toast('Link copied. Put it in your bio.');
+    } catch {
+      toast(`https://${page}`);
+    }
+  };
+
+  return (
+    <Panel title="Your links" text="Where else fans can find you. They show as buttons on your page.">
+      <div className="mb-6 flex items-center gap-3 rounded-2xl border border-teal/20 bg-teal/[0.06] p-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-ink">One link for your bio</p>
+          <p className="truncate text-[13px] text-muted">{page}</p>
+          <p className="mt-1 text-[12px] text-faint">Put it on Instagram, TikTok and X: fans hear your music and find every platform from there.</p>
+        </div>
+        <Button size="sm" variant="secondary" icon={<LuCopy />} onClick={() => void copy()}>
+          Copy
+        </Button>
+      </div>
+      <LinksEditor platforms={ARTIST_PLATFORMS} value={links} onChange={setLinks} collapsedAfter={6} />
+      <div className="mt-6 flex justify-end">
+        <Button variant="primary" loading={saving} disabled={!linksValid(links)} onClick={() => void save()}>
+          Save links
         </Button>
       </div>
     </Panel>

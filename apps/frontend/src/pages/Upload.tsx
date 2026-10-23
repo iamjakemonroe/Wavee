@@ -4,11 +4,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { LuCheck, LuFilm, LuImage, LuMusic, LuRefreshCw, LuUpload, LuX } from 'react-icons/lu';
 import { Link, useNavigate } from 'react-router-dom';
+import { HookPicker } from '../components/music/HookPicker';
+import { LinksEditor, linksValid } from '../components/music/Links';
 import { Avatar, Button, Checkbox, Cover, EmptyState, Input, Select, Textarea } from '../components/ui';
 import { keys } from '../hooks/data';
 import { api } from '../lib/api';
 import { duration, GENRES } from '../lib/format';
 import { checkFile, deleteMedia, MEDIA_LIMITS, readDuration, uploadMedia, type MediaKind, type Uploaded } from '../lib/media';
+import { SONG_PLATFORMS, type Links } from '../lib/platforms';
 import { useAuth } from '../store/auth';
 import { toast } from '../store/toast';
 
@@ -221,9 +224,17 @@ export function Upload() {
   const [explicit, setExplicit] = useState(false);
   const [rights, setRights] = useState(false);
   const [length, setLength] = useState<number | null>(null);
+  const [hook, setHook] = useState<number | null>(null);
+  const [links, setLinks] = useState<Links>({});
+  const [listen, setListen] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
 
   const uploading = [audio, cover, video].some((s) => s.slot && !s.slot.done && !s.slot.error);
+
+  // A local copy of the track, to preview the hook before it's uploaded.
+  useEffect(() => () => {
+    if (listen) URL.revokeObjectURL(listen);
+  }, [listen]);
 
   useEffect(() => {
     if (!uploading) return;
@@ -253,10 +264,13 @@ export function Upload() {
   const pickAudio = (file: File) => {
     if (!audio.start(file)) return;
     if (!title.trim()) setTitle(titleFrom(file.name));
+    setHook(null);
+    setListen(URL.createObjectURL(file));
     void readDuration(file).then(setLength);
   };
 
-  const ready = !!audio.slot?.done && !!title.trim() && rights && !uploading && !cover.slot?.error && !video.slot?.error;
+  const ready =
+    !!audio.slot?.done && !!title.trim() && rights && !uploading && !cover.slot?.error && !video.slot?.error && linksValid(links);
 
   const publish = async () => {
     if (!ready || !audio.slot?.done) return;
@@ -275,6 +289,8 @@ export function Upload() {
         video_url: video.slot?.done?.url ?? null,
         video_key: video.slot?.done?.key ?? null,
         user_id: session.user.id,
+        ...(hook !== null && length && hook < length ? { hook_start: hook } : {}),
+        ...(Object.keys(links).length ? { links } : {}),
       });
       published.current = true;
       void client.invalidateQueries({ queryKey: keys.userSongs(session.user.id) });
@@ -335,7 +351,18 @@ export function Upload() {
             </div>
           </Step>
 
-          <Step n={3} title="Cover art and music video" done={!!cover.slot?.done}>
+          <Step n={3} title="The hook" done={hook !== null}>
+            <p className="-mt-2 mb-5 text-[13px] leading-5 text-muted">
+              Where does it get good? The feed plays your song from here, so new listeners hear the best part first.
+            </p>
+            {listen && length ? (
+              <HookPicker src={listen} length={length} value={hook} onChange={setHook} />
+            ) : (
+              <p className="text-[13px] text-faint">Add your track first.</p>
+            )}
+          </Step>
+
+          <Step n={4} title="Cover art and music video" done={!!cover.slot?.done}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="mb-2 text-[13px] font-medium text-muted">Cover art (recommended)</p>
@@ -374,7 +401,15 @@ export function Upload() {
             </div>
           </Step>
 
-          <Step n={4} title="Your rights" done={rights}>
+          <Step n={5} title="Also on (optional)" done={Object.keys(links).length > 0}>
+            <p className="-mt-2 mb-5 text-[13px] leading-5 text-muted">
+              Out on other platforms, or coming soon? Add the links, or a pre-save link such as DistroKid’s HyperFollow,
+              and they show on the song’s page.
+            </p>
+            <LinksEditor platforms={SONG_PLATFORMS} value={links} onChange={setLinks} collapsedAfter={4} />
+          </Step>
+
+          <Step n={6} title="Your rights" done={rights}>
             <Checkbox checked={rights} onChange={setRights}>
               I wrote this music or have permission to share it, including any samples, beats, artwork and video. I’ve read the{' '}
               <Link to="/copyright" target="_blank" className="link">copyright policy</Link> and the{' '}
@@ -413,6 +448,7 @@ export function Upload() {
                 {genre}
                 {length ? ` · ${duration(length)}` : ''}
                 {explicit ? ' · Explicit' : ''}
+                {hook !== null ? ` · Hook at ${duration(hook)}` : ''}
                 {video.slot?.done ? ' · With video' : ''}
               </p>
               <Button variant="brand" size="lg" className="mt-5 w-full" disabled={!ready} loading={publishing} onClick={() => void publish()}>
@@ -428,7 +464,9 @@ export function Upload() {
                         ? 'Give your song a title.'
                         : !rights
                           ? 'Confirm you have the rights to share it.'
-                          : 'Fix the upload above to continue.'}
+                          : !linksValid(links)
+                            ? 'Fix the links above to continue.'
+                            : 'Fix the upload above to continue.'}
                 </p>
               )}
             </div>

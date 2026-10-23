@@ -33,7 +33,7 @@ pnpm --filter wavee-frontend icons       # regenerate the favicon, icons and lin
 
 ## Database
 
-The schema, policies and functions are in `supabase/migrations`. `docs/RELAUNCH.md` describes the contract the app relies on. To test a migration against a throwaway Postgres before it ships, see `tool/db_test`.
+The schema, policies and functions are in `supabase/migrations`. `docs/RELAUNCH.md` describes the contract the app relies on, and `docs/GROWTH.md` is the plan for growing Wavee. To test a migration against a throwaway Postgres before it ships, see `tool/db_test`.
 
 ```bash
 supabase link --project-ref ysdzcoqpmnhjfmqokcmi

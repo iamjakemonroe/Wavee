@@ -23,6 +23,7 @@ const ResetPassword = later(loadAuth, 'ResetPassword');
 const AuthCallback = later(loadAuth, 'AuthCallback');
 const Feed = later(() => import('./pages/Feed'), 'Feed');
 const Search = later(() => import('./pages/Search'), 'Search');
+const Charts = later(() => import('./pages/Charts'), 'Charts');
 const Library = later(() => import('./pages/Library'), 'Library');
 const SongPage = later(() => import('./pages/SongPage'), 'SongPage');
 const Artist = later(() => import('./pages/Artist'), 'Artist');
@@ -88,6 +89,7 @@ export function App() {
         <Route path="/" element={<Home />} />
         <Route path="/feed" element={<Feed />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/charts" element={<Charts />} />
         <Route path="/library" element={<Library />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/songs/:id" element={<SongPage />} />

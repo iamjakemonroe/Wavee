@@ -48,6 +48,7 @@ REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 MEDIA = "https://media.wavee.kaivon.app"
 OLD_MIGRATIONS = sorted(glob.glob(os.path.join(REPO, "apps", "backend", "db", "migrations", "*.sql")))
 NEW_MIGRATION = os.path.join(REPO, "supabase", "migrations", "20261023100000_wavee_relaunch.sql")
+NEW_MIGRATIONS = sorted(glob.glob(os.path.join(REPO, "supabase", "migrations", "*.sql")))
 STUB = os.path.join(HERE, "supabase_stub.sql")
 SEED = os.path.join(HERE, "seed_legacy.sql")
 
@@ -438,7 +439,7 @@ def run_contract_tests(db, c):
         c.ok("my_account() returns own email", acct["email"] == "listener@example.com", acct)
         c.ok("my_account() has exactly the contract keys",
              set(acct) == {"id", "username", "display_name", "email", "avatar_url", "bio", "is_artist",
-                           "music_roles", "is_admin"}, sorted(acct))
+                           "music_roles", "is_admin", "links"}, sorted(acct))
         c.ok("my_account() is null when signed out", db.anon("select public.my_account()")[0][0] is None)
         prof = db.anon("select public.get_profile('newbie')")[0][0]
         c.ok("get_profile has no email", prof and "email" not in prof, prof)
@@ -1085,16 +1086,127 @@ def run_contract_tests(db, c):
         c.ok("get_song returns exactly the song_card keys",
              set(song) == {"id", "title", "genre", "description", "audio_url", "video_url", "cover_image_url",
                            "duration_seconds", "explicit", "plays_count", "likes_count", "created_at", "artist_id",
-                           "artist_username", "artist_display_name", "artist_avatar_url", "liked"}, sorted(song))
+                           "artist_username", "artist_display_name", "artist_avatar_url", "liked", "hook_start",
+                           "links"}, sorted(song))
         c.ok("get_song of an unknown id is null", db.anon("select public.get_song(%s)", (uid(),))[0][0] is None)
         prof = db.anon("select public.get_profile('NEWBIE')")[0][0]
         c.ok("get_profile is case-insensitive and has the contract keys",
              prof and set(prof) == {"id", "username", "display_name", "avatar_url", "bio", "is_artist", "music_roles",
-                                    "followers_count", "following_count", "songs_count", "is_following"}, prof)
+                                    "followers_count", "following_count", "songs_count", "is_following", "links",
+                                    "ear"}, prof)
         c.ok("get_profile of an unknown user is null",
              db.anon("select public.get_profile('nobody_here')")[0][0] is None)
 
     c.safe("grants", grants)
+
+    # ── Growth: links, hooks, early likes, charts ───────────────────────────
+    c.start("growth: links, hooks, tastemakers, charts")
+
+    def growth():
+        good = {"spotify": "https://open.spotify.com/artist/4tZwfgrHOc3mvqYlEYSvVi",
+                "apple_music": "https://music.apple.com/ng/artist/x/123",
+                "audiomack": "https://audiomack.com/someone", "boomplay": "https://www.boomplay.com/artists/1",
+                "youtube": "https://www.youtube.com/@someone", "instagram": "https://www.instagram.com/someone/",
+                "x": "https://x.com/someone", "website": "https://someone.music"}
+        c.ok("artist saves links to their platforms",
+             db.user(ARTIST, "update public.users set links = %s where id = %s", (json.dumps(good), ARTIST)) == 1)
+        for label, links in (
+            ("a Spotify link to another site", {"spotify": "https://evil.example/open.spotify.com"}),
+            ("a look-alike domain", {"spotify": "https://open.spotify.com.evil.example/x"}),
+            ("a user@host trick", {"spotify": "https://open.spotify.com@evil.example/x"}),
+            ("plain http", {"spotify": "http://open.spotify.com/artist/x"}),
+            ("javascript:", {"website": "javascript:alert(1)"}),
+            ("an unknown platform", {"myspace": "https://myspace.com/x"}),
+            ("a pre-save link on a profile", {"presave": "https://distrokid.com/hyperfollow/x/y"}),
+            ("a non-text value", {"spotify": 5}),
+            ("an IP address website", {"website": "https://10.0.0.1/admin"}),
+        ):
+            c.raises(f"profile link refused: {label}",
+                     lambda links=links: db.user(ARTIST, "update public.users set links = %s where id = %s",
+                                                 (json.dumps(links), ARTIST)), "23514")
+        c.ok("others cannot change someone's links (0 rows)",
+             db.user(LISTENER, "update public.users set links = '{}' where id = %s", (ARTIST,)) == 0)
+        prof = db.anon("select public.get_profile(%s)", (username_of(ARTIST),))[0][0]
+        c.ok("get_profile carries the links", prof["links"] == good, prof.get("links"))
+        c.ok("my_account carries the links", db.user(ARTIST, "select public.my_account()")[0][0]["links"] == good)
+
+        sid = new_song(ARTIST, "Hooky", duration=100)
+        song_links = {"spotify": "https://open.spotify.com/track/abc", "presave": "https://distrokid.com/hyperfollow/a/b"}
+        c.ok("owner adds a song's links and hook",
+             db.user(ARTIST, "update public.songs set links = %s, hook_start = 45 where id = %s",
+                     (json.dumps(song_links), sid)) == 1)
+        c.raises("song link refused: Instagram isn't a place to listen",
+                 lambda: db.user(ARTIST, "update public.songs set links = %s where id = %s",
+                                 (json.dumps({"instagram": "https://instagram.com/x"}), sid)), "23514")
+        c.raises("hook past the end of the song refused",
+                 lambda: db.user(ARTIST, "update public.songs set hook_start = 150 where id = %s", (sid,)), "23514")
+        c.raises("negative hook refused",
+                 lambda: db.user(ARTIST, "update public.songs set hook_start = -1 where id = %s", (sid,)), "23514")
+        c.ok("others cannot set someone's hook (0 rows)",
+             db.user(LISTENER, "update public.songs set hook_start = 1 where id = %s", (sid,)) == 0)
+        song = db.anon("select public.get_song(%s)", (sid,))[0][0]
+        c.ok("get_song carries links and hook", song["links"] == song_links and song["hook_start"] == 45, song)
+        card = [r for r in db.anon("select id, hook_start from public.get_new_releases(100)") if str(r[0]) == sid]
+        c.ok("song cards in lists carry the hook", card and card[0][1] == 45, card)
+
+        # Early likes: listened properly, under 50 counted plays, not your own song.
+        early = new_song(ARTIST, "Early One", duration=120)
+        db.user(LISTENER, "select public.record_play(%s, 40, 120, false, null)", (early,))
+        db.user(LISTENER, "select public.toggle_like(%s, true)", (early,))
+        db.user(OTHER, "select public.toggle_like(%s, true)", (early,))
+        db.user(ARTIST, "select public.record_play(%s, 60, 120, false, null)", (early,))
+        db.user(ARTIST, "select public.toggle_like(%s, true)", (early,))
+        flags = dict((str(u), e) for u, e in db.su("select user_id, early from public.likes where song_id = %s", (early,)))
+        c.ok("a like after a real listen is early", flags.get(LISTENER) is True, flags)
+        c.ok("a like without listening isn't early", flags.get(OTHER) is False, flags)
+        c.ok("liking your own song isn't early", flags.get(ARTIST) is False, flags)
+        popular = new_song(ARTIST, "Already Big", duration=120)
+        db.su("update public.songs set plays_count = 80 where id = %s", (popular,))
+        db.user(OTHER, "select public.record_play(%s, 60, 120, false, null)", (popular,))
+        db.user(OTHER, "select public.toggle_like(%s, true)", (popular,))
+        c.ok("a like once a song has 50+ plays isn't early",
+             db.su("select early from public.likes where song_id = %s and user_id = %s", (popular, OTHER))[0][0] is False)
+        ear = db.anon("select public.get_profile(%s)", (username_of(LISTENER),))[0][0]["ear"]
+        c.ok("a listener's ear counts early likes", ear == {"early_likes": 1, "hits": 0}, ear)
+        db.su("update public.songs set plays_count = 300 where id = %s", (early,))
+        ear = db.anon("select public.get_profile(%s)", (username_of(LISTENER),))[0][0]["ear"]
+        c.ok("an early like on a song that reaches 250 plays is a hit", ear == {"early_likes": 1, "hits": 1}, ear)
+        board = db.anon("select public.get_tastemakers(20)")[0][0]
+        c.ok("tastemaker leaderboard puts the hit-maker first",
+             board and board[0]["user"]["id"] == LISTENER and board[0]["hits"] == 1, board)
+        c.ok("tastemaker leaderboard shows no emails", "email" not in json.dumps(board))
+
+        # Charts: counted plays in the last 7 days (to the start of this hour), not the artist's.
+        a, b, cc = (new_song(ARTIST, t, genre="Chart Test", duration=100) for t in ("Chart A", "Chart B", "Chart C"))
+        def plays(song, n, days_ago, listened=60, user=None):
+            for _ in range(n):
+                db.su("insert into public.plays (user_id, song_id, duration_listened, song_duration, created_at) "
+                      "values (%s, %s, %s, 100, now() - %s::interval)", (user, song, listened, f"{days_ago} days 2 hours"))
+        plays(a, 5, 1)
+        plays(b, 3, 2)
+        plays(cc, 2, 3)
+        plays(cc, 6, 9)
+        plays(b, 4, 1, listened=10)       # too short to count
+        plays(cc, 9, 1, user=ARTIST)      # the artist's own
+        top = db.anon("select public.get_chart('top', 'chart test', 10)")[0][0]
+        c.ok("top chart orders by counted plays this week",
+             [e["song"]["id"] for e in top] == [a, b, cc] and [e["plays"] for e in top] == [5, 3, 2], top)
+        c.ok("top chart has last week's position", top[2]["last_rank"] == 1 and top[0]["last_rank"] is None, top)
+        c.ok("genre matching ignores case and punctuation",
+             len(db.anon("select public.get_chart('top', 'CHART-TEST', 10)")[0][0]) == 3)
+        rising = db.anon("select public.get_chart('rising', 'chart test', 10)")[0][0]
+        c.ok("rising chart: biggest gains, falling songs left out",
+             [e["song"]["id"] for e in rising] == [a, b], rising)
+        fresh = db.anon("select public.get_chart('fresh', 'chart test', 10)")[0][0]
+        c.ok("fresh chart lists new songs with plays", [e["song"]["id"] for e in fresh] == [a, b, cc], fresh)
+        db.service("update public.songs set status = 'hidden' where id = %s", (a,))
+        c.ok("hidden songs drop off the charts",
+             a not in [e["song"]["id"] for e in db.anon("select public.get_chart('top', 'chart test', 10)")[0][0]])
+        db.service("update public.songs set status = 'active' where id = %s", (a,))
+        c.ok("an unknown chart reads as top",
+             len(db.anon("select public.get_chart('nonsense', 'chart test', 10)")[0][0]) == 3)
+
+    c.safe("growth", growth)
 
     # ── Account deletion (the delete-account Edge Function deletes the auth user) ──
     c.start("account deletion")
@@ -1162,19 +1274,25 @@ def main():
                     run_file(conn, path, role="postgres")
                 c.ok(f"old migrations apply in order ({len(OLD_MIGRATIONS)} files)", True)
                 run_file(conn, SEED)
+                names = ", ".join(os.path.basename(p) for p in NEW_MIGRATIONS)
                 try:
-                    run_file(conn, NEW_MIGRATION, role="postgres")
-                    c.ok("relaunch migration applies as the non-superuser postgres role", True)
+                    for path in NEW_MIGRATIONS:
+                        run_file(conn, path, role="postgres")
+                    c.ok(f"migrations apply as the non-superuser postgres role ({names})", True)
                 except psycopg.Error as e:
-                    c.ok("relaunch migration applies as the non-superuser postgres role", False, str(e))
+                    c.ok(f"migrations apply as the non-superuser postgres role ({names})", False, str(e))
                     raise
                 schema1 = db.one(FINGERPRINT_SQL)
                 data1 = db.one(DATA_FINGERPRINT_SQL)
+                # Each migration must survive running again as the newest one (an applied migration
+                # is never re-run after a later one, so only the newest is repeated here; the relaunch
+                # was proven the same way when it was newest).
+                latest = os.path.basename(NEW_MIGRATIONS[-1])
                 try:
-                    run_file(conn, NEW_MIGRATION, role="postgres")
-                    c.ok("relaunch migration runs cleanly a second time", True)
+                    run_file(conn, NEW_MIGRATIONS[-1], role="postgres")
+                    c.ok(f"{latest} runs cleanly a second time", True)
                 except psycopg.Error as e:
-                    c.ok("relaunch migration runs cleanly a second time", False, str(e))
+                    c.ok(f"{latest} runs cleanly a second time", False, str(e))
                     raise
                 c.ok("second run leaves the schema, grants and policies unchanged", db.one(FINGERPRINT_SQL) == schema1)
                 c.ok("second run leaves the data unchanged", db.one(DATA_FINGERPRINT_SQL) == data1)
