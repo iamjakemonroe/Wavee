@@ -123,10 +123,12 @@ function TopBar() {
       <div className="flex items-center gap-2">
         {session ? (
           <>
-            <Link to="/upload" className="lg:hidden" aria-label="Upload music">
-              <Button size="sm" variant="secondary" icon={<LuUpload />}>
-                <span className="max-sm:hidden">Upload</span>
-              </Button>
+            <Link
+              to="/upload"
+              aria-label="Upload music"
+              className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-line/[0.06] hover:text-ink lg:hidden"
+            >
+              <LuUpload />
             </Link>
             {account?.is_admin && (
               <Link to="/admin" aria-label="Moderation" className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-line/[0.06] hover:text-ink">
@@ -146,7 +148,7 @@ function TopBar() {
             </button>
             {account && (
               <Link to={`/u/${account.username}`} aria-label="Your profile">
-                <Avatar src={account.avatar_url} name={account.display_name || account.username} className="h-9 w-9 text-sm ring-2 ring-line/10" />
+                <Avatar src={account.avatar_url} name={account.display_name || account.username} className="h-9 w-9 text-sm" />
               </Link>
             )}
           </>

@@ -440,7 +440,7 @@ export function Bars({ className, playing }: { className?: string; playing?: boo
 export function Logo({ className, compact }: { className?: string; compact?: boolean }) {
   return (
     <span className={clsx('inline-flex items-center gap-2.5', className)}>
-      <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-raised ring-1 ring-line/10">
+      <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-raised">
         <Bars className="h-[18px] w-[18px]" />
       </span>
       {!compact && <span className="text-[17px] font-semibold tracking-tight">Wavee</span>}
