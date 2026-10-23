@@ -53,7 +53,7 @@ export function AuthLayout({
           <p className="text-[12px] text-faint">Wavee is a Kaivon product.</p>
         </div>
       </aside>
-      <main className="flex flex-col justify-center px-5 py-10 sm:px-10">
+      <main className="flex flex-col justify-center px-5 pb-[calc(2.5rem+var(--sab))] pt-[calc(2.5rem+var(--sat))] sm:px-10">
         <div className="mx-auto w-full max-w-[400px]">
           <Link to="/" className="mb-10 inline-flex lg:hidden" aria-label="Wavee home">
             <Logo />

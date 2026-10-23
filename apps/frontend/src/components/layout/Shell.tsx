@@ -115,7 +115,7 @@ function TopBar() {
   const signOut = useAuth((s) => s.signOut);
   const navigate = useNavigate();
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-line/[0.04] bg-bg/75 px-4 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-20 box-content flex h-16 items-center justify-between gap-4 border-b border-line/[0.04] bg-bg/95 px-4 pt-[var(--sat)] backdrop-blur-xl sm:px-6">
       <Link to="/" className="lg:hidden">
         <Logo />
       </Link>
@@ -173,7 +173,7 @@ function MobileNav() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(64px+env(safe-area-inset-bottom))] grid-cols-5 border-t border-line/[0.06] bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(64px+var(--sab))] grid-cols-5 border-t border-line/[0.06] bg-bg pb-[var(--sab)] pl-[var(--sal)] pr-[var(--sar)] lg:hidden"
     >
       {nav.map((n) => (
         <NavLink
@@ -198,7 +198,7 @@ function Toasts() {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--player-h)+80px+env(safe-area-inset-bottom))] z-[90] flex flex-col items-center gap-2 px-4 lg:bottom-[calc(var(--player-h)+20px)]"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--player-h)+80px+var(--sab))] z-[90] flex flex-col items-center gap-2 px-4 lg:bottom-[calc(var(--player-h)+20px)]"
     >
       <AnimatePresence>
         {toasts.map((t) => (

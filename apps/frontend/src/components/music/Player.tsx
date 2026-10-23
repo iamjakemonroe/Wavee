@@ -179,7 +179,7 @@ export function PlayerBar() {
     <motion.div
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-40 px-2 lg:bottom-0 lg:px-0"
+      className="fixed inset-x-0 bottom-[calc(64px+var(--sab))] z-40 pl-[max(0.5rem,var(--sal))] pr-[max(0.5rem,var(--sar))] lg:bottom-0 lg:px-0"
     >
       {/* Phone */}
       <div className="glass relative overflow-hidden rounded-2xl shadow-lift lg:hidden">
@@ -275,7 +275,7 @@ export function NowPlaying() {
             )}
             <div className="absolute inset-0 bg-gradient-to-b from-bg/40 via-bg/70 to-bg" />
           </div>
-          <div className="relative mx-auto flex min-h-full max-w-xl flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+          <div className="relative mx-auto flex min-h-full max-w-xl flex-col px-6 pb-[max(2rem,var(--sab))] pt-[max(1rem,var(--sat))]">
             <div className="flex items-center justify-between">
               <IconButton label="Close" onClick={() => setOpen(false)}>
                 <LuChevronDown />

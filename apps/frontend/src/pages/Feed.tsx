@@ -140,7 +140,7 @@ export function Feed() {
     <div className="relative">
       <div
         ref={scroller}
-        className="-mx-4 h-[calc(100svh-64px-var(--player-h)-64px-24px-env(safe-area-inset-bottom))] snap-y snap-mandatory space-y-4 overflow-y-auto px-2 sm:-mx-6 sm:px-4 lg:h-[calc(100svh-64px-var(--player-h)-32px)]"
+        className="-mx-4 h-[calc(100svh-var(--top-h)-var(--player-h)-64px-24px-var(--sab))] snap-y snap-mandatory space-y-4 overflow-y-auto px-2 sm:-mx-6 sm:px-4 lg:h-[calc(100svh-64px-var(--player-h)-32px)]"
       >
         {songs.map((s, i) => (
           <div key={s.id} data-index={i} className="h-full">

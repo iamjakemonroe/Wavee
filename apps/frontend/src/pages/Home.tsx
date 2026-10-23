@@ -90,20 +90,31 @@ function Hero({ trending }: { trending?: Song[] }) {
             hear them first. Free to listen, free to upload.
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mt-8 flex flex-wrap gap-3">
-            <Button
-              variant="primary"
-              size="lg"
-              icon={<LuPlay className="fill-current" />}
-              disabled={!trending?.length}
-              onClick={() => trending && playList(trending, 0, 'Trending this week')}
-            >
-              Start listening
-            </Button>
-            <Link to="/signup">
-              <Button size="lg" icon={<LuUpload />}>
-                Upload your music
-              </Button>
-            </Link>
+            {trending && trending.length === 0 ? (
+              // Nothing uploaded yet: the way in is to be first.
+              <Link to="/upload">
+                <Button variant="brand" size="lg" icon={<LuUpload />}>
+                  Be the first to upload
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  icon={<LuPlay className="fill-current" />}
+                  disabled={!trending?.length}
+                  onClick={() => trending && playList(trending, 0, 'Trending this week')}
+                >
+                  Start listening
+                </Button>
+                <Link to="/upload">
+                  <Button size="lg" icon={<LuUpload />}>
+                    Upload your music
+                  </Button>
+                </Link>
+              </>
+            )}
           </motion.div>
         </div>
         <div className="relative hidden h-[340px] lg:block" aria-hidden="true">
@@ -274,7 +285,7 @@ export function Home() {
         title="Trending this week"
         subtitle="The most played songs of the last seven days."
         action={
-          <Link to="/charts" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
+          <Link to="/charts" className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-muted hover:text-ink">
             See the charts <LuArrowRight />
           </Link>
         }

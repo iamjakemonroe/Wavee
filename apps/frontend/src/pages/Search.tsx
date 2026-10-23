@@ -14,7 +14,7 @@ export function Search() {
 
   return (
     <div className="animate-rise">
-      <div className="sticky top-16 z-10 -mx-4 bg-bg/85 px-4 pb-4 pt-2 backdrop-blur-xl sm:-mx-6 sm:px-6">
+      <div className="sticky top-[var(--top-h)] z-10 -mx-4 bg-bg/85 px-4 pb-4 pt-2 backdrop-blur-xl sm:-mx-6 sm:px-6">
         <label className="relative block">
           <span className="sr-only">Search Wavee</span>
           <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-faint" />

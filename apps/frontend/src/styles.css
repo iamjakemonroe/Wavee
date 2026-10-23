@@ -16,6 +16,14 @@
   --danger: 255 99 128;
   --warn: 255 190 92;
   --player-h: 0px;
+  /* The phone's notch, status bar and home bar (installed app, iPhone): every edge reads
+   * these, never env() directly, so one place decides them. */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  /* The top bar: 64px, plus the status bar above it. */
+  --top-h: calc(64px + var(--sat));
   color-scheme: dark;
 }
 
@@ -30,6 +38,17 @@
     @apply bg-bg font-sans text-[15px] leading-relaxed text-ink antialiased;
     font-feature-settings: 'cv05', 'cv08', 'ss03';
     overflow-x: clip;
+    /* Phones on their side: keep content out from under the notch. */
+    padding-left: var(--sal);
+    padding-right: var(--sar);
+  }
+
+  /* Installed, Wavee is an app: no rubber-band page or pull-to-refresh behind the feed. */
+  @media (display-mode: standalone) {
+    html,
+    body {
+      overscroll-behavior-y: none;
+    }
   }
 
   ::selection {
@@ -51,6 +70,15 @@
   textarea,
   select {
     @apply text-[15px];
+  }
+
+  /* Phones zoom the page into any field under 16px when it's tapped. */
+  @media (pointer: coarse) {
+    input,
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
   }
 
   /* Thin, quiet scrollbars. */
@@ -82,7 +110,7 @@
   }
 
   .scroll-row {
-    @apply -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6;
+    @apply -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:scroll-px-6 sm:px-6;
     scrollbar-width: none;
   }
 

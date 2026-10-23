@@ -298,7 +298,7 @@ export function Modal({
             exit={{ y: 30, opacity: 0, scale: 0.98 }}
             transition={{ type: 'spring', damping: 30, stiffness: 380 }}
             className={clsx(
-              'relative max-h-[92svh] w-full overflow-y-auto rounded-t-4xl border border-line/10 bg-raised p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lift outline-none sm:rounded-4xl',
+              'relative max-h-[calc(100svh-var(--sat)-1rem)] w-full overflow-y-auto rounded-t-4xl border border-line/10 bg-raised p-6 pb-[max(1.5rem,var(--sab))] shadow-lift outline-none sm:max-h-[92svh] sm:rounded-4xl',
               wide ? 'sm:max-w-2xl' : 'sm:max-w-md',
             )}
           >
