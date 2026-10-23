@@ -95,7 +95,25 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
   audio.on('playing', () => {
     failures = 0;
     set({ playing: true, buffering: false });
+    warmNext();
   });
+
+  /** The start of the song after this one, fetched quietly so skipping (or swiping the feed)
+   * starts at once: it warms the nearby Cloudflare cache and the phone's. Not on data saver. */
+  const warmed = new Set<string>();
+  const warmNext = () => {
+    const { queue, index, shuffle } = get();
+    const next = shuffle ? null : queue[index + 1];
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    if (!next || conn?.saveData || warmed.has(next.audio_url)) return;
+    warmed.add(next.audio_url);
+    void fetch(next.audio_url, { mode: 'no-cors', headers: { Range: 'bytes=0-262143' } }).catch(() => undefined);
+    if (next.cover_image_url) {
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = next.cover_image_url;
+    }
+  };
   audio.on('play', () => set({ playing: true }));
   audio.on('pause', () => set({ playing: false }));
   if ('mediaSession' in navigator) {

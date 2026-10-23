@@ -11,6 +11,7 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { usePhone, useSwipeToClose } from '../../hooks/useSwipeToClose';
 import { LuX } from 'react-icons/lu';
 
 // ── Buttons ─────────────────────────────────────────────────────────────
@@ -242,6 +243,9 @@ export function Modal({
   wide?: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  const phone = usePhone();
+  // On phones the sheet is pulled down to close; the X is only for wide screens.
+  const dragY = useSwipeToClose(panel, onClose, open && phone);
 
   useEffect(() => {
     if (!open) return;
@@ -287,6 +291,7 @@ export function Modal({
           exit={{ opacity: 0 }}
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+          <motion.div style={{ y: dragY }} className="relative w-full">
           <motion.div
             ref={panel}
             role="dialog"
@@ -298,20 +303,21 @@ export function Modal({
             exit={{ y: 30, opacity: 0, scale: 0.98 }}
             transition={{ type: 'spring', damping: 30, stiffness: 380 }}
             className={clsx(
-              'relative max-h-[calc(100svh-var(--sat)-1rem)] w-full overflow-y-auto rounded-t-4xl border border-line/10 bg-raised p-6 pb-[max(1.5rem,var(--sab))] shadow-lift outline-none sm:max-h-[92svh] sm:rounded-4xl',
+              'relative mx-auto max-h-[calc(100svh-var(--sat)-1rem)] w-full overflow-y-auto overscroll-contain rounded-t-4xl border border-line/10 bg-raised p-6 pb-[max(1.5rem,var(--sab))] shadow-lift outline-none sm:max-h-[92svh] sm:rounded-4xl',
               wide ? 'sm:max-w-2xl' : 'sm:max-w-md',
             )}
           >
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line/20 sm:hidden" />
+            <div className="mx-auto -mt-2 mb-4 h-1.5 w-10 rounded-full bg-line/25 sm:hidden" aria-hidden="true" />
             {title && (
               <div className="mb-5 flex items-center justify-between gap-4">
                 <h2 className="text-lg">{title}</h2>
-                <IconButton label="Close" size="sm" onClick={onClose}>
+                <IconButton label="Close" size="sm" onClick={onClose} className="max-sm:hidden">
                   <LuX />
                 </IconButton>
               </div>
             )}
             {children}
+          </motion.div>
           </motion.div>
         </motion.div>
       )}
@@ -369,12 +375,13 @@ export function Avatar({
   return (
     <div
       className={clsx(
-        'grid shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet/70 to-teal/60 font-semibold text-bg',
+        'relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet/70 to-teal/60 font-semibold text-bg',
         className ?? 'h-10 w-10 text-sm',
       )}
     >
       {src ? (
-        <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
+        // Fills the circle exactly (a grid item's 100% height isn't the circle's).
+        <img src={src} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
       ) : (
         (name.trim()[0] ?? '?').toUpperCase()
       )}

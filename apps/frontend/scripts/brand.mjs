@@ -60,3 +60,45 @@ ${glowBars}
 </svg>`;
 await sharp(Buffer.from(og)).png().toFile(new URL('og.png', pub).pathname);
 console.log('Wrote the favicon, icons and og.png in public/');
+
+// iOS launch screens: shown from the moment an installed Wavee opens until the page draws.
+// iOS only uses one whose size matches the device exactly, so there's one per iPhone and iPad
+// size (portrait; iPads also landscape). The page's loading screen draws the same logo in the
+// same place, so the hand-over is seamless.
+export const SPLASH_DEVICES = [
+  // iPhones [css width, css height, pixel ratio]
+  [440, 956, 3], [430, 932, 3], [420, 912, 3], [402, 874, 3], [393, 852, 3], [390, 844, 3],
+  [428, 926, 3], [375, 812, 3], [414, 896, 3], [414, 896, 2], [414, 736, 3], [375, 667, 2], [320, 568, 2],
+  // iPads
+  [1032, 1376, 2], [1024, 1366, 2], [834, 1210, 2], [834, 1194, 2], [820, 1180, 2], [834, 1112, 2],
+  [810, 1080, 2], [768, 1024, 2], [744, 1133, 2],
+];
+
+function splash(w, h) {
+  const m = Math.min(w, h);
+  const t = Math.round(m * 0.22);
+  const gap = m * 0.045;
+  const font = m * 0.075;
+  const top = (h - (t + gap + font)) / 2;
+  const x = (w - t) / 2;
+  const tileSvg = tile(t, { radius: 0.23, scale: 0.5 }).replace(/<\/?svg[^>]*>/g, '');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+<rect width="${w}" height="${h}" fill="#06070a"/>
+<g transform="translate(${x.toFixed(1)} ${top.toFixed(1)})">${tileSvg}</g>
+<text x="${w / 2}" y="${(top + t + gap + font * 0.78).toFixed(1)}" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="${font.toFixed(1)}" font-weight="700" letter-spacing="${(-font * 0.02).toFixed(2)}" fill="#eef1f5">Wavee</text>
+</svg>`;
+}
+
+const splashDir = new URL('splash/', pub);
+const { mkdirSync } = await import('node:fs');
+mkdirSync(splashDir, { recursive: true });
+const made = new Set();
+for (const [cw, ch, r] of SPLASH_DEVICES) {
+  for (const [w, h] of [[cw * r, ch * r], ...(cw >= 744 ? [[ch * r, cw * r]] : [])]) {
+    const name = `${w}x${h}.png`;
+    if (made.has(name)) continue;
+    made.add(name);
+    await sharp(Buffer.from(splash(w, h))).png({ compressionLevel: 9, palette: true }).toFile(new URL(name, splashDir).pathname);
+  }
+}
+console.log(`Wrote ${made.size} launch screens in public/splash/`);

@@ -188,7 +188,7 @@ function ArtistsToFollow({ songs }: { songs?: Song[] }) {
   if (!artists.length) return null;
   return (
     <Section title="Artists on the rise" subtitle="The people behind this week’s plays.">
-      <div className="scroll-row">
+      <div className="scroll-row pt-1">
         {artists.map((s) => (
           <Link key={s.artist_id} to={`/u/${s.artist_username}`} className="group w-[120px] shrink-0 snap-start text-center">
             <Avatar

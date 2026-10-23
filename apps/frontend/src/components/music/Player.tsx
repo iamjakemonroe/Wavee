@@ -17,8 +17,9 @@ import {
   LuVolumeX,
   LuX,
 } from 'react-icons/lu';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { usePlaybackTime } from '../../hooks/data';
+import { useMediaQuery, usePhone, useSwipeToClose } from '../../hooks/useSwipeToClose';
 import { audio } from '../../lib/audio';
 import { artistNames, duration } from '../../lib/format';
 import { currentSong, usePlayer } from '../../store/player';
@@ -28,7 +29,7 @@ import { LikeButton } from './Song';
 import { SongMenu } from './SongMenu';
 
 /** A seek bar you can drag, tap or move with the arrow keys. */
-export function ProgressBar({ compact }: { compact?: boolean }) {
+export function ProgressBar({ compact, handle }: { compact?: boolean; handle?: boolean }) {
   const { time, duration: length, buffered } = usePlaybackTime();
   const seek = usePlayer((s) => s.seek);
   const bar = useRef<HTMLDivElement>(null);
@@ -77,7 +78,10 @@ export function ProgressBar({ compact }: { compact?: boolean }) {
         </div>
         {!compact && (
           <span
-            className="absolute h-3 w-3 -translate-x-1/2 rounded-full bg-ink opacity-0 shadow transition group-hover:opacity-100 group-focus-visible:opacity-100"
+            className={clsx(
+              'absolute h-3 w-3 -translate-x-1/2 rounded-full bg-ink shadow transition group-hover:opacity-100 group-focus-visible:opacity-100',
+              handle || drag != null ? 'opacity-100' : 'opacity-0',
+            )}
             style={{ left: `${shown * 100}%` }}
           />
         )}
@@ -170,10 +174,16 @@ export function PlayerBar() {
   const setNowPlayingOpen = usePlayer((s) => s.setNowPlayingOpen);
   const setQueueOpen = usePlayer((s) => s.setQueueOpen);
   const queueOpen = usePlayer((s) => s.queueOpen);
+  // On phones the feed's card is the player (with its own progress bar), so the mini player
+  // steps aside there instead of covering the card.
+  const { pathname } = useLocation();
+  const wide = useMediaQuery('(min-width: 1024px)');
+  const onFeed = pathname === '/feed';
+  const mini = !onFeed || wide;
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--player-h', song ? '76px' : '0px');
-  }, [song]);
+    document.documentElement.style.setProperty('--player-h', song && mini ? '76px' : '0px');
+  }, [song, mini]);
 
   if (!song) return null;
   return (
@@ -183,7 +193,8 @@ export function PlayerBar() {
       className="fixed inset-x-0 bottom-[var(--nav-h)] z-40 pl-[max(0.5rem,var(--sal))] pr-[max(0.5rem,var(--sar))] lg:bottom-0 lg:px-0"
     >
       {/* Phone */}
-      <div className="glass relative overflow-hidden rounded-2xl shadow-lift lg:hidden">
+      {!onFeed && (
+      <div className="relative overflow-hidden rounded-2xl border border-line/10 bg-raised shadow-lift lg:hidden">
         <div className="flex items-center gap-3 p-2 pr-1" onClick={() => setNowPlayingOpen(true)} role="button" tabIndex={0} aria-label="Open now playing">
           <Cover src={song.cover_image_url} title={song.title} className="h-11 w-11" rounded="rounded-lg" />
           <div className="min-w-0 flex-1">
@@ -201,6 +212,7 @@ export function PlayerBar() {
           <ProgressBar compact />
         </div>
       </div>
+      )}
 
       {/* Wide screens */}
       <div className="hidden h-[76px] grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] items-center gap-6 border-t border-line/[0.07] bg-bg/90 px-5 backdrop-blur-2xl lg:grid">
@@ -251,6 +263,10 @@ export function NowPlaying() {
   useEffect(() => {
     if (!open) setWatching(false);
   }, [open]);
+  // Pull it down to close, on phones.
+  const sheet = useRef<HTMLDivElement>(null);
+  const phone = usePhone();
+  const dragY = useSwipeToClose(sheet, () => setOpen(false), open && !!song && phone);
   useEffect(() => {
     setWatching(false);
   }, [song?.id]);
@@ -259,11 +275,16 @@ export function NowPlaying() {
     <AnimatePresence>
       {open && song && (
         <motion.div
-          className="fixed inset-0 z-[60] overflow-y-auto bg-bg"
+          className="fixed inset-0 z-[60]"
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 32, stiffness: 300 }}
+        >
+        <motion.div
+          ref={sheet}
+          style={{ y: dragY }}
+          className="h-full overflow-y-auto overscroll-contain bg-bg"
           role="dialog"
           aria-label="Now playing"
         >
@@ -334,6 +355,7 @@ export function NowPlaying() {
               {song.description && <p className="selectable mt-8 whitespace-pre-line text-sm leading-6 text-muted">{song.description}</p>}
             </div>
           </div>
+        </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

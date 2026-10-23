@@ -46,7 +46,7 @@ function useSlot(kind: MediaKind, keep: { current: boolean }) {
   );
 
   const start = (file: File) => {
-    const problem = checkFile(file, kind);
+    const problem = checkFile(file, kind, true);
     if (problem) {
       toast(problem, 'error');
       return false;

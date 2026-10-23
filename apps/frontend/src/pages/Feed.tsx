@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { LuPause, LuPlay, LuShare2 } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { LikeButton, useIsCurrent } from '../components/music/Song';
+import { ProgressBar } from '../components/music/Player';
 import { SongMenu, shareSong } from '../components/music/SongMenu';
 import { AiTag, Artists } from '../components/music/Artists';
 import { Bars, Button, Cover, EmptyState, IconButton, Spinner } from '../components/ui';
@@ -19,7 +20,7 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
   return (
     <div className="relative flex h-full snap-start snap-always items-center justify-center overflow-hidden rounded-4xl">
       {song.cover_image_url && (
-        <img src={song.cover_image_url} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-40 blur-3xl" />
+        <img src={song.cover_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-40 blur-3xl" />
       )}
       <div className="absolute inset-0 bg-gradient-to-b from-bg/30 via-bg/40 to-bg/90" />
       <div className="relative flex w-full max-w-md flex-col items-center px-6">
@@ -57,6 +58,11 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
             </IconButton>
             <SongMenu song={song} />
           </div>
+        </div>
+        {/* The card is the player here: drag to go back or forward. */}
+        <div className={clsx('mt-4 w-full transition-opacity duration-300', isCurrent ? 'opacity-100' : 'pointer-events-none opacity-0')}>
+          {isCurrent && <ProgressBar handle />}
+          {!isCurrent && <div className="h-5" />}
         </div>
       </div>
     </div>
@@ -143,7 +149,7 @@ export function Feed() {
         className="-mx-4 h-[calc(100dvh-var(--top-h)-var(--player-h)-var(--nav-h)-24px)] snap-y snap-mandatory space-y-4 overflow-y-auto px-2 sm:-mx-6 sm:px-4 lg:h-[calc(100svh-64px-var(--player-h)-32px)]"
       >
         {songs.map((s, i) => (
-          <div key={s.id} data-index={i} className="h-full">
+          <div key={s.id} data-index={i} className="h-full [contain-intrinsic-size:auto_640px] [content-visibility:auto]">
             <FeedCard song={s} onPlay={() => playAt(i)} />
           </div>
         ))}
