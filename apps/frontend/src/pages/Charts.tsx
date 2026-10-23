@@ -65,7 +65,7 @@ export function Charts() {
 
   return (
     <div className="animate-rise">
-      <section className="relative -mx-4 mb-6 overflow-hidden px-4 pb-8 pt-8 sm:-mx-6 sm:px-6">
+      <section className="relative -mx-4 -mt-4 mb-6 overflow-hidden px-4 pb-8 pt-12 sm:-mx-6 sm:px-6">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_90%_at_0%_0%,rgb(var(--teal)/0.18),transparent_60%),radial-gradient(50%_80%_at_100%_10%,rgb(var(--violet)/0.22),transparent_60%)]" />
         <div className="relative">
           <p className="label flex items-center gap-2">

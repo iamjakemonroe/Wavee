@@ -63,7 +63,7 @@ function Hero({ trending }: { trending?: Song[] }) {
   const playList = usePlayer((s) => s.playList);
   const covers = (trending ?? []).filter((s) => s.cover_image_url).slice(0, 5);
   return (
-    <section className="relative -mx-4 mb-6 overflow-hidden px-4 pb-14 pt-10 sm:-mx-6 sm:px-6 sm:pt-16">
+    <section className="relative -mx-4 -mt-4 mb-6 overflow-hidden px-4 pb-14 pt-14 sm:-mx-6 sm:px-6 sm:pt-20">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_80%_at_15%_10%,rgb(var(--teal)/0.22),transparent_60%),radial-gradient(50%_70%_at_85%_30%,rgb(var(--violet)/0.28),transparent_60%)]" />
       <div className="relative grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
         <div>

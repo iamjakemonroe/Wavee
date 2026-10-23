@@ -42,7 +42,7 @@ export function PlaylistPage() {
 
   return (
     <div className="animate-rise">
-      <section className="relative -mx-4 overflow-hidden px-4 pb-10 pt-8 sm:-mx-6 sm:px-6">
+      <section className="relative -mx-4 -mt-4 overflow-hidden px-4 pb-10 pt-12 sm:-mx-6 sm:px-6">
         {pl.cover_image_url && <img src={pl.cover_image_url} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover opacity-25 blur-3xl" />}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-bg" />
         <div className="relative grid items-end gap-8 md:grid-cols-[minmax(200px,260px)_1fr]">

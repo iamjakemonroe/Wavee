@@ -36,7 +36,7 @@ export function SongPage() {
 
   return (
     <div className="animate-rise">
-      <section className="relative -mx-4 overflow-hidden px-4 pb-10 pt-8 sm:-mx-6 sm:px-6">
+      <section className="relative -mx-4 -mt-4 overflow-hidden px-4 pb-10 pt-12 sm:-mx-6 sm:px-6">
         {s.cover_image_url && (
           <img src={s.cover_image_url} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full scale-125 object-cover opacity-30 blur-3xl" />
         )}

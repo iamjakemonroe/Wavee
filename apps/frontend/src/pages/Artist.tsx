@@ -60,7 +60,7 @@ export function Artist() {
 
   return (
     <div className="animate-rise">
-      <section className="relative -mx-4 overflow-hidden px-4 pb-10 pt-10 sm:-mx-6 sm:px-6">
+      <section className="relative -mx-4 -mt-4 overflow-hidden px-4 pb-10 pt-14 sm:-mx-6 sm:px-6">
         <div className="absolute inset-0 bg-[radial-gradient(70%_100%_at_10%_0%,rgb(var(--violet)/0.25),transparent_60%),radial-gradient(50%_80%_at_90%_10%,rgb(var(--teal)/0.15),transparent_60%)]" />
         <div className="relative flex flex-col items-center gap-6 text-center sm:flex-row sm:items-end sm:text-left">
           <Avatar src={p.avatar_url} name={name} className="h-36 w-36 text-5xl shadow-lift ring-4 ring-bg sm:h-44 sm:w-44" />
