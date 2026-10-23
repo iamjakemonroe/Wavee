@@ -1,14 +1,14 @@
 import { motion } from 'framer-motion';
 import { useMemo, type ReactNode } from 'react';
-import { LuArrowRight, LuPlay, LuSparkles, LuUpload } from 'react-icons/lu';
+import { LuArrowRight, LuDisc3, LuHeart, LuMoon, LuPlay, LuSparkles, LuSun, LuSunrise, LuSunset, LuTrophy, LuUpload, LuUsers } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { SongRow, SongTile } from '../components/music/Song';
 import { Avatar, Bars, Button, EmptyState, Skeleton } from '../components/ui';
-import { useFeed, useNewReleases, useTrending } from '../hooks/data';
-import { api, type Song } from '../lib/api';
-import { artistName } from '../lib/format';
+import { useFeatureInvites, useFeed, useNewReleases, useTrending, useUserSongs } from '../hooks/data';
+import { api, type Account, type Song } from '../lib/api';
+import { artistName, count } from '../lib/format';
 import { useAuth } from '../store/auth';
-import { usePlayer } from '../store/player';
+import { currentSong, usePlayer } from '../store/player';
 
 export function Section({
   title,
@@ -205,6 +205,133 @@ function ArtistsToFollow({ songs }: { songs?: Song[] }) {
   );
 }
 
+/** The time of day sets the greeting, its icon, a line to go with it, and the colour of the light. */
+const TIMES = [
+  {
+    until: 5,
+    hello: 'Up late',
+    icon: <LuMoon />,
+    line: 'Late-night listening. The feed never sleeps.',
+    light: 'bg-[radial-gradient(70%_90%_at_0%_0%,rgb(var(--violet)/0.26),transparent_62%),radial-gradient(55%_80%_at_100%_0%,rgb(70_90_220/0.22),transparent_62%)]',
+  },
+  {
+    until: 12,
+    hello: 'Good morning',
+    icon: <LuSunrise />,
+    line: 'Start the day with something new.',
+    light: 'bg-[radial-gradient(70%_90%_at_0%_0%,rgb(245_170_80/0.2),transparent_62%),radial-gradient(55%_80%_at_100%_0%,rgb(var(--teal)/0.22),transparent_62%)]',
+  },
+  {
+    until: 17,
+    hello: 'Good afternoon',
+    icon: <LuSun />,
+    line: 'Fresh uploads are landing all day.',
+    light: 'bg-[radial-gradient(70%_90%_at_0%_0%,rgb(var(--teal)/0.24),transparent_62%),radial-gradient(55%_80%_at_100%_0%,rgb(var(--violet)/0.22),transparent_62%)]',
+  },
+  {
+    until: 24,
+    hello: 'Good evening',
+    icon: <LuSunset />,
+    line: 'Wind down with tonight’s new sounds.',
+    light: 'bg-[radial-gradient(70%_90%_at_0%_0%,rgb(var(--violet)/0.28),transparent_62%),radial-gradient(55%_80%_at_100%_0%,rgb(255_95_140/0.18),transparent_62%)]',
+  },
+];
+
+/** A still waveform, the heights of one smooth phrase, fading in from the left. */
+const WAVE = Array.from({ length: 28 }, (_, i) => 0.28 + 0.72 * Math.abs(Math.sin(i * 0.55) * Math.cos(i * 0.21)));
+
+/** A shortcut under the greeting. */
+function Chip({ to, icon, children, primary, dot }: { to: string; icon: ReactNode; children: ReactNode; primary?: boolean; dot?: boolean }) {
+  return (
+    <Link
+      to={to}
+      className={
+        primary
+          ? 'inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-ink px-4 text-[13px] font-semibold text-bg transition hover:bg-ink/90 active:scale-[0.97]'
+          : 'inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-line/[0.1] bg-line/[0.05] px-4 text-[13px] font-medium text-ink/90 backdrop-blur-sm transition hover:bg-line/[0.09] active:scale-[0.97]'
+      }
+    >
+      <span className={primary ? 'text-[15px]' : 'text-[15px] text-teal'}>{icon}</span>
+      {children}
+      {dot && <span className="h-2 w-2 rounded-full bg-teal shadow-[0_0_10px_rgb(var(--teal))]" />}
+    </Link>
+  );
+}
+
+/** Hello, by name: the time of day, what's new, and where to go next. */
+function Greeting({ account, fresh }: { account: Account | null; fresh?: Song[] }) {
+  const now = new Date();
+  const time = TIMES.find((t) => now.getHours() < t.until) ?? TIMES[3];
+  const day = now.toLocaleDateString(undefined, { weekday: 'long' });
+  const name = account?.display_name || account?.username || 'there';
+  const mine = useUserSongs(account?.is_artist ? account.id : undefined).data;
+  const plays = (mine ?? []).reduce((sum, s) => sum + (s.plays_count ?? 0), 0);
+  const invites = useFeatureInvites().data?.length ?? 0;
+  const onFeed = usePlayer((s) => s.source === 'Feed' && !!currentSong(s));
+  // What's new matters more than the time of day: songs out in the last day.
+  const today = (fresh ?? []).filter((s) => now.getTime() - new Date(s.created_at).getTime() < 86_400_000).length;
+  const line = today
+    ? `${today >= (fresh?.length ?? 0) && today >= 20 ? '20+' : today} new ${today === 1 ? 'song' : 'songs'} in the last day. Hear ${today === 1 ? 'it' : 'them'} first.`
+    : time.line;
+
+  return (
+    <section className="relative -mx-4 -mt-4 overflow-hidden px-4 pb-1 pt-10 sm:-mx-6 sm:px-6 sm:pb-3 sm:pt-14">
+      <div className={`pointer-events-none absolute inset-0 ${time.light}`} />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-5 flex h-20 w-[44%] items-center justify-end gap-1 overflow-hidden opacity-[0.16] [mask-image:linear-gradient(to_left,black_35%,transparent)] sm:right-6 sm:top-12 sm:h-36 sm:w-auto sm:gap-[7px]"
+      >
+        {WAVE.map((h, i) => (
+          <span key={i} className="w-[3px] shrink-0 rounded-full bg-brand sm:w-[5px]" style={{ height: `${h * 100}%` }} />
+        ))}
+      </div>
+
+      <div className="relative flex items-center gap-4 sm:gap-5">
+        <Link to={account ? `/u/${account.username}` : '/settings'} className="shrink-0 rounded-full bg-brand p-[2px] shadow-[0_10px_30px_-10px_rgb(var(--violet)/0.7)]" aria-label="Your profile">
+          <Avatar src={account?.avatar_url} name={name} className="h-14 w-14 text-xl ring-[3px] ring-bg sm:h-[72px] sm:w-[72px] sm:text-2xl" />
+        </Link>
+        <div className="min-w-0">
+          <p className="label flex items-center gap-1.5">
+            <span className="text-[13px] text-ink/70">{time.icon}</span>
+            {time.hello} · {day}
+          </p>
+          <h1 className="mt-1 truncate text-[30px] leading-[1.15] sm:text-[40px]">{name}</h1>
+        </div>
+      </div>
+      <p className="relative mt-3 text-[15px] leading-6 text-muted">{line}</p>
+
+      <div className="relative -mx-4 mt-5 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
+        <Chip to="/feed" icon={<LuPlay className="fill-current" />} primary>
+          {onFeed ? 'Back to the feed' : 'Start the feed'}
+        </Chip>
+        {invites > 0 && (
+          <Chip to="/library?tab=credits" icon={<LuUsers />} dot>
+            {invites} feature {invites === 1 ? 'invite' : 'invites'}
+          </Chip>
+        )}
+        {account?.is_artist ? (
+          mine?.length ? (
+            <Chip to="/library?tab=uploads" icon={<LuDisc3 />}>
+              Your music · {count(plays)} {plays === 1 ? 'play' : 'plays'}
+            </Chip>
+          ) : (
+            <Chip to="/upload" icon={<LuUpload />}>
+              Upload a song
+            </Chip>
+          )
+        ) : (
+          <Chip to="/library" icon={<LuHeart />}>
+            Liked songs
+          </Chip>
+        )}
+        <Chip to="/charts" icon={<LuTrophy />}>
+          Charts
+        </Chip>
+      </div>
+    </section>
+  );
+}
+
 export function Home() {
   const signedIn = !!useAuth((s) => s.session);
   const account = useAuth((s) => s.account);
@@ -214,16 +341,10 @@ export function Home() {
   const forYou = feed.data?.pages.flat().slice(0, 10) ?? [];
   const playList = usePlayer((s) => s.playList);
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-
   return (
     <div className="animate-rise">
       {signedIn ? (
-        <div className="pb-2 pt-4">
-          <p className="label">{greeting}</p>
-          <h1 className="mt-2 text-[32px] leading-tight">{account?.display_name || account?.username || 'Welcome back'}</h1>
-        </div>
+        <Greeting account={account} fresh={fresh.data} />
       ) : (
         <Hero trending={trending.data} />
       )}
