@@ -1,18 +1,19 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useEffect, useState, type ReactNode } from 'react';
-import { LuCamera, LuCheck, LuCopy, LuLogOut, LuTrash2 } from 'react-icons/lu';
+import { LuCamera, LuCheck, LuCopy, LuDownload, LuLogOut, LuTrash2 } from 'react-icons/lu';
 import { Link, useNavigate } from 'react-router-dom';
 import { passwordStrength, StrengthMeter } from '../components/auth/AuthLayout';
 import { SignOutConfirm } from '../components/auth/SignOutConfirm';
 import { LinksEditor, linksValid } from '../components/music/Links';
-import { Avatar, Button, Checkbox, EmptyState, Input, Modal, Spinner, Textarea } from '../components/ui';
+import { Avatar, Bars, Button, Checkbox, EmptyState, Input, Modal, Spinner, Textarea } from '../components/ui';
 import { api } from '../lib/api';
 import { ROLES } from '../lib/format';
 import { purgeMyMedia, uploadMedia } from '../lib/media';
 import { ARTIST_PLATFORMS, type Links } from '../lib/platforms';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../store/auth';
+import { installWay, useInstall } from '../store/install';
 import { toast } from '../store/toast';
 
 const USERNAME = /^[a-z0-9_.]{3,30}$/;
@@ -45,6 +46,7 @@ export function Settings() {
   return (
     <div className="animate-rise space-y-5">
       <h1 className="mb-6 mt-2 text-3xl">Settings</h1>
+      <GetTheApp />
       <ProfileForm key={account.id} />
       <LinksForm key={`links-${account.id}`} />
       <PasswordForm />
@@ -189,6 +191,27 @@ function ProfileForm() {
         </Button>
       </div>
     </Panel>
+  );
+}
+
+/** "Get the app", until it's on the home screen. */
+function GetTheApp() {
+  const installed = useInstall((s) => s.installed);
+  const show = useInstall((s) => s.show);
+  if (installed || installWay() === 'none') return null;
+  return (
+    <section className="card flex items-center gap-4 p-5 sm:p-6">
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[radial-gradient(95%_95%_at_25%_15%,#1b1f2a,#0a0b10)] ring-1 ring-line/10">
+        <Bars className="h-6 w-6" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 className="text-base">Get the Wavee app</h2>
+        <p className="mt-0.5 text-[13px] text-muted">On your home screen: opens in one tap, full screen.</p>
+      </div>
+      <Button variant="brand" size="sm" icon={<LuDownload />} onClick={() => show()}>
+        Install
+      </Button>
+    </section>
   );
 }
 

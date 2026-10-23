@@ -271,8 +271,11 @@ export function Modal({
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     window.setTimeout(() => {
-      const first = panel.current?.querySelector<HTMLElement>('input, textarea, select, button');
-      (first ?? panel.current)?.focus();
+      // Keyboards get the first control; on touch screens the sheet itself, so no button wears a
+      // focus ring and no keyboard pops up uninvited (fields that want it use autoFocus).
+      const touch = window.matchMedia('(pointer: coarse)').matches;
+      const first = touch ? null : panel.current?.querySelector<HTMLElement>('input, textarea, select, button');
+      (first ?? panel.current)?.focus({ preventScroll: true });
     }, 30);
     return () => {
       document.removeEventListener('keydown', onKey);

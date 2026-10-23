@@ -13,13 +13,17 @@ import {
   LuShield,
   LuTrophy,
   LuUpload,
+  LuDownload,
 } from 'react-icons/lu';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useFeatureInvites, useMyPlaylists } from '../../hooks/data';
 import { useAuth } from '../../store/auth';
+import { installWay, useInstall } from '../../store/install';
 import { usePlayer } from '../../store/player';
 import { useToasts } from '../../store/toast';
 import { SignOutConfirm } from '../auth/SignOutConfirm';
+import { InstallPrompt } from '../install/InstallPrompt';
+import { InstallSheet } from '../install/InstallSheet';
 import { NowPlaying, PlayerBar, QueuePanel } from '../music/Player';
 import { Avatar, Button, Cover, Logo, Modal } from '../ui';
 
@@ -114,6 +118,13 @@ function TopBar() {
   const account = useAuth((s) => s.account);
   const session = useAuth((s) => s.session);
   const [signingOut, setSigningOut] = useState(false);
+  const installed = useInstall((s) => s.installed);
+  const offer = useInstall((s) => s.offer);
+  const showInstall = useInstall((s) => s.show);
+  // Phones and tablets can always add Wavee (or learn how); computers only where the browser can.
+  const way = installWay();
+  const touch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+  const canInstall = !installed && (offer !== null || way === 'mac-safari' || (touch && way !== 'none'));
   return (
     <header className="sticky top-0 z-20 box-content flex h-16 shrink-0 items-center justify-between gap-4 border-b border-line/[0.06] bg-bg px-4 pt-[var(--sat)] sm:px-6">
       <Link to="/" className="lg:hidden">
@@ -121,6 +132,16 @@ function TopBar() {
       </Link>
       <div className="hidden lg:block" />
       <div className="flex items-center gap-2">
+        {canInstall && (
+          <button
+            onClick={() => showInstall()}
+            aria-label="Install Wavee"
+            title="Install Wavee"
+            className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-line/[0.06] hover:text-ink"
+          >
+            <LuDownload />
+          </button>
+        )}
         {session ? (
           <>
             <Link
@@ -323,6 +344,8 @@ export function Shell({ children }: { children?: ReactNode }) {
       <NowPlaying />
       <Toasts />
       <SignInPrompt />
+      <InstallSheet />
+      <InstallPrompt />
     </div>
   );
 }

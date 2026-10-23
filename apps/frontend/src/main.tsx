@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { startAppMode } from './lib/standalone';
 import { startAuth } from './store/auth';
+import { startInstall } from './store/install';
 
 const client = new QueryClient({
   defaultOptions: {
@@ -21,6 +22,7 @@ const client = new QueryClient({
 
 startAuth();
 startAppMode();
+startInstall();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

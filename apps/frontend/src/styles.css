@@ -94,6 +94,12 @@
     @apply outline-none ring-2 ring-violet/80 ring-offset-2 ring-offset-bg;
   }
 
+  /* A sheet takes focus itself when it opens (so its buttons don't); it never shows a ring. */
+  [role='dialog'][tabindex='-1']:focus-visible {
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-ring-offset-shadow: 0 0 #0000;
+  }
+
   h1,
   h2,
   h3 {
