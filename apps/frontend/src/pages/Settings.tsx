@@ -328,7 +328,7 @@ function DangerZone() {
       toast('Your account has been deleted. Thank you for being here.');
       navigate('/');
     } catch {
-      toast('We couldn’t delete your account. Please try again, or write to support@kaivon.app.', 'error');
+      toast('We couldn’t delete your account. Please try again, or write to wavee@kaivon.app.', 'error');
     } finally {
       setDeleting(false);
     }

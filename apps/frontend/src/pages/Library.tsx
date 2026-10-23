@@ -214,7 +214,7 @@ function Uploads({ userId }: { userId: string }) {
         <section className="mt-10">
           <h2 className="mb-1 text-base">Taken down</h2>
           <p className="mb-4 text-[13px] text-muted">
-            Only you can see these. If you think we got it wrong, write to support@kaivon.app. See the{' '}
+            Only you can see these. If you think we got it wrong, write to wavee@kaivon.app. See the{' '}
             <Link to="/copyright" className="link">copyright policy</Link> and{' '}
             <Link to="/guidelines" className="link">guidelines</Link>.
           </p>

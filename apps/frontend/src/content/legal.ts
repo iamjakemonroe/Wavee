@@ -9,7 +9,9 @@ export interface LegalDoc {
   sections: { heading: string; body: Block[] }[];
 }
 
-export const CONTACT = 'support@kaivon.app';
+export const CONTACT = 'wavee@kaivon.app';
+/** Takedown notices and counter-notices go here, so they never wait behind other mail. */
+export const COPYRIGHT = 'copyright@kaivon.app';
 const updated = 'October 23, 2026';
 
 export const terms: LegalDoc = {
@@ -224,7 +226,7 @@ export const copyright: LegalDoc = {
     {
       heading: 'Report an infringement',
       body: [
-        `The fastest way is the Report option in the ••• menu on the song, choosing “Copyright”. You can also email ${CONTACT} with “Copyright notice” in the subject. Please include:`,
+        `The fastest way is the Report option in the ••• menu on the song, choosing “Copyright”. You can also email ${COPYRIGHT} with “Copyright notice” in the subject. Please include:`,
         [
           'The work you own (for example the song’s title, the artist and a link to the original).',
           'The link to the song on Wavee.',
@@ -244,7 +246,7 @@ export const copyright: LegalDoc = {
     {
       heading: 'If your song was removed by mistake',
       body: [
-        `If you believe a song was removed because of a mistake or a wrong identification, or you have permission to use it, write to ${CONTACT} with the song’s title, why you believe the claim is wrong, your name and email, and a statement that what you say is true. We share counter-notices with the claimant and may restore the song if they don’t take the matter further.`,
+        `If you believe a song was removed because of a mistake or a wrong identification, or you have permission to use it, write to ${COPYRIGHT} with the song’s title, why you believe the claim is wrong, your name and email, and a statement that what you say is true. We share counter-notices with the claimant and may restore the song if they don’t take the matter further.`,
       ],
     },
     {

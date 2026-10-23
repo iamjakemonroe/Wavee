@@ -51,4 +51,4 @@ This typechecks, builds and deploys the Worker with the Supabase values from `.e
 
 ## Policies
 
-Terms, Privacy, Copyright and Community Guidelines are in `apps/frontend/src/content/legal.ts` and live at `/terms`, `/privacy`, `/copyright` and `/guidelines`. Contact: support@kaivon.app.
+Terms, Privacy, Copyright and Community Guidelines are in `apps/frontend/src/content/legal.ts` and live at `/terms`, `/privacy`, `/copyright` and `/guidelines`. Contact: wavee@kaivon.app (copyright notices: copyright@kaivon.app).
