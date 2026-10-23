@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import {
   LuCompass,
   LuHouse,
@@ -115,7 +115,7 @@ function TopBar() {
   const signOut = useAuth((s) => s.signOut);
   const navigate = useNavigate();
   return (
-    <header className="sticky top-0 z-20 box-content flex h-16 items-center justify-between gap-4 border-b border-line/[0.04] bg-bg/95 px-4 pt-[var(--sat)] backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-20 box-content flex h-16 shrink-0 items-center justify-between gap-4 border-b border-line/[0.06] bg-bg px-4 pt-[var(--sat)] sm:px-6">
       <Link to="/" className="lg:hidden">
         <Logo />
       </Link>
@@ -158,7 +158,7 @@ function TopBar() {
               </Button>
             </Link>
             <Link to="/signup">
-              <Button size="sm" variant="primary">
+              <Button size="sm" variant="primary" className="!shadow-none">
                 Join free
               </Button>
             </Link>
@@ -281,18 +281,32 @@ function useShortcuts() {
 export function Shell({ children }: { children?: ReactNode }) {
   useShortcuts();
   const { pathname } = useLocation();
+  const scroller = useRef<HTMLDivElement>(null);
   useEffect(() => {
     window.scrollTo({ top: 0 });
+    scroller.current?.scrollTo({ top: 0 });
   }, [pathname]);
+  const feed = pathname === '/feed';
+  // On phones the app is a column the height of the screen: the top bar, the page (the only
+  // thing that scrolls) and the tabs. The page itself never scrolls, so an installed iPhone
+  // app can't bounce or slide the bars. Wide screens scroll the window as usual.
   return (
-    <div className="min-h-svh">
+    <div className="flex h-[100dvh] flex-col overflow-hidden lg:block lg:h-auto lg:min-h-svh lg:overflow-visible">
       <Sidebar />
-      <div className="lg:pl-[248px]">
+      <div className="flex min-h-0 flex-1 flex-col lg:block lg:pl-[248px]">
         <TopBar />
-        <main className="mx-auto w-full max-w-[1400px] px-4 pb-[calc(var(--player-h)+96px)] pt-4 sm:px-6 lg:pb-[calc(var(--player-h)+40px)]">
-          {children ?? <Outlet />}
-          {pathname !== '/feed' && <FooterLinks className="mt-16 justify-center border-t border-line/[0.05] pt-6 lg:hidden" />}
-        </main>
+        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain lg:overflow-visible">
+          <main
+            className={clsx(
+              'mx-auto w-full max-w-[1400px] px-4 pt-4 sm:px-6 lg:pb-[calc(var(--player-h)+40px)]',
+              // Room under the last thing on the page for the tabs, the home bar and the player.
+              feed ? 'pb-0' : 'pb-[calc(var(--player-h)+64px+var(--sab)+32px)]',
+            )}
+          >
+            {children ?? <Outlet />}
+            {!feed && <FooterLinks className="mt-16 justify-center border-t border-line/[0.05] pt-6 lg:hidden" />}
+          </main>
+        </div>
       </div>
       <MobileNav />
       <PlayerBar />
