@@ -37,7 +37,7 @@ export function Legal({ slug }: { slug: LegalDoc['slug'] }) {
       <p className="label">Updated {doc.updated}</p>
       <h1 className="mt-3 text-4xl">{doc.title}</h1>
       <p className="mt-4 text-lg leading-8 text-muted">{doc.summary}</p>
-      <article className="prose-legal mt-4">
+      <article className="prose-legal selectable mt-4">
         {doc.sections.map((section) => (
           <section key={section.heading}>
             <h2>{section.heading}</h2>

@@ -5,6 +5,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
+import { startAppMode } from './lib/standalone';
 import { startAuth } from './store/auth';
 
 const client = new QueryClient({
@@ -19,6 +20,7 @@ const client = new QueryClient({
 });
 
 startAuth();
+startAppMode();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

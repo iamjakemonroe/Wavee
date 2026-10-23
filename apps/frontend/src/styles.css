@@ -36,6 +36,29 @@
     background: rgb(var(--bg));
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    /* Taps are taps: no waiting to see if it's a double-tap zoom. */
+    touch-action: manipulation;
+  }
+
+  /* Installed (set by startAppMode): buttons, icons and pictures don't select, highlight or open
+   * long-press menus. Fields, song descriptions and the policies stay selectable. */
+  html.standalone body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  html.standalone input,
+  html.standalone textarea,
+  html.standalone [contenteditable],
+  html.standalone .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+
+  html.standalone img {
+    -webkit-user-drag: none;
   }
 
   body {

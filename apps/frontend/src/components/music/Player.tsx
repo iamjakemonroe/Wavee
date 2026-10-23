@@ -331,7 +331,7 @@ export function NowPlaying() {
                   <LuFilm /> Watch the video
                 </button>
               )}
-              {song.description && <p className="mt-8 whitespace-pre-line text-sm leading-6 text-muted">{song.description}</p>}
+              {song.description && <p className="selectable mt-8 whitespace-pre-line text-sm leading-6 text-muted">{song.description}</p>}
             </div>
           </div>
         </motion.div>

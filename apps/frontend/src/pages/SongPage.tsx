@@ -93,7 +93,7 @@ export function SongPage() {
       {s.description && (
         <section className="mt-10 max-w-3xl">
           <h2 className="mb-3 text-lg">About this song</h2>
-          <p className="whitespace-pre-line text-[15px] leading-7 text-muted">{s.description}</p>
+          <p className="selectable whitespace-pre-line text-[15px] leading-7 text-muted">{s.description}</p>
         </section>
       )}
 
