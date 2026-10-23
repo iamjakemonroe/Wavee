@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { LuPause, LuPlay, LuShare2 } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { LikeButton, useIsCurrent } from '../components/music/Song';
@@ -18,7 +18,7 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
   const { isCurrent, playing, buffering } = useIsCurrent(song);
   const toggle = usePlayer((s) => s.toggle);
   return (
-    <div className="relative flex h-full snap-start snap-always items-center justify-center overflow-hidden rounded-4xl">
+    <div className="relative flex h-full items-center justify-center overflow-hidden rounded-4xl">
       {song.cover_image_url && (
         <img src={song.cover_image_url} alt="" aria-hidden="true" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-40 blur-3xl" />
       )}
@@ -69,75 +69,130 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
   );
 }
 
+/** When the player reaches the end of the feed's queue: the next songs, past everything it has.
+ * It starts a few songs early, in case something was queued in between, and drops repeats. */
+async function moreFeed(): Promise<Song[]> {
+  const queue = usePlayer.getState().queue;
+  const page = await api.feed(25, Math.max(0, queue.length - 5));
+  return page.filter((s) => !queue.some((q) => q.id === s.id));
+}
+
+/** Scrolls the feed so card i fills it. */
+function showCard(root: HTMLElement, i: number, smooth: boolean) {
+  const card = root.querySelector(`[data-index="${i}"]`);
+  if (!card) return;
+  const top = root.scrollTop + card.getBoundingClientRect().top - root.getBoundingClientRect().top;
+  if (Math.abs(top - root.scrollTop) < 1) return;
+  root.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+}
+
 /** The feed, a screen per song: swipe or scroll to the next. Once you
  * start listening, the song on screen plays. */
 export function Feed() {
   const feed = useFeed();
-  // Pages are slices of one order, but a new upload can shift it by one.
-  const songs = useMemo(() => {
-    const seen = new Set<string>();
-    return (feed.data?.pages.flat() ?? []).filter((s) => !seen.has(s.id) && !!seen.add(s.id));
-  }, [feed.data]);
   const playList = usePlayer((s) => s.playList);
   const source = usePlayer((s) => s.source);
+  const queue = usePlayer((s) => s.queue);
   const nowId = usePlayer((s) => currentSong(s)?.id);
-  const [listening, setListening] = useState(false);
+  const playingFeed = source === 'Feed' && !!nowId;
+  // Come back while the feed is playing and it carries on where the music is.
+  const [listening, setListening] = useState(playingFeed);
+  // While the feed is what's playing, its queue comes first, in the order it plays (it may have
+  // played on past the pages loaded here). Pages are slices of one order, but a new upload can
+  // shift it by one.
+  const songs = useMemo(() => {
+    const seen = new Set<string>();
+    const all = [...(source === 'Feed' ? queue : []), ...(feed.data?.pages.flat() ?? [])];
+    return all.filter((s) => !seen.has(s.id) && !!seen.add(s.id));
+  }, [feed.data, queue, source]);
   const scroller = useRef<HTMLDivElement>(null);
-
-  const more = async () => {
-    const r = await feed.fetchNextPage();
-    const all = r.data?.pages.flat() ?? [];
-    const queue = usePlayer.getState().queue;
-    return all.filter((s) => !queue.some((q) => q.id === s.id));
-  };
 
   const playAt = (i: number) => {
     setListening(true);
     // The feed plays each song from its hook, like a sound on TikTok.
-    playList(
-      songs,
-      i,
-      'Feed',
-      async () => {
-        const extra = await more();
-        return extra.length ? extra : api.feed(20, songs.length);
-      },
-      true,
-    );
+    playList(songs, i, 'Feed', moreFeed, true);
   };
 
-  // Scroll to a song and it plays (once you've started).
+  // A song picked from the screen is already on screen: the feed doesn't scroll to it, so it
+  // never pulls against a swipe that's still settling.
+  const picked = useRef<string | null>(null);
+  const pick = (i: number) => {
+    picked.current = songs[i]?.id ?? null;
+    playAt(i);
+  };
+
+  /** The card filling the screen now. */
+  const onScreen = () => {
+    const root = scroller.current;
+    if (!root) return 0;
+    const middle = root.getBoundingClientRect().top + root.clientHeight / 2;
+    for (const card of root.querySelectorAll<HTMLElement>('[data-index]')) {
+      if (card.getBoundingClientRect().bottom > middle) return Number(card.dataset.index);
+    }
+    return 0;
+  };
+
+  // The observer outlives renders; it reads the latest of these.
+  const latest = useRef({ songs, pick, feed });
+  useLayoutEffect(() => {
+    latest.current = { songs, pick, feed };
+  });
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const hasSongs = songs.length > 0;
+
+  // Scroll to a song and it plays (once you've started). Only a card that fills most of the
+  // screen counts: one peeking in at the edge, or one on its way out, doesn't.
   useEffect(() => {
     const root = scroller.current;
     if (!root || !listening) return;
     const observer = new IntersectionObserver(
       (entries) => {
+        const { songs, pick, feed } = latest.current;
         for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.65) continue;
           const i = Number((entry.target as HTMLElement).dataset.index);
           const song = songs[i];
-          if (song && song.id !== usePlayer.getState().queue[usePlayer.getState().index]?.id) {
-            playAt(i);
-          }
+          if (song && song.id !== currentSong(usePlayer.getState())?.id) pick(i);
           if (i >= songs.length - 3 && feed.hasNextPage && !feed.isFetchingNextPage) void feed.fetchNextPage();
         }
       },
       { root, threshold: 0.65 },
     );
+    observerRef.current = observer;
     root.querySelectorAll('[data-index]').forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [songs, listening]);
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+    };
+    // The list mounts with its first songs.
+  }, [listening, hasSongs]);
 
-  // When the player moves on by itself, follow it.
+  // New cards join the watch (watching a card twice is harmless).
   useEffect(() => {
-    if (!listening || source !== 'Feed' || !nowId) return;
+    const root = scroller.current;
+    const observer = observerRef.current;
+    if (root && observer) root.querySelectorAll('[data-index]').forEach((el) => observer.observe(el));
+  }, [songs]);
+
+  // The song on screen is the one playing: when the player moves on by itself, the feed follows,
+  // and when you come back to it, it opens on that song straight away (before the observer
+  // looks, so it can't mistake the top card for a new pick).
+  const placed = useRef(false);
+  useLayoutEffect(() => {
+    const root = scroller.current;
+    if (!root || !listening || source !== 'Feed' || !nowId) return;
+    if (nowId === picked.current) {
+      picked.current = null;
+      placed.current = true;
+      return;
+    }
     const i = songs.findIndex((s) => s.id === nowId);
-    const el = scroller.current?.querySelector(`[data-index="${i}"]`);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (i < 0) return;
+    showCard(root, i, placed.current);
+    placed.current = true;
   }, [nowId, listening, source, songs]);
 
-  if (feed.isLoading) return <Spinner className="mx-auto mt-24 block h-8 w-8 text-muted" />;
+  if (feed.isLoading && !songs.length) return <Spinner className="mx-auto mt-24 block h-8 w-8 text-muted" />;
   if (!songs.length) {
     return <EmptyState title="The feed is warming up" text="New songs appear here as artists upload them. Check back soon." />;
   }
@@ -149,15 +204,17 @@ export function Feed() {
         className="-mx-4 h-[calc(100dvh-var(--top-h)-var(--player-h)-var(--nav-h)-24px)] snap-y snap-mandatory space-y-4 overflow-y-auto px-2 sm:-mx-6 sm:px-4 lg:h-[calc(100svh-64px-var(--player-h)-32px)]"
       >
         {songs.map((s, i) => (
-          <div key={s.id} data-index={i} className="h-full [contain-intrinsic-size:auto_640px] [content-visibility:auto]">
-            <FeedCard song={s} onPlay={() => playAt(i)} />
+          // The snap point is on the outer box: a card off screen isn't drawn, so one inside it
+          // would only exist near where you are, and Safari would refuse to jump further.
+          <div key={s.id} data-index={i} className="h-full snap-start snap-always [contain-intrinsic-size:auto_640px] [content-visibility:auto]">
+            <FeedCard song={s} onPlay={() => pick(i)} />
           </div>
         ))}
         {feed.isFetchingNextPage && <Spinner className="mx-auto my-8 block h-6 w-6 text-muted" />}
       </div>
       {!listening && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center">
-          <Button variant="primary" size="lg" className="pointer-events-auto shadow-glow" icon={<LuPlay className="fill-current" />} onClick={() => playAt(0)}>
+          <Button variant="primary" size="lg" className="pointer-events-auto shadow-glow" icon={<LuPlay className="fill-current" />} onClick={() => pick(onScreen())}>
             Start the feed
           </Button>
         </motion.div>
