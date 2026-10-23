@@ -2,23 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Wavee · Music from new voices</title>
+    <meta name="description" content="Stream, share and discover music from new artists. Upload your songs, cover art and music videos for free." />
+    <meta name="theme-color" content="#06070a" />
+    <meta name="color-scheme" content="dark" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Wavee" />
+    <meta property="og:title" content="Wavee · Music from new voices" />
+    <meta property="og:description" content="Stream, share and discover music from new artists. Upload your songs, cover art and music videos for free." />
+    <meta property="og:image" content="https://wavee.kaivon.app/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Wavee · Music from new voices" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0B0B0F" />
-    <meta name="description" content="Discover, stream, and share music on Wavee" />
-
-    <!-- PWA -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="preconnect" href="https://ysdzcoqpmnhjfmqokcmi.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://media.wavee.kaivon.app" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Wavee" />
-
-    <title>Wavee</title>
+    <style>
+      html,body{background:#06070a;margin:0}
+      #boot{position:fixed;inset:0;display:grid;place-items:center;transition:opacity .4s ease}
+      #boot span{display:inline-block;width:6px;margin:0 3px;border-radius:3px;background:linear-gradient(#18e2b0,#8466ff);animation:b 1s ease-in-out infinite}
+      #boot span:nth-child(1){height:14px;animation-delay:-.2s}#boot span:nth-child(2){height:24px;animation-delay:-.4s}#boot span:nth-child(3){height:32px;animation-delay:-.6s}#boot span:nth-child(4){height:24px;animation-delay:-.8s}#boot span:nth-child(5){height:14px}
+      @keyframes b{50%{transform:scaleY(.45)}}
+      @media (prefers-reduced-motion:reduce){#boot span{animation:none}}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot" aria-label="Loading Wavee"><div><span></span><span></span><span></span><span></span><span></span></div></div></div>
+    <noscript>Wavee needs JavaScript to play music.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

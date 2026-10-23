@@ -1,125 +1,54 @@
 # Wavee
 
-**Wavee** is a music streaming platform focused on discovery, creator uploads, and a TikTok-style vertical feed. This repository is a **pnpm monorepo** with three apps:
+Stream, share and discover music from new artists: **[wavee.kaivon.app](https://wavee.kaivon.app)**. A Kaivon product.
 
-| App | Stack | Role |
-|-----|--------|------|
-| **Frontend** (`apps/frontend`) | React 19, Vite, TypeScript, Tailwind CSS, TanStack Query, Zustand, Framer Motion | Web app + installable PWA (dark UI, global player, feed, search, playlists, upload) |
-| **Backend** (`apps/backend`) | Fastify 5, TypeScript, Zod, Supabase (Postgres + Auth + Storage) | REST API (`/v1/...`), auth, feeds, songs, engagement, playlists |
-| **Mobile** (`apps/mobile`) | Expo, React Native, Expo Router | Native client aligned with the same API |
+Artists upload songs with cover art and an optional music video. Listeners find them through a swipeable feed, trending charts, search, playlists and likes.
 
-Data lives in **Supabase** (PostgreSQL with RLS, Storage buckets for audio and covers). The backend uses the **service role** key for privileged operations; clients talk only to the API with user JWTs.
+## How it runs
 
----
+| Piece | Where | What it does |
+|-------|-------|--------------|
+| Web app (`apps/frontend/src`) | Cloudflare Worker `wavee-web` (static assets) | React 19, Vite, Tailwind, TanStack Query, Zustand, Framer Motion |
+| Worker (`apps/frontend/worker`) | Same Worker, on `/api/*`, `/songs/*` and `/u/*` | Checks and stores uploads in R2, deletes a person's files, and adds a song's or artist's title and picture to shared links |
+| Media | R2 bucket `wavee-media`, served at `media.wavee.kaivon.app` | Songs (50 MB), music videos (100 MB), covers, avatars and playlist art |
+| Data and sign-in | Supabase (Postgres with row-level security, Auth) | The app talks to it directly; every rule lives in the database (`supabase/migrations`) |
+| Account deletion | Supabase Edge Function `delete-account` | Deletes the sign-in, which removes everything that belongs to it |
 
-## Prerequisites
+There is no separate API server. The old Fastify backend (`apps/backend`) and the Expo app (`apps/mobile`) belong to the previous version and aren't deployed.
 
-- **Node.js** 20+ (recommended)
-- **pnpm** 9+ (repo pins `pnpm@10.6.3` in `package.json`)
-- A **Supabase** project (URL, anon key, service role key)
-
----
-
-## Quick start
-
-From the repository root:
+## Develop
 
 ```bash
 pnpm install
+cp apps/frontend/.env.example apps/frontend/.env.local   # then fill in the two values
+pnpm --filter wavee-frontend dev
 ```
 
-### 1. Backend environment
-
-Copy and edit `apps/backend/.env` (see `apps/backend` for expected variables). At minimum:
-
-| Variable | Purpose |
-|----------|---------|
-| `SUPABASE_URL` | Project URL |
-| `SUPABASE_ANON_KEY` | Public anon key (JWT verification) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only key (DB/Storage admin) |
-| `FRONTEND_URL` | Web app origin (e.g. `http://localhost:5173`) for email redirects |
-| `CORS_ORIGIN` | Allowed browser origin(s) or `*` for dev |
-
-Optional: `PORT` (default `4000`), `API_PREFIX` (default `/v1`).
-
-### 2. Database
-
-Apply SQL in order under **`apps/backend/db/migrations/`** in the Supabase SQL Editor (or your migration runner). These define schema, RLS, feed functions, storage buckets, and triggers (e.g. likes/plays counts).
-
-### 3. Frontend environment
+`.env.local` needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the project's publishable key). In development, `/api` is proxied to the live Worker, so uploads work too.
 
 ```bash
-cp apps/frontend/.env.example apps/frontend/.env
+pnpm --filter wavee-frontend typecheck   # app and Worker
+pnpm --filter wavee-frontend icons       # regenerate the favicon, icons and link preview
 ```
 
-Set `VITE_API_BASE_URL` to your API base (e.g. `http://localhost:4000`). **Do not commit `apps/frontend/.env`** — it is gitignored.
+## Database
 
-### 4. Run dev servers
-
-In two terminals from the repo root:
+The schema, policies and functions are in `supabase/migrations`. `docs/RELAUNCH.md` describes the contract the app relies on. To test a migration against a throwaway Postgres before it ships, see `tool/db_test`.
 
 ```bash
-pnpm backend
+supabase link --project-ref ysdzcoqpmnhjfmqokcmi
+supabase db push
+supabase functions deploy delete-account
 ```
+
+## Deploy
 
 ```bash
-pnpm frontend
+pnpm --filter wavee-frontend deploy
 ```
 
-- API: `http://localhost:4000` (`GET /v1/health` for a quick health check)
-- Web: `http://localhost:5173`
+This typechecks, builds and deploys the Worker with the Supabase values from `.env.local`.
 
-Mobile (optional):
+## Policies
 
-```bash
-pnpm mobile
-```
-
----
-
-## Root scripts
-
-| Command | Description |
-|---------|-------------|
-| `pnpm backend` | Start Fastify API in watch mode |
-| `pnpm frontend` | Start Vite dev server |
-| `pnpm mobile` | Start Expo |
-| `pnpm typecheck` | Typecheck all workspaces |
-
-Per-app scripts (build, lint, etc.) live in each `apps/*/package.json`.
-
----
-
-## Features (high level)
-
-- **Auth** — Email/password via Supabase; backend issues/validates sessions; web uses stored JWT + `/auth/callback` for email confirmation.
-- **Home feed** — Personalized/trending mix from SQL (`get_home_feed`); vertical snap scroll with autoplay; likes with optimistic UI.
-- **Player** — Shared audio instance, queue, skip, progress; PWA-friendly.
-- **Upload** — Multipart audio (+ optional cover) to Storage; metadata in `songs`.
-- **Playlists** — Create playlists, add tracks, dedicated playlist view and queue.
-- **Search & profile** — Song search; profile and creator-oriented UI.
-
----
-
-## Project layout
-
-```
-apps/
-  backend/     # Fastify API, env schema, route modules, db/migrations
-  frontend/    # Vite SPA, PWA assets (manifest, service worker), public icons
-  mobile/      # Expo app
-```
-
----
-
-## Security notes
-
-- Never commit **`.env`** files or the **Supabase service role** key.
-- Configure Supabase **Site URL** and **redirect URLs** to match `FRONTEND_URL` and your auth callback path.
-- Storage buckets and RLS policies are defined in migrations — run them in your Supabase project before relying on uploads or public URLs.
-
----
-
-## License
-
-Private / unlicensed unless you add a `LICENSE` file.
+Terms, Privacy, Copyright and Community Guidelines are in `apps/frontend/src/content/legal.ts` and live at `/terms`, `/privacy`, `/copyright` and `/guidelines`. Contact: support@kaivon.app.

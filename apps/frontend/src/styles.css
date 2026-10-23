@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Wavee: deep night, teal-to-violet light, quiet type. */
+:root {
+  --bg: 6 7 10;
+  --surface: 14 16 21;
+  --raised: 22 25 33;
+  --line: 255 255 255;
+  --ink: 238 241 245;
+  --muted: 160 168 184;
+  --faint: 112 120 136;
+  --teal: 24 226 176;
+  --violet: 132 102 255;
+  --danger: 255 99 128;
+  --warn: 255 190 92;
+  --player-h: 0px;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    background: rgb(var(--bg));
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-bg font-sans text-[15px] leading-relaxed text-ink antialiased;
+    font-feature-settings: 'cv05', 'cv08', 'ss03';
+    overflow-x: clip;
+  }
+
+  ::selection {
+    background: rgb(var(--violet) / 0.35);
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-violet/80 ring-offset-2 ring-offset-bg;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-semibold tracking-tight text-ink;
+    letter-spacing: -0.02em;
+  }
+
+  input,
+  textarea,
+  select {
+    @apply text-[15px];
+  }
+
+  /* Thin, quiet scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--line) / 0.12) transparent;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply border border-line/10 bg-surface/70 backdrop-blur-xl;
+  }
+
+  .card {
+    @apply rounded-2xl border border-line/[0.07] bg-surface;
+  }
+
+  .label {
+    @apply text-2xs font-semibold uppercase tracking-[0.14em] text-faint;
+  }
+
+  .text-brand {
+    @apply bg-brand bg-clip-text text-transparent;
+  }
+
+  .link {
+    @apply text-ink underline decoration-line/25 underline-offset-4 transition hover:decoration-teal;
+  }
+
+  .scroll-row {
+    @apply -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6;
+    scrollbar-width: none;
+  }
+
+  .scroll-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Prose for the legal pages. */
+  .prose-legal h2 {
+    @apply mb-3 mt-10 text-lg;
+  }
+
+  .prose-legal p,
+  .prose-legal li {
+    @apply text-[15px] leading-7 text-ink/80;
+  }
+
+  .prose-legal p {
+    @apply mb-4;
+  }
+
+  .prose-legal ul {
+    @apply mb-4 list-disc space-y-2 pl-5 marker:text-violet;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

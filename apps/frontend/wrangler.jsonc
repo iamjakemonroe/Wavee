@@ -1,0 +1,25 @@
+// Cloudflare Worker for wavee.kaivon.app: the web app (dist), uploads into
+// the R2 bucket wavee-media (served from media.wavee.kaivon.app) and link
+// previews for shared songs and artists. Deploy: pnpm --filter
+// wavee-frontend run deploy
+{
+  "name": "wavee-web",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-10-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/songs/*", "/u/*"]
+  },
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "wavee-media" }],
+  "vars": {
+    "SUPABASE_URL": "https://ysdzcoqpmnhjfmqokcmi.supabase.co",
+    // The publishable key: safe in public (the same one the web app uses).
+    "SUPABASE_ANON_KEY": "__SET_BY_DEPLOY__",
+    "MEDIA_ORIGIN": "https://media.wavee.kaivon.app"
+  },
+  "routes": [{ "pattern": "wavee.kaivon.app", "custom_domain": true }],
+  "workers_dev": true,
+  "preview_urls": false
+}

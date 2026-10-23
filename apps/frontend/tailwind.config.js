@@ -1,46 +1,60 @@
 /** @type {import('tailwindcss').Config} */
+const token = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
 export default {
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
-      },
       colors: {
-        wavee: {
-          bg: "#0B0B0F",
-          "bg-light": "#12121A",
-          primary: "#00D1A0",
-          "primary-dim": "#00B88D",
-          secondary: "#7C5CFF",
-          "secondary-dim": "#6A4DE0",
-          text: "#FFFFFF",
-          muted: "#71717A",
-          surface: "#161620",
-          "surface-light": "#1E1E2A",
-          border: "#2A2A36",
-          danger: "#EF4444",
-          warning: "#F59E0B",
-        },
+        bg: token('bg'),
+        surface: token('surface'),
+        raised: token('raised'),
+        line: token('line'),
+        ink: token('ink'),
+        muted: token('muted'),
+        faint: token('faint'),
+        teal: token('teal'),
+        violet: token('violet'),
+        danger: token('danger'),
+        warn: token('warn'),
+      },
+      fontFamily: {
+        sans: ['"Inter Variable"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      fontSize: {
+        '2xs': ['11px', '15px'],
+      },
+      borderRadius: {
+        '4xl': '28px',
       },
       boxShadow: {
-        glow: "0 0 30px rgba(124, 92, 255, 0.2)",
-        "glow-lg": "0 0 60px rgba(124, 92, 255, 0.3)",
-        neon: "0 0 20px rgba(0, 209, 160, 0.2)",
-        "neon-lg": "0 0 26px rgba(0, 209, 160, 0.22)",
+        glow: '0 20px 60px -20px rgb(var(--violet) / 0.55)',
+        'glow-teal': '0 18px 50px -18px rgb(var(--teal) / 0.55)',
+        lift: '0 24px 60px -24px rgba(0, 0, 0, 0.85)',
       },
       backgroundImage: {
-        "wavee-gradient":
-          "radial-gradient(ellipse at top right, rgba(124,92,255,0.12), transparent 50%)",
+        brand: 'linear-gradient(115deg, rgb(var(--teal)), rgb(var(--violet)))',
       },
-      animation: {
-        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+      transitionTimingFunction: {
+        out: 'cubic-bezier(0.2, 0.7, 0.1, 1)',
       },
       keyframes: {
-        "pulse-glow": {
-          "0%, 100%": { opacity: "0.4" },
-          "50%": { opacity: "1" },
+        eq: {
+          '0%, 100%': { transform: 'scaleY(0.35)' },
+          '50%': { transform: 'scaleY(1)' },
         },
+        shimmer: {
+          '100%': { transform: 'translateX(100%)' },
+        },
+        rise: {
+          from: { opacity: '0', transform: 'translateY(10px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        eq: 'eq 0.9s ease-in-out infinite',
+        shimmer: 'shimmer 1.6s infinite',
+        rise: 'rise 0.5s cubic-bezier(0.2, 0.7, 0.1, 1) both',
       },
     },
   },

@@ -1,3 +1,0 @@
-# Netlify: SPA fallback. Render ignores this file — set a Rewrite in the static site dashboard:
-#   Source /* → Destination /index.html (Rewrite), or see ../../render.yaml
-/*    /index.html   200

@@ -1,0 +1,149 @@
+import { accessToken } from './supabase';
+
+export type MediaKind = 'audio' | 'video' | 'cover' | 'avatar' | 'playlist' | 'bug';
+
+/** What each kind accepts (the Worker checks the same, and the file's real
+ * contents too). */
+export const MEDIA_LIMITS: Record<MediaKind, { maxMb: number; accept: string; label: string }> = {
+  audio: {
+    maxMb: 50,
+    accept: '.mp3,.m4a,.aac,.wav,.ogg,.flac,audio/mpeg,audio/mp4,audio/x-m4a,audio/aac,audio/wav,audio/ogg,audio/flac',
+    label: 'MP3, M4A, WAV, OGG or FLAC, up to 50 MB',
+  },
+  video: { maxMb: 100, accept: '.mp4,.webm,video/mp4,video/webm', label: 'MP4 or WebM, up to 100 MB' },
+  cover: { maxMb: 8, accept: '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp', label: 'JPG, PNG or WebP, up to 8 MB' },
+  avatar: { maxMb: 5, accept: '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp', label: 'JPG, PNG or WebP, up to 5 MB' },
+  playlist: { maxMb: 5, accept: '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp', label: 'JPG, PNG or WebP, up to 5 MB' },
+  bug: { maxMb: 5, accept: '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp', label: 'JPG, PNG or WebP, up to 5 MB' },
+};
+
+const BY_EXTENSION: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  aac: 'audio/mp4',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  flac: 'audio/flac',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+
+const NORMALISE: Record<string, string> = {
+  'audio/mp3': 'audio/mpeg',
+  'audio/x-mp3': 'audio/mpeg',
+  'audio/m4a': 'audio/mp4',
+  'audio/x-m4a': 'audio/mp4',
+  'audio/aac': 'audio/mp4',
+  'audio/x-wav': 'audio/wav',
+  'audio/wave': 'audio/wav',
+  'audio/vnd.wave': 'audio/wav',
+  'audio/x-flac': 'audio/flac',
+  'image/jpg': 'image/jpeg',
+};
+
+/** The file's type as the Worker expects it (some browsers leave it
+ * blank, or use old names). */
+export function mediaType(file: File): string {
+  const declared = file.type.toLowerCase();
+  if (declared && declared !== 'application/octet-stream') return NORMALISE[declared] ?? declared;
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return BY_EXTENSION[ext] ?? declared;
+}
+
+/** Why [file] can't be uploaded as [kind], or null if it can. */
+export function checkFile(file: File, kind: MediaKind): string | null {
+  const limit = MEDIA_LIMITS[kind];
+  if (file.size > limit.maxMb * 1024 * 1024) return `That file is too big. ${limit.label}.`;
+  const type = mediaType(file);
+  const family = kind === 'audio' ? 'audio/' : kind === 'video' ? 'video/' : 'image/';
+  if (!type.startsWith(family)) return `That isn’t a supported file. ${limit.label}.`;
+  return null;
+}
+
+export interface Uploaded {
+  key: string;
+  url: string;
+}
+
+/** Uploads [file], reporting progress (0 to 1). Cancel with [signal]. */
+export async function uploadMedia(
+  file: File,
+  kind: MediaKind,
+  onProgress?: (fraction: number) => void,
+  signal?: AbortSignal,
+): Promise<Uploaded> {
+  const problem = checkFile(file, kind);
+  if (problem) throw new Error(problem);
+  const token = await accessToken();
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/upload?kind=${kind}`);
+    xhr.setRequestHeader('Content-Type', mediaType(file));
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+    };
+    xhr.onload = () => {
+      let body: { key?: string; url?: string; error?: string } = {};
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        // Not JSON: a proxy or network page.
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && body.key && body.url) {
+        onProgress?.(1);
+        resolve({ key: body.key, url: body.url });
+      } else {
+        reject(new Error(body.error ?? 'The upload didn’t finish. Please try again.'));
+      }
+    };
+    xhr.onerror = () => reject(new Error('The upload stopped. Check your connection and try again.'));
+    xhr.onabort = () => reject(new DOMException('Upload cancelled', 'AbortError'));
+    signal?.addEventListener('abort', () => xhr.abort(), { once: true });
+    xhr.send(file);
+  });
+}
+
+/** Deletes files you uploaded (quietly: a leftover file is harmless). */
+export async function deleteMedia(keys: string[]): Promise<void> {
+  const token = await accessToken();
+  if (!token) return;
+  await Promise.all(
+    keys.map((key) =>
+      fetch(`/api/object?key=${encodeURIComponent(key)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => undefined),
+    ),
+  );
+}
+
+/** Deletes everything you've uploaded (when your account is deleted). */
+export async function purgeMyMedia(): Promise<void> {
+  const token = await accessToken();
+  if (!token) throw new Error('Please sign in.');
+  const res = await fetch('/api/media/mine', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error('We couldn’t remove your files. Please try again.');
+}
+
+/** How long an audio or video file plays, in whole seconds (or null). */
+export function readDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const el = document.createElement(file.type.startsWith('video') ? 'video' : 'audio');
+    const url = URL.createObjectURL(file);
+    const done = (value: number | null) => {
+      URL.revokeObjectURL(url);
+      el.removeAttribute('src');
+      resolve(value);
+    };
+    el.preload = 'metadata';
+    el.onloadedmetadata = () =>
+      done(Number.isFinite(el.duration) && el.duration > 0 ? Math.round(el.duration) : null);
+    el.onerror = () => done(null);
+    el.src = url;
+  });
+}

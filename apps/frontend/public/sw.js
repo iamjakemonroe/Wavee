@@ -1,68 +1,67 @@
-const CACHE_NAME = "wavee-v6";
-const OFFLINE_URLS = [
-  "/",
-  "/index.html",
-  "/manifest.webmanifest",
-  "/favicon.svg",
-  "/wavee-mark.svg",
-  "/icon-192.png",
-  "/icon-512.png",
-];
+// Wavee's service worker: the app opens fast and works on a bad connection,
+// but a new release is always picked up on the next visit.
+//  - Pages: network first, the cached app shell when offline.
+//  - /assets/* (hashed, never change): cache first.
+//  - Icons: cached, refreshed in the background.
+//  - The API, Supabase and media (songs, videos, covers) are never touched.
+const CACHE = 'wavee-v7';
+const SHELL = '/index.html';
+const PRECACHE = [SHELL, '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/icon-512.png'];
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_URLS))
-  );
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
   self.skipWaiting();
 });
 
-self.addEventListener("activate", (event) => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      )
-    )
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim()),
   );
-  self.clients.claim();
 });
 
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+const save = (request, response) => {
+  if (response && response.ok && response.type === 'basic') {
+    const copy = response.clone();
+    caches.open(CACHE).then((cache) => cache.put(request, copy));
+  }
+  return response;
+};
 
-  const url = new URL(event.request.url);
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;
 
-  if (url.pathname.startsWith("/v1/")) return;
-
-  // Hashed bundles include `import.meta.env` (e.g. API URL). Cache-first would keep stale JS forever.
-  if (url.pathname.startsWith("/assets/")) {
+  if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
+      fetch(request)
         .then((response) => {
-          if (response && response.status === 200 && response.type === "basic") {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
+          // Keep the latest shell for offline use (song and artist pages
+          // carry their own preview tags, so only the plain shell is kept).
+          if (response.ok && !/^\/(songs|u)\//.test(url.pathname)) save(SHELL, response.clone());
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => caches.match(SHELL)),
     );
     return;
   }
 
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(caches.match(request).then((hit) => hit || fetch(request).then((r) => save(request, r))));
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          if (!response || response.status !== 200 || response.type !== "basic") {
-            return response;
-          }
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match("/index.html"));
-    })
+    caches.match(request).then((hit) => {
+      const fresh = fetch(request)
+        .then((r) => save(request, r))
+        .catch(() => hit);
+      return hit || fresh;
+    }),
   );
 });
