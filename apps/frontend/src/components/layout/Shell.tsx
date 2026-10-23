@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   LuCompass,
   LuHouse,
@@ -14,11 +14,12 @@ import {
   LuTrophy,
   LuUpload,
 } from 'react-icons/lu';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useFeatureInvites, useMyPlaylists } from '../../hooks/data';
 import { useAuth } from '../../store/auth';
 import { usePlayer } from '../../store/player';
 import { useToasts } from '../../store/toast';
+import { SignOutConfirm } from '../auth/SignOutConfirm';
 import { NowPlaying, PlayerBar, QueuePanel } from '../music/Player';
 import { Avatar, Button, Cover, Logo, Modal } from '../ui';
 
@@ -112,8 +113,7 @@ function FooterLinks({ className }: { className?: string }) {
 function TopBar() {
   const account = useAuth((s) => s.account);
   const session = useAuth((s) => s.session);
-  const signOut = useAuth((s) => s.signOut);
-  const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
   return (
     <header className="sticky top-0 z-20 box-content flex h-16 shrink-0 items-center justify-between gap-4 border-b border-line/[0.06] bg-bg px-4 pt-[var(--sat)] sm:px-6">
       <Link to="/" className="lg:hidden">
@@ -137,7 +137,7 @@ function TopBar() {
               <LuSettings />
             </Link>
             <button
-              onClick={() => void signOut().then(() => navigate('/'))}
+              onClick={() => setSigningOut(true)}
               aria-label="Sign out"
               title="Sign out"
               className="hidden h-9 w-9 place-items-center rounded-full text-muted hover:bg-line/[0.06] hover:text-ink sm:grid"
@@ -165,6 +165,7 @@ function TopBar() {
           </>
         )}
       </div>
+      <SignOutConfirm open={signingOut} onClose={() => setSigningOut(false)} />
     </header>
   );
 }

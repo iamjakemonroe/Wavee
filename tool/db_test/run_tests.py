@@ -1087,7 +1087,7 @@ def run_contract_tests(db, c):
              set(song) == {"id", "title", "genre", "description", "audio_url", "video_url", "cover_image_url",
                            "duration_seconds", "explicit", "plays_count", "likes_count", "created_at", "artist_id",
                            "artist_username", "artist_display_name", "artist_avatar_url", "liked", "hook_start",
-                           "artist_verified", "features", "artist_official", "made_with_ai", "links"}, sorted(song))
+                           "artist_verified", "features", "artist_official", "made_with_ai", "genres", "links"}, sorted(song))
         c.ok("get_song of an unknown id is null", db.anon("select public.get_song(%s)", (uid(),))[0][0] is None)
         prof = db.anon("select public.get_profile('NEWBIE')")[0][0]
         c.ok("get_profile is case-insensitive and has the contract keys",
@@ -1315,6 +1315,34 @@ def run_contract_tests(db, c):
              and db.anon("select public.get_song(%s)", (real,))[0][0]["made_with_ai"] is True)
 
     c.safe("artists", artists)
+
+    # ── Genres: up to three, the first is the main one ───────────────────────
+    c.start("genres")
+
+    def genres():
+        g = lambda sid: db.su("select genre, genres from public.songs where id = %s", (sid,))[0]
+        c.ok("old songs get their genre as their only one", g(SONG1) == ("pop", ["pop"]), g(SONG1))
+        sid = new_song(ARTIST, "Two Genres", genre="Afrobeats", genres=["Afrobeats", " Amapiano ", ""])
+        c.ok("a song keeps several genres, trimmed, the first as its main one",
+             g(sid) == ("Afrobeats", ["Afrobeats", "Amapiano"]), g(sid))
+        db.user(ARTIST, "update public.songs set genres = '{Amapiano,Afrobeats}' where id = %s", (sid,))
+        c.ok("reordering changes the main genre", g(sid) == ("Amapiano", ["Amapiano", "Afrobeats"]), g(sid))
+        db.user(ARTIST, "update public.songs set genre = 'Pop' where id = %s", (sid,))
+        c.ok("an app that only sends one genre replaces the main one", g(sid) == ("Pop", ["Pop", "Afrobeats"]), g(sid))
+        c.raises("at most three genres",
+                 lambda: db.user(ARTIST, "update public.songs set genres = '{a,b,c,d}' where id = %s", (sid,)), "23514")
+        c.ok("song cards carry the genres",
+             db.anon("select public.get_song(%s)", (sid,))[0][0]["genres"] == ["Pop", "Afrobeats"])
+        gq = new_song(ARTIST, "Gqom Night", genre="Gqom", genres=["Gqom", "Afro House"], duration=100)
+        for _ in range(3):
+            db.su("insert into public.plays (user_id, song_id, duration_listened, song_duration, created_at) "
+                  "values (null, %s, 60, 100, now() - interval '2 hours')", (gq,))
+        c.ok("a genre chart includes songs whose second genre matches",
+             gq in [e["song"]["id"] for e in db.anon("select public.get_chart('top', 'afro-house', 50)")[0][0]])
+        c.ok("search finds a song by its second genre",
+             gq in card_ids(db.anon("select * from public.search_songs('Afro House', 50)")))
+
+    c.safe("genres", genres)
 
     # ── Account deletion (the delete-account Edge Function deletes the auth user) ──
     c.start("account deletion")

@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { LuCamera, LuCheck, LuCopy, LuLogOut, LuTrash2 } from 'react-icons/lu';
 import { Link, useNavigate } from 'react-router-dom';
 import { passwordStrength, StrengthMeter } from '../components/auth/AuthLayout';
+import { SignOutConfirm } from '../components/auth/SignOutConfirm';
 import { LinksEditor, linksValid } from '../components/music/Links';
 import { Avatar, Button, Checkbox, EmptyState, Input, Modal, Spinner, Textarea } from '../components/ui';
 import { api } from '../lib/api';
@@ -247,8 +248,7 @@ function LinksForm() {
 
 function PasswordForm() {
   const account = useAuth((s) => s.account)!;
-  const signOut = useAuth((s) => s.signOut);
-  const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [saving, setSaving] = useState(false);
@@ -297,9 +297,7 @@ function PasswordForm() {
             type="button"
             variant="ghost"
             icon={<LuLogOut />}
-            onClick={() => {
-              void signOut().then(() => navigate('/'));
-            }}
+            onClick={() => setSigningOut(true)}
           >
             Sign out
           </Button>
@@ -308,6 +306,7 @@ function PasswordForm() {
           </Button>
         </div>
       </form>
+      <SignOutConfirm open={signingOut} onClose={() => setSigningOut(false)} />
     </Panel>
   );
 }

@@ -110,6 +110,13 @@ See `docs/GROWTH.md` for why each of these exists.
 
 `song_card` gains `features`, `artist_official` and `made_with_ai` (last, in that order).
 
+## Genres (migration `supabase/migrations/20261023160000_wavee_genres.sql`)
+
+- `songs.genres text[]` holds up to three genres, in order, each 1–40 characters (`wavee_genres_ok`). The first is the main one.
+- `songs.genre` stays as the main genre. The `wavee_songs_genres` trigger keeps the two in step: a new list sets the main genre, and an app that only sends `genre` gets it as the main one.
+- Song cards carry `genres` (last). The charts' genre filter and search match any of a song's genres.
+- The app offers the list in `src/lib/format.ts` (`POPULAR_GENRES` first, then `GENRES`). Artists can also add their own.
+
 ## Web app
 
 Pages: landing (signed out: trending tracks you can play without an account), Home (For you, Trending, New releases, Artists), Feed (vertical, swipe, from each song's hook), Charts (Top 50, Rising, Fresh, Tastemakers), Search, Library (Liked, Playlists, Uploads, Following), Upload (audio, details, cover, optional music video, rights confirmation), Song, Artist (`/u/:username`), Playlist, Settings (profile, account, password, delete account), Sign in, Sign up, Forgot password, Reset password, Check your email, Terms, Privacy, Copyright, Community guidelines, Report a bug, Admin (reports, bug reports), 404.

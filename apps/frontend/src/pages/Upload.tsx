@@ -5,12 +5,13 @@ import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'rea
 import { LuCheck, LuFilm, LuImage, LuMusic, LuRefreshCw, LuUpload, LuX } from 'react-icons/lu';
 import { Link, useNavigate } from 'react-router-dom';
 import { FeaturePicker, type Person } from '../components/music/FeaturePicker';
+import { GenrePicker } from '../components/music/GenrePicker';
 import { HookPicker } from '../components/music/HookPicker';
 import { LinksEditor, linksValid } from '../components/music/Links';
-import { Avatar, Button, Checkbox, Cover, EmptyState, Input, Select, Textarea } from '../components/ui';
+import { Avatar, Button, Checkbox, Cover, EmptyState, Input, Textarea } from '../components/ui';
 import { keys } from '../hooks/data';
 import { api } from '../lib/api';
-import { duration, GENRES } from '../lib/format';
+import { duration } from '../lib/format';
 import { checkFile, deleteMedia, MEDIA_LIMITS, readDuration, uploadMedia, type MediaKind, type Uploaded } from '../lib/media';
 import { SONG_PLATFORMS, type Links } from '../lib/platforms';
 import { useAuth } from '../store/auth';
@@ -220,7 +221,7 @@ export function Upload() {
   const cover = useSlot('cover', published);
   const video = useSlot('video', published);
   const [title, setTitle] = useState('');
-  const [genre, setGenre] = useState<string>('Afrobeats');
+  const [genres, setGenres] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [explicit, setExplicit] = useState(false);
   const [madeWithAi, setMadeWithAi] = useState(false);
@@ -273,7 +274,7 @@ export function Upload() {
   };
 
   const ready =
-    !!audio.slot?.done && !!title.trim() && rights && !uploading && !cover.slot?.error && !video.slot?.error && linksValid(links);
+    !!audio.slot?.done && !!title.trim() && genres.length > 0 && rights && !uploading && !cover.slot?.error && !video.slot?.error && linksValid(links);
 
   const publish = async () => {
     if (!ready || !audio.slot?.done) return;
@@ -281,7 +282,9 @@ export function Upload() {
     try {
       const id = await api.createSong({
         title: title.trim(),
-        genre,
+        genre: genres[0],
+        // A single genre needs only `genre`; several go as `genres` too.
+        ...(genres.length > 1 ? { genres } : {}),
         description: description.trim() || null,
         explicit,
         duration_seconds: length,
@@ -341,15 +344,16 @@ export function Upload() {
             )}
           </Step>
 
-          <Step n={2} title="Details" done={!!title.trim()}>
+          <Step n={2} title="Details" done={!!title.trim() && genres.length > 0}>
             <div className="space-y-4">
               <Input label="Title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="What’s it called?" />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Select label="Genre" value={genre} onChange={setGenre} options={GENRES} />
-                <div className="flex flex-col justify-end gap-2 pb-1">
-                  <Checkbox checked={explicit} onChange={setExplicit}>Explicit lyrics</Checkbox>
-                  <Checkbox checked={madeWithAi} onChange={setMadeWithAi}>Made with AI tools (like Suno)</Checkbox>
-                </div>
+              <div>
+                <p className="mb-2 text-[13px] font-medium text-muted">Genres</p>
+                <GenrePicker value={genres} onChange={setGenres} />
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                <Checkbox checked={explicit} onChange={setExplicit}>Explicit lyrics</Checkbox>
+                <Checkbox checked={madeWithAi} onChange={setMadeWithAi}>Made with AI tools (like Suno)</Checkbox>
               </div>
               <div>
                 <p className="mb-2 text-[13px] font-medium text-muted">Featuring (optional)</p>
@@ -460,7 +464,7 @@ export function Upload() {
                 {name}
               </div>
               <p className="mt-3 text-[13px] text-faint">
-                {genre}
+                {genres.join(', ') || 'No genre yet'}
                 {length ? ` · ${duration(length)}` : ''}
                 {explicit ? ' · Explicit' : ''}
                 {hook !== null ? ` · Hook at ${duration(hook)}` : ''}
@@ -477,6 +481,8 @@ export function Upload() {
                       ? 'Waiting for your files to finish uploading.'
                       : !title.trim()
                         ? 'Give your song a title.'
+                        : !genres.length
+                          ? 'Pick at least one genre.'
                         : !rights
                           ? 'Confirm you have the rights to share it.'
                           : !linksValid(links)

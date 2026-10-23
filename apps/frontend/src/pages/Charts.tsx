@@ -7,7 +7,7 @@ import { SongRow } from '../components/music/Song';
 import { Avatar, Button, EmptyState, Skeleton } from '../components/ui';
 import { useChart, useTastemakers } from '../hooks/data';
 import type { ChartEntry, ChartKind, Song } from '../lib/api';
-import { count, GENRES } from '../lib/format';
+import { count, POPULAR_GENRES } from '../lib/format';
 import { useAuth } from '../store/auth';
 import { usePlayer } from '../store/player';
 
@@ -115,7 +115,7 @@ function SongChart({ kind, genre, onGenre }: { kind: ChartKind; genre: string | 
   return (
     <>
       <div className="scroll-row mb-6 gap-2">
-        {[null, ...GENRES].map((g) => (
+        {[null, ...POPULAR_GENRES].map((g) => (
           <button
             key={g ?? 'all'}
             onClick={() => onGenre(g)}

@@ -6,6 +6,8 @@ export interface Song {
   id: string;
   title: string;
   genre: string;
+  /** Up to three, the first is the main one (same as genre). */
+  genres?: string[];
   description: string | null;
   audio_url: string;
   video_url: string | null;
@@ -233,6 +235,7 @@ export const api = {
   async createSong(song: {
     title: string;
     genre: string;
+    genres?: string[];
     description: string | null;
     explicit: boolean;
     duration_seconds: number | null;
@@ -261,6 +264,7 @@ export const api = {
     changes: Partial<{
       title: string;
       genre: string;
+      genres: string[];
       description: string | null;
       explicit: boolean;
       cover_image_url: string | null;

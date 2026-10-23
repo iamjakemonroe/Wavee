@@ -8,7 +8,7 @@ import { LikeButton, PlayToggle, SongRow } from '../components/music/Song';
 import { SongMenu, shareSong } from '../components/music/SongMenu';
 import { Avatar, Button, Cover, EmptyState, Skeleton } from '../components/ui';
 import { useSong, useUserSongs } from '../hooks/data';
-import { ago, artistName, count, duration } from '../lib/format';
+import { ago, artistName, count, duration, songGenres } from '../lib/format';
 import { SONG_PLATFORMS } from '../lib/platforms';
 import { NotFound } from './NotFound';
 
@@ -44,7 +44,7 @@ export function SongPage() {
         <div className="relative grid items-end gap-8 md:grid-cols-[minmax(220px,300px)_1fr]">
           <Cover src={s.cover_image_url} title={s.title} className="aspect-square w-full max-w-[300px] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.9)]" rounded="rounded-3xl" />
           <div className="min-w-0">
-            <p className="label">Song · {s.genre}</p>
+            <p className="label">Song · {songGenres(s).join(', ')}</p>
             <h1 className="mt-3 break-words text-[34px] leading-[1.05] sm:text-5xl">
               {s.title}
               {s.explicit && <span className="ml-3 rounded-md bg-line/10 px-1.5 align-middle text-xs font-semibold text-muted">E</span>}

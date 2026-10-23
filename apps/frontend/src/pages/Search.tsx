@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { SongRow } from '../components/music/Song';
 import { Avatar, Bars, EmptyState, Skeleton } from '../components/ui';
 import { useSearch } from '../hooks/data';
-import { count, GENRES } from '../lib/format';
+import { count, GENRES, POPULAR_GENRES } from '../lib/format';
 
 export function Search() {
   const [params, setParams] = useSearchParams();
@@ -37,7 +37,7 @@ export function Search() {
         <section className="mt-4">
           <h2 className="mb-4 text-lg">Browse by genre</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {GENRES.slice(0, 20).map((g, i) => (
+            {POPULAR_GENRES.map((g, i) => (
               <button
                 key={g}
                 onClick={() => setQuery(g)}
@@ -48,6 +48,18 @@ export function Search() {
               >
                 <span className="relative">{g}</span>
                 <Bars className="absolute -bottom-2 -right-2 h-16 w-16 rotate-[-12deg] opacity-25 transition duration-500 group-hover:opacity-50" />
+              </button>
+            ))}
+          </div>
+          <h2 className="mb-4 mt-10 text-lg">More genres</h2>
+          <div className="flex flex-wrap gap-2">
+            {GENRES.filter((g) => !(POPULAR_GENRES as readonly string[]).includes(g)).map((g) => (
+              <button
+                key={g}
+                onClick={() => setQuery(g)}
+                className="h-9 rounded-full border border-line/10 px-4 text-[13px] text-muted transition hover:border-line/25 hover:text-ink"
+              >
+                {g}
               </button>
             ))}
           </div>

@@ -2,12 +2,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { LuImage } from 'react-icons/lu';
 import { FeaturePicker, type Person } from '../components/music/FeaturePicker';
+import { GenrePicker } from '../components/music/GenrePicker';
 import { HookPicker } from '../components/music/HookPicker';
 import { LinksEditor, linksValid } from '../components/music/Links';
-import { Button, Checkbox, Cover, Input, Modal, Select, Textarea } from '../components/ui';
+import { Button, Checkbox, Cover, Input, Modal, Textarea } from '../components/ui';
 import { keys, patchSong, useSong } from '../hooks/data';
 import { api, type Song } from '../lib/api';
-import { GENRES } from '../lib/format';
+import { songGenres } from '../lib/format';
 import { deleteMedia, uploadMedia } from '../lib/media';
 import { SONG_PLATFORMS, type Links } from '../lib/platforms';
 import { toast } from '../store/toast';
@@ -16,7 +17,7 @@ import { toast } from '../store/toast';
 export function EditSong({ song, onClose }: { song: Song; onClose: () => void }) {
   const client = useQueryClient();
   const [title, setTitle] = useState(song.title);
-  const [genre, setGenre] = useState(song.genre);
+  const [genres, setGenres] = useState<string[]>(songGenres(song));
   const [description, setDescription] = useState(song.description ?? '');
   const [explicit, setExplicit] = useState(song.explicit);
   const [madeWithAi, setMadeWithAi] = useState(!!song.made_with_ai);
@@ -71,7 +72,9 @@ export function EditSong({ song, onClose }: { song: Song; onClose: () => void })
     try {
       const changes = {
         title: title.trim(),
-        genre,
+        genre: genres[0] ?? song.genre,
+        // Cards that carry `genres` mean the database keeps several; older ones get just the main.
+        ...(song.genres !== undefined || genres.length > 1 ? { genres } : {}),
         description: description.trim() || null,
         explicit,
         ...(hook !== (song.hook_start ?? null) ? { hook_start: hook !== null && length && hook < length ? hook : null } : {}),
@@ -88,7 +91,8 @@ export function EditSong({ song, onClose }: { song: Song; onClose: () => void })
       }
       patchSong(client, song.id, {
         title: changes.title,
-        genre,
+        genre: changes.genre,
+        genres,
         description: changes.description,
         explicit,
         made_with_ai: madeWithAi,
@@ -127,7 +131,10 @@ export function EditSong({ song, onClose }: { song: Song; onClose: () => void })
         </div>
       </div>
       <div className="mt-4 space-y-4">
-        <Select label="Genre" value={genre} onChange={setGenre} options={GENRES.includes(genre as (typeof GENRES)[number]) ? GENRES : [genre, ...GENRES]} />
+        <div>
+          <p className="mb-2 text-[13px] font-medium text-muted">Genres</p>
+          <GenrePicker value={genres} onChange={setGenres} />
+        </div>
         <Textarea label="About this song" value={description} maxLength={1000} rows={4} onChange={(e) => setDescription(e.target.value)} />
         <Checkbox checked={explicit} onChange={setExplicit}>Explicit lyrics</Checkbox>
         <Checkbox checked={madeWithAi} onChange={setMadeWithAi}>Made with AI tools (like Suno)</Checkbox>
@@ -156,7 +163,7 @@ export function EditSong({ song, onClose }: { song: Song; onClose: () => void })
           )}
         </div>
       </div>
-      <Button variant="primary" className="mt-6 w-full" loading={saving} disabled={!title.trim() || uploading || (links !== null && !linksValid(links))} onClick={() => void save()}>
+      <Button variant="primary" className="mt-6 w-full" loading={saving} disabled={!title.trim() || !genres.length || uploading || (links !== null && !linksValid(links))} onClick={() => void save()}>
         Save changes
       </Button>
     </Modal>

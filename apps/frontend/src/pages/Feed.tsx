@@ -9,7 +9,7 @@ import { AiTag, Artists } from '../components/music/Artists';
 import { Bars, Button, Cover, EmptyState, IconButton, Spinner } from '../components/ui';
 import { useFeed } from '../hooks/data';
 import { api, type Song } from '../lib/api';
-import { count, duration } from '../lib/format';
+import { count, duration, songGenres } from '../lib/format';
 import { currentSong, usePlayer } from '../store/player';
 
 /** One song, filling the screen. */
@@ -45,7 +45,7 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
               {song.made_with_ai && <AiTag />}
             </span>
             <p className="mt-2 text-[13px] text-faint">
-              {song.genre} · {count(song.plays_count)} plays
+              {songGenres(song).join(', ')} · {count(song.plays_count)} plays
               {song.hook_start ? <> · from the hook at {duration(song.hook_start)}</> : null}
             </p>
           </div>
