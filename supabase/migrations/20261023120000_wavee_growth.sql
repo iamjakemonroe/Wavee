@@ -12,6 +12,8 @@
 --   likes on songs that go on to 250+ plays are a listener's "hits": the tastemaker leaderboard.
 -- - get_chart: Top, Rising and Fresh, from the last seven days of counted plays. Plays by the
 --   artist don't count, and nothing paid ever will.
+-- - users.verified_at: a badge moderators give real artists (set_verified), so fans can tell a
+--   famous artist's page from someone pretending to be them.
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Links
@@ -102,15 +104,26 @@ begin
   end if;
 end $$;
 
--- Song cards carry the hook so the feed can start there.
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Verified artists
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Set only by moderators (through set_verified) or the service role: clients can't write it.
+alter table public.users add column if not exists verified_at timestamptz;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Song cards: the hook (the feed starts there) and the artist's badge
+-- ─────────────────────────────────────────────────────────────────────────────
+
 do $$
+declare
+  v_rel oid := (select typrelid from pg_type where oid = 'public.song_card'::regtype);
 begin
-  if not exists (
-    select 1 from pg_attribute
-    where attrelid = (select typrelid from pg_type where oid = 'public.song_card'::regtype)
-      and attname = 'hook_start' and not attisdropped
-  ) then
+  if not exists (select 1 from pg_attribute where attrelid = v_rel and attname = 'hook_start' and not attisdropped) then
     alter type public.song_card add attribute hook_start integer;
+  end if;
+  if not exists (select 1 from pg_attribute where attrelid = v_rel and attname = 'artist_verified' and not attisdropped) then
+    alter type public.song_card add attribute artist_verified boolean;
   end if;
 end $$;
 
@@ -125,7 +138,8 @@ as $$
          s.duration_seconds, s.explicit, s.plays_count, s.likes_count, s.created_at,
          u.id, u.username, u.display_name, u.avatar_url,
          exists (select 1 from public.likes l where l.user_id = auth.uid() and l.song_id = s.id),
-         s.hook_start
+         s.hook_start,
+         u.verified_at is not null
   from unnest(p_ids) with ordinality as t(song_id, ord)
   join public.songs s on s.id = t.song_id
   join public.users u on u.id = s.user_id
@@ -373,7 +387,8 @@ as $$
              where f.follower_id = auth.uid() and f.following_id = u.id
            ),
            'links', u.links,
-           'ear', public.wavee_ear(u.id)
+           'ear', public.wavee_ear(u.id),
+           'verified', u.verified_at is not null
          )
   from public.users u
   where lower(u.username) = lower(btrim(p_username))
@@ -417,6 +432,31 @@ begin
   return v_result;
 end $$;
 
+-- Moderators verify (or unverify) an artist; each change is logged.
+create or replace function public.set_verified(p_user uuid, p_verified boolean, p_note text default null)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_verified boolean;
+begin
+  perform public.wavee_require_admin();
+  update public.users
+     set verified_at = case when p_verified then coalesce(verified_at, now()) end
+   where id = p_user
+  returning verified_at is not null into v_verified;
+  if not found then
+    raise exception 'User not found' using errcode = 'P0002';
+  end if;
+  insert into public.moderation_log (admin_id, target_type, target_id, action, note)
+  values (auth.uid(), 'user', p_user, case when v_verified then 'verified' else 'unverified' end,
+          nullif(btrim(p_note), ''));
+  return jsonb_build_object('verified', v_verified);
+end $$;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Privileges
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -429,6 +469,9 @@ revoke all on function public.wavee_song_cards(uuid[]) from public, anon, authen
 
 -- wavee_link_domains and wavee_links_ok keep their default execute for everyone: check
 -- constraints call them as whichever role writes the row.
+
+revoke all on function public.set_verified(uuid, boolean, text) from public, anon, authenticated;
+grant execute on function public.set_verified(uuid, boolean, text) to authenticated;
 
 revoke all on function public.get_chart(text, text, integer) from public, anon, authenticated;
 revoke all on function public.get_tastemakers(integer) from public, anon, authenticated;

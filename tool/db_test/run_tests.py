@@ -1087,13 +1087,13 @@ def run_contract_tests(db, c):
              set(song) == {"id", "title", "genre", "description", "audio_url", "video_url", "cover_image_url",
                            "duration_seconds", "explicit", "plays_count", "likes_count", "created_at", "artist_id",
                            "artist_username", "artist_display_name", "artist_avatar_url", "liked", "hook_start",
-                           "links"}, sorted(song))
+                           "artist_verified", "links"}, sorted(song))
         c.ok("get_song of an unknown id is null", db.anon("select public.get_song(%s)", (uid(),))[0][0] is None)
         prof = db.anon("select public.get_profile('NEWBIE')")[0][0]
         c.ok("get_profile is case-insensitive and has the contract keys",
              prof and set(prof) == {"id", "username", "display_name", "avatar_url", "bio", "is_artist", "music_roles",
                                     "followers_count", "following_count", "songs_count", "is_following", "links",
-                                    "ear"}, prof)
+                                    "ear", "verified"}, prof)
         c.ok("get_profile of an unknown user is null",
              db.anon("select public.get_profile('nobody_here')")[0][0] is None)
 
@@ -1205,6 +1205,27 @@ def run_contract_tests(db, c):
         db.service("update public.songs set status = 'active' where id = %s", (a,))
         c.ok("an unknown chart reads as top",
              len(db.anon("select public.get_chart('nonsense', 'chart test', 10)")[0][0]) == 3)
+
+        # Verified artists: only moderators give the badge.
+        name = username_of(ARTIST)
+        c.ok("artists start unverified", db.anon("select public.get_profile(%s)", (name,))[0][0]["verified"] is False)
+        c.raises("an artist can't verify themselves (column)",
+                 lambda: db.user(ARTIST, "update public.users set verified_at = now() where id = %s", (ARTIST,)), "42501")
+        c.raises("an artist can't verify themselves (function)",
+                 lambda: db.user(ARTIST, "select public.set_verified(%s, true)", (ARTIST,)), "42501")
+        c.raises("anon can't call set_verified",
+                 lambda: db.anon("select public.set_verified(%s, true)", (ARTIST,)), "42501")
+        r = db.user(ADMIN, "select public.set_verified(%s, true, 'label confirmed by email')", (ARTIST,))[0][0]
+        c.ok("a moderator verifies an artist", r == {"verified": True}, r)
+        c.ok("the profile shows the badge", db.anon("select public.get_profile(%s)", (name,))[0][0]["verified"] is True)
+        cards = [r for r in db.anon("select id, artist_verified from public.get_new_releases(100)") if str(r[0]) == sid]
+        c.ok("their song cards carry the badge", cards and cards[0][1] is True, cards)
+        c.ok("the decision is logged",
+             db.su("select count(*) from public.moderation_log where target_id = %s and action = 'verified'",
+                   (ARTIST,))[0][0] == 1)
+        db.user(ADMIN, "select public.set_verified(%s, false)", (ARTIST,))
+        c.ok("a moderator can take the badge away",
+             db.anon("select public.get_profile(%s)", (name,))[0][0]["verified"] is False)
 
     c.safe("growth", growth)
 

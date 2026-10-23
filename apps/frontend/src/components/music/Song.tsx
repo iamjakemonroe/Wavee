@@ -8,6 +8,7 @@ import { withAccount } from '../../store/auth';
 import { currentSong, usePlayer } from '../../store/player';
 import { Bars, Cover, IconButton, Spinner } from '../ui';
 import { SongMenu } from './SongMenu';
+import { Verified } from './Verified';
 
 /** Whether [song] is the one playing, and whether it's sounding. */
 export function useIsCurrent(song: Song) {
@@ -130,9 +131,10 @@ export function SongRow({
         <Link
           to={`/u/${song.artist_username}`}
           onClick={(e) => e.stopPropagation()}
-          className="truncate text-[13px] text-muted transition hover:text-ink hover:underline"
+          className="inline-flex max-w-full items-center gap-1 truncate text-[13px] text-muted transition hover:text-ink hover:underline"
         >
-          {artistName(song)}
+          <span className="truncate">{artistName(song)}</span>
+          {song.artist_verified && <Verified className="h-3.5 w-3.5" />}
         </Link>
       </div>
       <span className="hidden text-[13px] tabular-nums text-faint md:block">{count(song.plays_count)} plays</span>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LuCalendar, LuFilm, LuHeadphones, LuHeart, LuImage, LuShare2 } from 'react-icons/lu';
 import { Link, useParams } from 'react-router-dom';
 import { LinkPills } from '../components/music/Links';
+import { Verified } from '../components/music/Verified';
 import { ShareCardDialog } from '../components/music/ShareCard';
 import { LikeButton, PlayToggle, SongRow } from '../components/music/Song';
 import { SongMenu, shareSong } from '../components/music/SongMenu';
@@ -51,6 +52,7 @@ export function SongPage() {
             <Link to={`/u/${s.artist_username}`} className="mt-5 inline-flex items-center gap-3 hover:underline">
               <Avatar src={s.artist_avatar_url} name={artistName(s)} className="h-8 w-8 text-xs" />
               <span className="font-medium">{artistName(s)}</span>
+              {s.artist_verified && <Verified className="h-4 w-4" />}
             </Link>
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-muted">
               <span className="inline-flex items-center gap-1.5"><LuHeadphones /> {count(s.plays_count)} plays</span>

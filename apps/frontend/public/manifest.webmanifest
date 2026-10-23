@@ -1,7 +1,7 @@
 {
   "name": "Wavee",
   "short_name": "Wavee",
-  "description": "Stream, share and discover music from new artists.",
+  "description": "Hear it first: new music straight from the artists.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -55,8 +55,8 @@ const og = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" v
 ${glowBars}
 <g transform="translate(80 150)">${tile(96).replace(/<\/?svg[^>]*>/g, '').replace('id="g"', 'id="g2"').replace('url(#g)', 'url(#g2)')}</g>
 <text x="80" y="340" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="92" font-weight="700" letter-spacing="-3" fill="#eef1f5">Wavee</text>
-<text x="82" y="408" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="36" font-weight="500" fill="url(#t)">Music from new voices.</text>
-<text x="82" y="520" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="22" fill="#8a93a6">wavee.kaivon.app · a Kaivon product</text>
+<text x="82" y="408" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="36" font-weight="500" fill="url(#t)">Hear it first.</text>
+<text x="82" y="520" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="22" fill="#8a93a6">New music straight from the artists · wavee.kaivon.app</text>
 </svg>`;
 await sharp(Buffer.from(og)).png().toFile(new URL('og.png', pub).pathname);
 console.log('Wrote the favicon, icons and og.png in public/');

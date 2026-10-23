@@ -41,13 +41,13 @@ export function AuthLayout({
               ))}
             </div>
             <p className="max-w-md text-[28px] font-semibold leading-tight tracking-tight">
-              Music from new voices,
+              New music, straight from the artists.
               <br />
-              <span className="text-brand">the moment it’s made.</span>
+              <span className="text-brand">Hear it first.</span>
             </p>
             <p className="mt-4 max-w-sm text-sm leading-6 text-muted">
-              Upload your songs and videos, find artists before everyone else does, and build the playlists your
-              friends steal.
+              From rising names to the biggest stars: drop your songs and videos where fans hear them first, climb the
+              weekly charts, and build the playlists your friends steal.
             </p>
           </div>
           <p className="text-[12px] text-faint">Wavee is a Kaivon product.</p>

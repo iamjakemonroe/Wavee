@@ -22,6 +22,8 @@ export interface Song {
   liked: boolean;
   /** Where the best part starts, in seconds (the feed plays from here). */
   hook_start: number | null;
+  /** The artist has the verified badge. */
+  artist_verified?: boolean;
   position?: number;
   /** Only on a single song (get_song). */
   links?: Links;
@@ -45,6 +47,7 @@ export interface Profile extends UserCard {
   links: Links;
   /** Tastemaker record: likes given early, and how many of those songs became hits. */
   ear: { early_likes: number; hits: number };
+  verified?: boolean;
 }
 
 export interface ChartEntry {
@@ -390,6 +393,12 @@ export const api = {
     const { error } = await supabase.from('bug_reports').update({ status }).eq('id', id);
     if (error) throw new ApiError(friendly(error.message));
   },
+  setVerified: async (userId: string, verified: boolean, note: string) =>
+    one(await rpc<{ verified: boolean }[] | { verified: boolean }>('set_verified', {
+      p_user: userId,
+      p_verified: verified,
+      p_note: note || null,
+    })),
   resolveReport: (id: string, status: string, note: string) =>
     rpc<void>('resolve_report', { p_report: id, p_status: status, p_note: note }),
   moderateSong: (id: string, status: 'active' | 'hidden' | 'removed', note: string) =>

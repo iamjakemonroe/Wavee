@@ -278,7 +278,7 @@ export const guidelines: LegalDoc = {
       heading: 'Be honest',
       body: [
         [
-          'Don’t pretend to be another artist, label or person.',
+          'Don’t pretend to be another artist, label or person. The verified badge is given only by Wavee, after we confirm an artist is who they say they are.',
           'Don’t fake plays, likes or follows, or pay for them.',
           'Use titles, genres and descriptions that match the music: no misleading tags or spam.',
         ],

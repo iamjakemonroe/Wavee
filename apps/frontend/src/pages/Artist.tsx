@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { LuEar, LuFlag, LuMusic, LuPencil, LuPlay, LuShare2, LuUserCheck, LuUserPlus } from 'react-icons/lu';
 import { Link, useParams } from 'react-router-dom';
 import { LinkPills } from '../components/music/Links';
+import { Verified } from '../components/music/Verified';
 import { SongRow } from '../components/music/Song';
 import { Menu, ReportDialog } from '../components/music/SongMenu';
 import { Avatar, Button, Cover, EmptyState, Skeleton } from '../components/ui';
@@ -63,7 +64,10 @@ export function Artist() {
           <Avatar src={p.avatar_url} name={name} className="h-36 w-36 text-5xl shadow-lift ring-4 ring-bg sm:h-44 sm:w-44" />
           <div className="min-w-0">
             <p className="label">{p.is_artist ? 'Artist' : 'Listener'}{p.music_roles?.length ? ` · ${p.music_roles.join(', ')}` : ''}</p>
-            <h1 className="mt-2 break-words text-[34px] leading-tight sm:text-5xl">{name}</h1>
+            <h1 className="mt-2 break-words text-[34px] leading-tight sm:text-5xl">
+              {name}
+              {p.verified && <Verified className="ml-2 inline h-7 w-7 align-[-0.1em] sm:h-9 sm:w-9" />}
+            </h1>
             <p className="mt-1 text-muted">@{p.username}</p>
             {p.bio && <p className="mt-3 max-w-xl text-[15px] leading-6 text-ink/80">{p.bio}</p>}
             {p.ear?.early_likes > 0 && (

@@ -87,7 +87,9 @@ See `docs/GROWTH.md` for why each of these exists.
   - Fresh covers songs released in the last 14 days.
   - Genres match loosely ("hip hop" = "Hip-Hop").
 
-`song_card` gains `hook_start` (last).
+- **Verified artists:** `users.verified_at` is set only by `set_verified(p_user, p_verified, p_note)` (admins; logged in `moderation_log`) or the service role. `get_profile` returns `verified`.
+
+`song_card` gains `hook_start` and `artist_verified` (last, in that order).
 
 ## Web app
 

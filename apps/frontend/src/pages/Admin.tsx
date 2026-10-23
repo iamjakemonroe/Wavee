@@ -1,9 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useState } from 'react';
-import { LuBug, LuExternalLink, LuFlag, LuShield } from 'react-icons/lu';
+import { LuBadgeCheck, LuBug, LuExternalLink, LuFlag, LuShield } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
-import { Button, EmptyState, Skeleton, Spinner } from '../components/ui';
+import { Verified } from '../components/music/Verified';
+import { Avatar, Button, EmptyState, Input, Skeleton, Spinner } from '../components/ui';
 import { api, type Report } from '../lib/api';
 import { ago } from '../lib/format';
 import { useAuth } from '../store/auth';
@@ -34,7 +35,7 @@ function Pills<T extends string>({ value, options, onChange }: { value: T; optio
 export function Admin() {
   const account = useAuth((s) => s.account);
   const loading = useAuth((s) => s.loading);
-  const [tab, setTab] = useState<'reports' | 'bugs'>('reports');
+  const [tab, setTab] = useState<'reports' | 'bugs' | 'artists'>('reports');
   if (loading) return <Spinner className="mx-auto mt-24 block h-8 w-8 text-muted" />;
   if (!account?.is_admin) return <EmptyState icon={<LuShield />} title="Moderators only" text="This page is for the Wavee team." />;
   return (
@@ -45,6 +46,7 @@ export function Admin() {
           [
             ['reports', 'Reports', <LuFlag key="f" />],
             ['bugs', 'Bug reports', <LuBug key="b" />],
+            ['artists', 'Verify artists', <LuBadgeCheck key="v" />],
           ] as const
         ).map(([id, label, icon]) => (
           <button
@@ -60,7 +62,7 @@ export function Admin() {
           </button>
         ))}
       </div>
-      {tab === 'reports' ? <Reports /> : <Bugs />}
+      {tab === 'reports' ? <Reports /> : tab === 'bugs' ? <Bugs /> : <VerifyArtists />}
     </div>
   );
 }
@@ -214,5 +216,103 @@ function Bugs() {
         )}
       </div>
     </>
+  );
+}
+
+/** Look someone up and give (or take away) the verified badge. Verify only after checking it's
+ * really them: an email from their official address or management, or a post on their official
+ * account mentioning their Wavee username. */
+function VerifyArtists() {
+  const [query, setQuery] = useState('');
+  const [username, setUsername] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const client = useQueryClient();
+  const profile = useQuery({
+    queryKey: ['profile', username],
+    queryFn: () => api.profile(username),
+    enabled: !!username,
+  });
+  const p = profile.data;
+
+  const set = async (verified: boolean) => {
+    if (!p) return;
+    setBusy(true);
+    try {
+      await api.setVerified(p.id, verified, note);
+      await client.invalidateQueries({ queryKey: ['profile', username] });
+      toast(verified ? `${p.display_name || p.username} is verified` : 'Badge removed', 'success');
+      setNote('');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="max-w-xl">
+      <p className="mb-5 text-sm leading-6 text-muted">
+        Verify an artist only after checking it’s really them: an email from their official address or management, or a
+        post on their official account that mentions their Wavee username. Write down how you checked.
+      </p>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setUsername(query.trim().replace(/^@/, '').toLowerCase());
+        }}
+      >
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Username"
+          autoCapitalize="off"
+          className="h-11 flex-1 rounded-xl border border-line/10 bg-line/[0.03] px-3.5 text-sm placeholder:text-faint focus:border-violet/60 focus:outline-none"
+        />
+        <Button type="submit" variant="secondary">
+          Look up
+        </Button>
+      </form>
+      {username && (
+        <div className="card mt-5 p-5">
+          {profile.isLoading ? (
+            <Spinner className="h-6 w-6 text-muted" />
+          ) : p ? (
+            <>
+              <div className="flex items-center gap-4">
+                <Avatar src={p.avatar_url} name={p.display_name || p.username} className="h-14 w-14 text-lg" />
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 font-medium">
+                    {p.display_name || p.username}
+                    {p.verified && <Verified className="h-4 w-4" />}
+                  </p>
+                  <p className="text-[13px] text-muted">
+                    @{p.username} · {p.followers_count} followers · {p.songs_count} songs
+                  </p>
+                </div>
+              </div>
+              <Input className="mt-4" placeholder="How you checked (kept in the log)" value={note} onChange={(e) => setNote(e.target.value)} />
+              <div className="mt-4 flex gap-2">
+                {p.verified ? (
+                  <Button variant="danger" loading={busy} onClick={() => void set(false)}>
+                    Remove the badge
+                  </Button>
+                ) : (
+                  <Button variant="brand" icon={<LuBadgeCheck />} loading={busy} disabled={!note.trim()} onClick={() => void set(true)}>
+                    Verify
+                  </Button>
+                )}
+                <Link to={`/u/${p.username}`} className="ml-auto">
+                  <Button variant="ghost">Open profile</Button>
+                </Link>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted">Nobody has that username.</p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

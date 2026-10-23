@@ -86,8 +86,8 @@ function Hero({ trending }: { trending?: Song[] }) {
             transition={{ delay: 0.25, duration: 0.7 }}
             className="mt-5 max-w-md text-[16px] leading-7 text-muted"
           >
-            Wavee is where new artists upload their songs and videos, and where listeners find them before everyone
-            else. Free to listen, free to upload.
+            Wavee is where artists drop their songs and videos, from rising names to the biggest stars, and where fans
+            hear them first. Free to listen, free to upload.
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mt-8 flex flex-wrap gap-3">
             <Button

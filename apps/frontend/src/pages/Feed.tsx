@@ -5,6 +5,7 @@ import { LuPause, LuPlay, LuShare2 } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { LikeButton, useIsCurrent } from '../components/music/Song';
 import { SongMenu, shareSong } from '../components/music/SongMenu';
+import { Verified } from '../components/music/Verified';
 import { Bars, Button, Cover, EmptyState, IconButton, Spinner } from '../components/ui';
 import { useFeed } from '../hooks/data';
 import { api, type Song } from '../lib/api';
@@ -41,6 +42,7 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
             <Link to={`/u/${song.artist_username}`} className="mt-1 flex items-center gap-2 text-muted hover:text-ink">
               {playing && <Bars playing className="h-3.5 w-3.5" />}
               {artistName(song)}
+              {song.artist_verified && <Verified className="h-4 w-4" />}
             </Link>
             <p className="mt-2 text-[13px] text-faint">
               {song.genre} · {count(song.plays_count)} plays

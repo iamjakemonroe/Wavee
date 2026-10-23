@@ -4,7 +4,9 @@
 
 ## The bet
 
-Wavee can't outspend TikTok or out-catalogue Spotify, Audiomack and Boomplay. It wins on one thing: **finding new artists before everyone else.**
+**Slogan: "Hear it first."** Wavee is where artists drop new music and fans hear it first, from rising names to the biggest stars. Any artist can post, famous or new. Verified badges (given by moderators after checking it's really them) protect famous artists from impostors.
+
+Wavee can't outspend TikTok or out-catalogue Spotify, Audiomack and Boomplay. It wins on one thing: **hearing new music first.** That means exclusive first listens from established artists, and discovering rising ones before everyone else.
 
 Wavee has two sides: artists and listeners. Artists bring their fans, so **recruit artists first**. Then make every song an artist shares bring listeners back to Wavee.
 
@@ -21,6 +23,13 @@ The starting market is Nigeria and its scenes (Afrobeats, Amapiano, Alté, stree
 | **Charts** (Top 50, Rising, Fresh, and a chart per genre) | Fresh content to post every week, plus a reason for artists to share ("I'm #3 on Wavee"). Charts count only real listens: never the artist's own plays, never paid ones. |
 | **Tastemakers** (the "Early Ear" badge and leaderboard) | Listeners score when songs they liked early, after really listening, become hits. Digging for new music becomes a game. |
 | **Shared-link previews** | Every song and artist link shows its own cover and title in WhatsApp, X and iMessage. |
+
+## Bringing established artists
+
+- Offer **first-listen drops**: an artist premieres a song on Wavee a day before other platforms, and the story card says "Out first on Wavee".
+- Verify them quickly and publicly: the badge, plus a welcome post from Wavee's accounts.
+- Show them what they get that other platforms don't: who listened past the hook, tastemakers who found them early, and a link in bio that leads to every platform.
+- Start with artists who have real fans but no label machine behind them; they gain the most and answer DMs.
 
 ## The first 90 days
 
