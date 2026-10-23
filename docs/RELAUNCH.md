@@ -91,6 +91,25 @@ See `docs/GROWTH.md` for why each of these exists.
 
 `song_card` gains `hook_start` and `artist_verified` (last, in that order).
 
+## Artists (migration `supabase/migrations/20261023140000_wavee_artists.sql`)
+
+- **Music roles:** `users.music_roles` holds keys: singer, rapper, producer, songwriter, dj, instrumentalist, engineer, manager. The old app's five-role rule is replaced; old values carry over (audio_engineer becomes engineer, and "artist" is dropped because `is_artist` covers it).
+- **Featured artists:** stored in `song_artists` (song, user, position, status pending, accepted or declined). Clients only read it.
+  - `set_song_features(p_song, p_users uuid[])`: the owner lists up to 10 Wavee users, in order. New names are asked, names left out are removed, and anyone who declined isn't asked again. Rate limited to 60 invitations an hour.
+  - `respond_to_feature(p_song, p_accept)`: the invited artist accepts or declines, or later takes their name off.
+  - `my_feature_invites()`: your pending invitations, as song cards.
+  - `get_song_credits(p_song)`: everyone asked and their status (owner and admins).
+  - `get_user_appearances(p_user, p_limit, p_offset)`: songs someone is featured on.
+  - Song cards carry `features` (accepted only, in order). The app shows them after the uploader: "Wavee, Jake, Drake".
+  - Search finds songs by their featured artists too.
+- **The official account:** `users.is_official`, set by admins with `set_official(p_user, p_official)` and logged. Its songs:
+  - stay out of `get_trending`, the charts and tastemaker hits;
+  - rank 2.5 points lower in `get_feed`;
+  - carry `artist_official` on cards; `get_profile` returns `official`.
+- **Made with AI:** `songs.made_with_ai`, set by the uploader and shown on the song (`made_with_ai` on cards).
+
+`song_card` gains `features`, `artist_official` and `made_with_ai` (last, in that order).
+
 ## Web app
 
 Pages: landing (signed out: trending tracks you can play without an account), Home (For you, Trending, New releases, Artists), Feed (vertical, swipe, from each song's hook), Charts (Top 50, Rising, Fresh, Tastemakers), Search, Library (Liked, Playlists, Uploads, Following), Upload (audio, details, cover, optional music video, rights confirmation), Song, Artist (`/u/:username`), Playlist, Settings (profile, account, password, delete account), Sign in, Sign up, Forgot password, Reset password, Check your email, Terms, Privacy, Copyright, Community guidelines, Report a bug, Admin (reports, bug reports), 404.

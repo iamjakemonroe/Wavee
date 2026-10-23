@@ -15,7 +15,7 @@ import {
   LuUpload,
 } from 'react-icons/lu';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useMyPlaylists } from '../../hooks/data';
+import { useFeatureInvites, useMyPlaylists } from '../../hooks/data';
 import { useAuth } from '../../store/auth';
 import { usePlayer } from '../../store/player';
 import { useToasts } from '../../store/toast';
@@ -170,10 +170,11 @@ function TopBar() {
 }
 
 function MobileNav() {
+  const invites = useFeatureInvites().data?.length ?? 0;
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(64px+var(--sab))] grid-cols-5 border-t border-line/[0.06] bg-bg pb-[var(--sab)] pl-[var(--sal)] pr-[var(--sar)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 grid h-[var(--nav-h)] grid-cols-5 border-t border-line/[0.06] bg-bg pb-[var(--nav-pad)] pl-[var(--sal)] pr-[var(--sar)] lg:hidden"
     >
       {nav.map((n) => (
         <NavLink
@@ -181,10 +182,15 @@ function MobileNav() {
           to={n.to}
           end={n.end}
           className={({ isActive }) =>
-            clsx('flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition', isActive ? 'text-ink' : 'text-faint')
+            clsx('flex flex-col items-center justify-end gap-0.5 pb-1 text-[11px] font-medium transition', isActive ? 'text-ink' : 'text-faint')
           }
         >
-          <span className="text-[21px]">{n.icon}</span>
+          <span className="relative text-[22px]">
+            {n.icon}
+            {n.to === '/library' && invites > 0 && (
+              <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-teal ring-2 ring-bg" aria-label={`${invites} requests`} />
+            )}
+          </span>
           {n.label}
         </NavLink>
       ))}
@@ -198,7 +204,7 @@ function Toasts() {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--player-h)+80px+var(--sab))] z-[90] flex flex-col items-center gap-2 px-4 lg:bottom-[calc(var(--player-h)+20px)]"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--player-h)+var(--nav-h)+16px)] z-[90] flex flex-col items-center gap-2 px-4 lg:bottom-[calc(var(--player-h)+20px)]"
     >
       <AnimatePresence>
         {toasts.map((t) => (
@@ -300,7 +306,7 @@ export function Shell({ children }: { children?: ReactNode }) {
             className={clsx(
               'mx-auto w-full max-w-[1400px] px-4 pt-4 sm:px-6 lg:pb-[calc(var(--player-h)+40px)]',
               // Room under the last thing on the page for the tabs, the home bar and the player.
-              feed ? 'pb-0' : 'pb-[calc(var(--player-h)+64px+var(--sab)+32px)]',
+              feed ? 'pb-0' : 'pb-[calc(var(--player-h)+var(--nav-h)+32px)]',
             )}
           >
             {children ?? <Outlet />}

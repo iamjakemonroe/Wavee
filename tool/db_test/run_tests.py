@@ -1087,13 +1087,13 @@ def run_contract_tests(db, c):
              set(song) == {"id", "title", "genre", "description", "audio_url", "video_url", "cover_image_url",
                            "duration_seconds", "explicit", "plays_count", "likes_count", "created_at", "artist_id",
                            "artist_username", "artist_display_name", "artist_avatar_url", "liked", "hook_start",
-                           "artist_verified", "links"}, sorted(song))
+                           "artist_verified", "features", "artist_official", "made_with_ai", "links"}, sorted(song))
         c.ok("get_song of an unknown id is null", db.anon("select public.get_song(%s)", (uid(),))[0][0] is None)
         prof = db.anon("select public.get_profile('NEWBIE')")[0][0]
         c.ok("get_profile is case-insensitive and has the contract keys",
              prof and set(prof) == {"id", "username", "display_name", "avatar_url", "bio", "is_artist", "music_roles",
                                     "followers_count", "following_count", "songs_count", "is_following", "links",
-                                    "ear", "verified"}, prof)
+                                    "ear", "verified", "official"}, prof)
         c.ok("get_profile of an unknown user is null",
              db.anon("select public.get_profile('nobody_here')")[0][0] is None)
 
@@ -1228,6 +1228,93 @@ def run_contract_tests(db, c):
              db.anon("select public.get_profile(%s)", (name,))[0][0]["verified"] is False)
 
     c.safe("growth", growth)
+
+    # ── Artists: roles, featured artists, the official account, Made with AI ──────────
+    c.start("artists: roles, features, official account, made with AI")
+
+    def artists():
+        E = "00000000-0000-0000-0000-00000000000e"
+        c.ok("old roles carried over (audio_engineer -> engineer, artist dropped)",
+             sorted(db.su("select music_roles from public.users where id = %s", (E,))[0][0]) == ["engineer", "producer"],
+             db.su("select music_roles from public.users where id = %s", (E,))[0][0])
+        c.ok("an artist saves the new roles",
+             db.user(ARTIST, "update public.users set is_artist = true, music_roles = '{singer,rapper,dj}' where id = %s",
+                     (ARTIST,)) == 1)
+        c.raises("an unknown role is refused",
+                 lambda: db.user(ARTIST, "update public.users set music_roles = '{Singer}' where id = %s", (ARTIST,)),
+                 "23514")
+
+        sid = new_song(ARTIST, "Together", duration=200)
+        lone = signup("feat3@example.com", {"username": "feat_three"})
+        r = db.user(ARTIST, "select public.set_song_features(%s, %s::uuid[])", (sid, [LISTENER, OTHER, ARTIST, LISTENER]))[0][0]
+        c.ok("features are asked, in order, without the owner or repeats",
+             [x["user"]["id"] for x in r] == [LISTENER, OTHER] and {x["status"] for x in r} == {"pending"}, r)
+        card = lambda: db.anon("select public.get_song(%s)", (sid,))[0][0]
+        c.ok("nobody shows on the song before they accept", card()["features"] == [], card()["features"])
+        c.ok("anon can't see invitations", db.anon("select count(*) from public.song_artists where song_id = %s", (sid,))[0][0] == 0)
+        c.ok("the invited artist sees their invitation",
+             [x["id"] for x in db.user(LISTENER, "select public.my_feature_invites()")[0][0]] == [sid])
+        db.user(LISTENER, "select public.respond_to_feature(%s, true)", (sid,))
+        db.user(OTHER, "select public.respond_to_feature(%s, false)", (sid,))
+        f = card()["features"]
+        c.ok("accepted features show on the song card", [x["id"] for x in f] == [LISTENER] and "username" in f[0], f)
+        c.ok("the accepted artist's 'Appears on' lists the song",
+             sid in [str(r[0]) for r in db.anon("select id from public.get_user_appearances(%s)", (LISTENER,))])
+        r = db.user(ARTIST, "select public.set_song_features(%s, %s::uuid[])", (sid, [OTHER, LISTENER, lone]))[0][0]
+        c.ok("someone who declined isn't asked again; order follows the list",
+             [(x["user"]["id"], x["status"]) for x in r] == [(OTHER, "declined"), (LISTENER, "accepted"), (lone, "pending")], r)
+        lname = username_of(LISTENER)
+        c.ok("search finds songs by their featured artists",
+             sid in [str(r[0]) for r in db.anon("select id from public.search_songs(%s, 50)", (lname,))])
+        c.raises("only the owner sets features",
+                 lambda: db.user(OTHER, "select public.set_song_features(%s, %s::uuid[])", (sid, [lone])), "not found")
+        c.raises("a stranger can't answer for someone",
+                 lambda: db.user(OTHER, "select public.respond_to_feature(%s, true)", (str(uuid.uuid4()),)), "not found")
+        c.raises("clients can't write song_artists directly",
+                 lambda: db.user(ARTIST, "insert into public.song_artists (song_id, user_id, status) values (%s, %s, 'accepted')",
+                                 (sid, lone)), "42501", "permission")
+        many = [signup(f"many{i}@example.com", {"username": f"many_{i}"}) for i in range(11)]
+        c.raises("at most 10 features",
+                 lambda: db.user(ARTIST, "select public.set_song_features(%s, %s::uuid[])", (sid, many)), "up to 10")
+        db.user(LISTENER, "select public.respond_to_feature(%s, false)", (sid,))
+        c.ok("a featured artist can take their name off", card()["features"] == [], card()["features"])
+        db.user(ARTIST, "select public.set_song_features(%s, '{}'::uuid[])", (sid,))
+        c.ok("an empty list removes everyone",
+             db.su("select count(*) from public.song_artists where song_id = %s", (sid,))[0][0] == 0)
+
+        # The official account
+        house = signup("house@example.com", {"username": "wavee_house"})
+        c.raises("only admins mark official accounts",
+                 lambda: db.user(house, "select public.set_official(%s, true)", (house,)), "42501")
+        c.raises("nobody can make themselves official directly",
+                 lambda: db.user(house, "update public.users set is_official = true where id = %s", (house,)), "42501")
+        db.user(ADMIN, "select public.set_official(%s, true)", (house,))
+        c.ok("the profile says official", db.anon("select public.get_profile('wavee_house')")[0][0]["official"] is True)
+        hs = new_song(house, "House Song", duration=120, made_with_ai=True)
+        real = new_song(ARTIST, "Real Song", duration=120)
+        for who in (LISTENER, OTHER):
+            for song in (hs, real):
+                db.su("insert into public.plays (user_id, song_id, duration_listened, song_duration, created_at) "
+                      "values (%s, %s, 60, 120, now() - interval '2 hours')", (who, song))
+        hcard = db.anon("select public.get_song(%s)", (hs,))[0][0]
+        c.ok("its songs carry the badge and the AI label", hcard["artist_official"] is True and hcard["made_with_ai"] is True, hcard)
+        c.ok("official songs stay out of Trending",
+             hs not in card_ids(db.anon("select * from public.get_trending(100)")) and real in card_ids(db.anon("select * from public.get_trending(100)")))
+        top = [e["song"]["id"] for e in db.anon("select public.get_chart('top', null, 100)")[0][0]]
+        c.ok("official songs stay out of the charts", hs not in top and real in top, top)
+        feed = card_ids(db.user(LISTENER, "select * from public.get_feed(100, 0)"))
+        c.ok("official songs are in the feed, below real artists' songs of the same age",
+             hs in feed and feed.index(real) < feed.index(hs), (feed.index(real) if real in feed else None, feed.index(hs) if hs in feed else None))
+        fresh = new_song(house, "House Fresh", duration=120)
+        db.user(OTHER, "select public.record_play(%s, 60, 120, false, null)", (fresh,))
+        db.user(OTHER, "select public.toggle_like(%s, true)", (fresh,))
+        c.ok("liking an official song isn't an early find",
+             db.su("select early from public.likes where song_id = %s and user_id = %s", (fresh, OTHER))[0][0] is False)
+        c.ok("owners can mark a song made with AI",
+             db.user(ARTIST, "update public.songs set made_with_ai = true where id = %s", (real,)) == 1
+             and db.anon("select public.get_song(%s)", (real,))[0][0]["made_with_ai"] is True)
+
+    c.safe("artists", artists)
 
     # ── Account deletion (the delete-account Edge Function deletes the auth user) ──
     c.start("account deletion")

@@ -221,11 +221,14 @@ async function withPreview(request: Request, env: Env, path: string): Promise<Re
     const song = path.match(/^\/songs\/([0-9a-f-]{36})$/i);
     const user = path.match(/^\/u\/([a-z0-9_.]{3,30})$/i);
     if (song) {
-      const s = (await rpc('get_song', { p_id: song[1] })) as Record<string, string> | null;
+      const s = (await rpc('get_song', { p_id: song[1] })) as
+        | (Record<string, string> & { features?: { username: string; display_name: string | null }[] })
+        | null;
       if (s?.title) {
+        const by = [s.artist_display_name || s.artist_username, ...(s.features ?? []).map((f) => f.display_name || f.username)].join(', ');
         meta = {
-          title: `${s.title} · ${s.artist_display_name || s.artist_username} · Wavee`,
-          description: `Listen to ${s.title} by ${s.artist_display_name || s.artist_username} on Wavee.`,
+          title: `${s.title} · ${by} · Wavee`,
+          description: `Listen to ${s.title} by ${by} on Wavee.`,
           image: s.cover_image_url || undefined,
         };
       }

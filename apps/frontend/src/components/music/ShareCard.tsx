@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LuCopy, LuDownload, LuShare2 } from 'react-icons/lu';
 import type { Song } from '../../lib/api';
-import { artistName } from '../../lib/format';
+import { artistNames } from '../../lib/format';
 import { toast } from '../../store/toast';
 import { Button, Modal, Spinner } from '../ui';
 
@@ -194,7 +194,7 @@ export async function renderCard(song: Song, badge?: string): Promise<Blob> {
   }
   ctx.font = `500 46px ${FONT}`;
   ctx.fillStyle = 'rgba(238,241,245,0.72)';
-  ctx.fillText(lines(ctx, artistName(song), W - 200, 1)[0] ?? '', W / 2, y + 6);
+  ctx.fillText(lines(ctx, artistNames(song), W - 200, 1)[0] ?? '', W / 2, y + 6);
 
   // A waveform across the bottom.
   const bars = 46;
@@ -284,7 +284,7 @@ export function ShareCardDialog({
       await navigator.share({
         files: [file],
         title: song.title,
-        text: `${song.title} by ${artistName(song)} on Wavee: ${songUrl(song)}`,
+        text: `${song.title} by ${artistNames(song)} on Wavee: ${songUrl(song)}`,
       });
     } catch {
       // Share sheet closed.

@@ -51,3 +51,6 @@ insert into public.playlist_songs (playlist_id, song_id, created_at) values
 insert into public.plays (user_id, song_id, duration_listened, song_duration, created_at) values
   ('00000000-0000-0000-0000-00000000000b', '10000000-0000-0000-0000-000000000001', 120, 180, now() - interval '3 days'),
   (null,                                   '10000000-0000-0000-0000-000000000003',  60, 200, now() - interval '2 days');
+
+-- Roles the old app allowed (the relaunch keeps only the ones that still exist, under new names).
+update public.users set music_roles = '{artist,audio_engineer,producer}' where id = '00000000-0000-0000-0000-00000000000e';

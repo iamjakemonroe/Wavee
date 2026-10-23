@@ -2,13 +2,14 @@ import clsx from 'clsx';
 import { useState } from 'react';
 import { LuEar, LuFlag, LuMusic, LuPencil, LuPlay, LuShare2, LuUserCheck, LuUserPlus } from 'react-icons/lu';
 import { Link, useParams } from 'react-router-dom';
+import { OfficialTag } from '../components/music/Artists';
 import { LinkPills } from '../components/music/Links';
 import { Verified } from '../components/music/Verified';
 import { SongRow } from '../components/music/Song';
 import { Menu, ReportDialog } from '../components/music/SongMenu';
 import { Avatar, Button, Cover, EmptyState, Skeleton } from '../components/ui';
-import { useFollow, useProfile, useUserPlaylists, useUserSongs } from '../hooks/data';
-import { count } from '../lib/format';
+import { useAppearances, useFollow, useProfile, useUserPlaylists, useUserSongs } from '../hooks/data';
+import { count, roleLabel } from '../lib/format';
 import { ARTIST_PLATFORMS } from '../lib/platforms';
 import { useAuth, withAccount } from '../store/auth';
 import { usePlayer } from '../store/player';
@@ -23,7 +24,8 @@ export function Artist() {
   const playlists = useUserPlaylists(profile.data?.id);
   const follow = useFollow(username.toLowerCase());
   const playList = usePlayer((s) => s.playList);
-  const [tab, setTab] = useState<'songs' | 'playlists'>('songs');
+  const [tab, setTab] = useState<'songs' | 'appears' | 'playlists'>('songs');
+  const appearances = useAppearances(profile.data?.id);
   const [reporting, setReporting] = useState(false);
 
   if (profile.isLoading) {
@@ -63,12 +65,18 @@ export function Artist() {
         <div className="relative flex flex-col items-center gap-6 text-center sm:flex-row sm:items-end sm:text-left">
           <Avatar src={p.avatar_url} name={name} className="h-36 w-36 text-5xl shadow-lift ring-4 ring-bg sm:h-44 sm:w-44" />
           <div className="min-w-0">
-            <p className="label">{p.is_artist ? 'Artist' : 'Listener'}{p.music_roles?.length ? ` · ${p.music_roles.join(', ')}` : ''}</p>
+            <p className="label">
+              {p.official ? 'Official Wavee account' : p.is_artist ? 'Artist' : 'Listener'}
+              {p.music_roles?.length ? ` · ${p.music_roles.map(roleLabel).join(', ')}` : ''}
+            </p>
             <h1 className="mt-2 break-words text-[34px] leading-tight sm:text-5xl">
               {name}
               {p.verified && <Verified className="ml-2 inline h-7 w-7 align-[-0.1em] sm:h-9 sm:w-9" />}
             </h1>
-            <p className="mt-1 text-muted">@{p.username}</p>
+            <p className="mt-1 flex items-center justify-center gap-2 text-muted sm:justify-start">
+              @{p.username}
+              {p.official && <OfficialTag />}
+            </p>
             {p.bio && <p className="mt-3 max-w-xl text-[15px] leading-6 text-ink/80">{p.bio}</p>}
             {p.ear?.early_likes > 0 && (
               <Link
@@ -115,16 +123,22 @@ export function Artist() {
       </section>
 
       <div className="mb-4 flex gap-2 border-b border-line/[0.06]">
-        {(['songs', 'playlists'] as const).map((t) => (
+        {(
+          [
+            ['songs', 'Songs'],
+            ['appears', 'Appears on'],
+            ['playlists', 'Playlists'],
+          ] as const
+        ).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={clsx(
-              '-mb-px border-b-2 px-4 py-3 text-sm font-medium capitalize transition',
+              '-mb-px shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition',
               tab === t ? 'border-teal text-ink' : 'border-transparent text-muted hover:text-ink',
             )}
           >
-            {t}
+            {label}
           </button>
         ))}
       </div>
@@ -141,6 +155,17 @@ export function Artist() {
             text={mine ? 'Upload your first song and share this page with your fans.' : `${name} hasn’t uploaded anything yet.`}
             action={mine && <Link to="/upload"><Button variant="brand">Upload a song</Button></Link>}
           />
+        ))}
+
+      {tab === 'appears' &&
+        (appearances.isLoading ? (
+          <Skeleton className="h-40 w-full rounded-2xl" />
+        ) : appearances.data?.length ? (
+          appearances.data.map((s, i) => (
+            <SongRow key={s.id} song={s} list={appearances.data!} index={i} source={`${name}: appears on`} />
+          ))
+        ) : (
+          <EmptyState title="Not featured on anything yet" text={`Songs ${name} is featured on show here.`} />
         ))}
 
       {tab === 'playlists' &&

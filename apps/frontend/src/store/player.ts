@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { api, type Song } from '../lib/api';
 import { audio, sessionId } from '../lib/audio';
-import { artistName } from '../lib/format';
+import { artistNames } from '../lib/format';
 import { toast } from './toast';
 
 type Repeat = 'off' | 'all' | 'one';
@@ -300,7 +300,7 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
     if (!('mediaSession' in navigator)) return;
     navigator.mediaSession.metadata = new MediaMetadata({
       title: song.title,
-      artist: artistName(song),
+      artist: artistNames(song),
       album: 'Wavee',
       artwork: song.cover_image_url
         ? [{ src: song.cover_image_url, sizes: '512x512' }]

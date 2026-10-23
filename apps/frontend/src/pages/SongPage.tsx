@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { LuCalendar, LuFilm, LuHeadphones, LuHeart, LuImage, LuShare2 } from 'react-icons/lu';
 import { Link, useParams } from 'react-router-dom';
 import { LinkPills } from '../components/music/Links';
-import { Verified } from '../components/music/Verified';
+import { AiTag, Artists } from '../components/music/Artists';
 import { ShareCardDialog } from '../components/music/ShareCard';
 import { LikeButton, PlayToggle, SongRow } from '../components/music/Song';
 import { SongMenu, shareSong } from '../components/music/SongMenu';
@@ -48,12 +48,14 @@ export function SongPage() {
             <h1 className="mt-3 break-words text-[34px] leading-[1.05] sm:text-5xl">
               {s.title}
               {s.explicit && <span className="ml-3 rounded-md bg-line/10 px-1.5 align-middle text-xs font-semibold text-muted">E</span>}
+              {s.made_with_ai && <AiTag className="ml-2 text-xs" />}
             </h1>
-            <Link to={`/u/${s.artist_username}`} className="mt-5 inline-flex items-center gap-3 hover:underline">
-              <Avatar src={s.artist_avatar_url} name={artistName(s)} className="h-8 w-8 text-xs" />
-              <span className="font-medium">{artistName(s)}</span>
-              {s.artist_verified && <Verified className="h-4 w-4" />}
-            </Link>
+            <div className="mt-5 flex items-center gap-3">
+              <Link to={`/u/${s.artist_username}`} className="shrink-0">
+                <Avatar src={s.artist_avatar_url} name={artistName(s)} className="h-8 w-8 text-xs" />
+              </Link>
+              <Artists song={s} className="font-medium" badgeClassName="h-4 w-4" />
+            </div>
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-muted">
               <span className="inline-flex items-center gap-1.5"><LuHeadphones /> {count(s.plays_count)} plays</span>
               <span className="inline-flex items-center gap-1.5"><LuHeart /> {count(s.likes_count)} likes</span>

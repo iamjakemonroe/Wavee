@@ -29,6 +29,8 @@ export const keys = {
   search: (q: string) => ['search', q] as const,
   chart: (kind: ChartKind, genre: string | null) => ['chart', kind, genre] as const,
   tastemakers: ['tastemakers'] as const,
+  invites: ['feature-invites'] as const,
+  appearances: (id: string) => ['appearances', id] as const,
 };
 
 /** The For You feed, a page at a time: each page continues the same order. */
@@ -98,6 +100,15 @@ export const useChart = (kind: ChartKind, genre: string | null, limit = 50) =>
 
 export const useTastemakers = () =>
   useQuery({ queryKey: keys.tastemakers, queryFn: () => api.tastemakers(50), staleTime: 5 * 60_000 });
+
+/** Songs you've been asked to feature on (a dot on Library while there are any). */
+export function useFeatureInvites() {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({ queryKey: keys.invites, queryFn: api.featureInvites, enabled: signedIn, staleTime: 60_000, retry: false });
+}
+
+export const useAppearances = (userId: string | undefined) =>
+  useQuery({ queryKey: keys.appearances(userId ?? ''), queryFn: () => api.appearances(userId!), enabled: !!userId, retry: false });
 
 /** Search, a beat after the typing stops. */
 export function useSearch(query: string) {

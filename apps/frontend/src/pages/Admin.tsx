@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { useState } from 'react';
 import { LuBadgeCheck, LuBug, LuExternalLink, LuFlag, LuShield } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
+import { OfficialTag } from '../components/music/Artists';
 import { Verified } from '../components/music/Verified';
 import { Avatar, Button, EmptyState, Input, Skeleton, Spinner } from '../components/ui';
 import { api, type Report } from '../lib/api';
@@ -235,6 +236,20 @@ function VerifyArtists() {
   });
   const p = profile.data;
 
+  const setOfficial = async (official: boolean) => {
+    if (!p) return;
+    setBusy(true);
+    try {
+      await api.setOfficial(p.id, official);
+      await client.invalidateQueries({ queryKey: ['profile', username] });
+      toast(official ? 'Marked as a Wavee account' : 'No longer official', 'success');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const set = async (verified: boolean) => {
     if (!p) return;
     setBusy(true);
@@ -254,7 +269,8 @@ function VerifyArtists() {
     <div className="max-w-xl">
       <p className="mb-5 text-sm leading-6 text-muted">
         Verify an artist only after checking it’s really them: an email from their official address or management, or a
-        post on their official account that mentions their Wavee username. Write down how you checked.
+        post on their official account that mentions their Wavee username. Write down how you checked. Mark Wavee’s own
+        accounts official: their songs play in the feed but stay out of the charts and Trending.
       </p>
       <form
         className="flex gap-2"
@@ -286,6 +302,7 @@ function VerifyArtists() {
                   <p className="flex items-center gap-1.5 font-medium">
                     {p.display_name || p.username}
                     {p.verified && <Verified className="h-4 w-4" />}
+                    {p.official && <OfficialTag className="ml-1" />}
                   </p>
                   <p className="text-[13px] text-muted">
                     @{p.username} · {p.followers_count} followers · {p.songs_count} songs
@@ -303,6 +320,9 @@ function VerifyArtists() {
                     Verify
                   </Button>
                 )}
+                <Button variant="ghost" loading={busy} onClick={() => void setOfficial(!p.official)}>
+                  {p.official ? 'Not official' : 'Mark official'}
+                </Button>
                 <Link to={`/u/${p.username}`} className="ml-auto">
                   <Button variant="ghost">Open profile</Button>
                 </Link>

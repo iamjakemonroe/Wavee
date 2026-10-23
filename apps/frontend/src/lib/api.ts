@@ -24,9 +24,28 @@ export interface Song {
   hook_start: number | null;
   /** The artist has the verified badge. */
   artist_verified?: boolean;
+  /** Wavee's own account. */
+  artist_official?: boolean;
+  /** Featured artists who accepted, in credit order. */
+  features?: Featured[];
+  /** The uploader says AI tools made it. */
+  made_with_ai?: boolean;
   position?: number;
   /** Only on a single song (get_song). */
   links?: Links;
+}
+
+export interface Featured {
+  id: string;
+  username: string;
+  display_name: string | null;
+  verified: boolean;
+}
+
+/** Someone asked to feature on a song, and where they stand (the owner's view). */
+export interface Credit {
+  user: { id: string; username: string; display_name: string | null; avatar_url: string | null; verified: boolean };
+  status: 'pending' | 'accepted' | 'declined';
 }
 
 export interface UserCard {
@@ -48,6 +67,7 @@ export interface Profile extends UserCard {
   /** Tastemaker record: likes given early, and how many of those songs became hits. */
   ear: { early_likes: number; hits: number };
   verified?: boolean;
+  official?: boolean;
 }
 
 export interface ChartEntry {
@@ -225,6 +245,7 @@ export const api = {
     user_id: string;
     hook_start?: number;
     links?: Links;
+    made_with_ai?: boolean;
   }): Promise<string> {
     const { data, error } = await supabase
       .from('songs')
@@ -249,6 +270,7 @@ export const api = {
       hook_start: number | null;
       duration_seconds: number;
       links: Links;
+      made_with_ai: boolean;
     }>,
   ) {
     const { error } = await supabase.from('songs').update(changes).eq('id', id);
@@ -344,6 +366,19 @@ export const api = {
     if (error) throw new ApiError(friendly(error.message));
   },
 
+  // ── Featured artists ──────────────────────────────────────────────
+
+  /** Who's featured on your song, in order. New names are asked; names left out are removed. */
+  setSongFeatures: (songId: string, userIds: string[]) =>
+    rpc<Credit[]>('set_song_features', { p_song: songId, p_users: userIds }),
+  songCredits: (songId: string) => rpc<Credit[]>('get_song_credits', { p_song: songId }),
+  /** Accept or decline being featured (or take your name off later). */
+  respondToFeature: (songId: string, accept: boolean) =>
+    rpc<unknown>('respond_to_feature', { p_song: songId, p_accept: accept }),
+  featureInvites: () => rpc<Song[]>('my_feature_invites'),
+  appearances: (userId: string, limit = 100) =>
+    rpc<Song[]>('get_user_appearances', { p_user: userId, p_limit: limit, p_offset: 0 }),
+
   addToPlaylist: (playlistId: string, songId: string) =>
     rpc<void>('add_to_playlist', { p_playlist: playlistId, p_song: songId }),
   removeFromPlaylist: (playlistId: string, songId: string) =>
@@ -393,6 +428,8 @@ export const api = {
     const { error } = await supabase.from('bug_reports').update({ status }).eq('id', id);
     if (error) throw new ApiError(friendly(error.message));
   },
+  setOfficial: async (userId: string, official: boolean) =>
+    one(await rpc<{ official: boolean }[] | { official: boolean }>('set_official', { p_user: userId, p_official: official })),
   setVerified: async (userId: string, verified: boolean, note: string) =>
     one(await rpc<{ verified: boolean }[] | { verified: boolean }>('set_verified', {
       p_user: userId,

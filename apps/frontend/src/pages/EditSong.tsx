@@ -1,6 +1,7 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { LuImage } from 'react-icons/lu';
+import { FeaturePicker, type Person } from '../components/music/FeaturePicker';
 import { HookPicker } from '../components/music/HookPicker';
 import { LinksEditor, linksValid } from '../components/music/Links';
 import { Button, Checkbox, Cover, Input, Modal, Select, Textarea } from '../components/ui';
@@ -18,6 +19,14 @@ export function EditSong({ song, onClose }: { song: Song; onClose: () => void })
   const [genre, setGenre] = useState(song.genre);
   const [description, setDescription] = useState(song.description ?? '');
   const [explicit, setExplicit] = useState(song.explicit);
+  const [madeWithAi, setMadeWithAi] = useState(!!song.made_with_ai);
+  // Who's been asked to feature, and where they stand.
+  const credits = useQuery({ queryKey: ['credits', song.id], queryFn: () => api.songCredits(song.id), retry: false });
+  const [featuring, setFeaturing] = useState<Person[] | null>(null);
+  useEffect(() => {
+    if (credits.data && featuring === null) setFeaturing(credits.data.map((c) => c.user));
+  }, [credits.data, featuring]);
+  const statuses = Object.fromEntries((credits.data ?? []).map((c) => [c.user.id, c.status]));
   const [hook, setHook] = useState<number | null>(song.hook_start ?? null);
   // Lists don't carry a song's links: read them from the song itself.
   const full = useSong(song.id);
@@ -68,14 +77,21 @@ export function EditSong({ song, onClose }: { song: Song; onClose: () => void })
         ...(hook !== (song.hook_start ?? null) ? { hook_start: hook !== null && length && hook < length ? hook : null } : {}),
         ...(!song.duration_seconds && length ? { duration_seconds: length } : {}),
         ...(links && JSON.stringify(links) !== JSON.stringify(full.data?.links ?? {}) ? { links } : {}),
+        ...(madeWithAi !== !!song.made_with_ai ? { made_with_ai: madeWithAi } : {}),
         ...(cover ? { cover_image_url: cover.url, cover_key: cover.key } : {}),
       };
       await api.updateSong(song.id, changes);
+      const before = (credits.data ?? []).map((c) => c.user.id).join(',');
+      if (featuring && featuring.map((p) => p.id).join(',') !== before) {
+        await api.setSongFeatures(song.id, featuring.map((p) => p.id));
+        void client.invalidateQueries({ queryKey: ['credits', song.id] });
+      }
       patchSong(client, song.id, {
         title: changes.title,
         genre,
         description: changes.description,
         explicit,
+        made_with_ai: madeWithAi,
         hook_start: 'hook_start' in changes ? (changes.hook_start ?? null) : (song.hook_start ?? null),
         ...(changes.duration_seconds ? { duration_seconds: changes.duration_seconds } : {}),
         ...(cover ? { cover_image_url: cover.url } : {}),
@@ -114,6 +130,17 @@ export function EditSong({ song, onClose }: { song: Song; onClose: () => void })
         <Select label="Genre" value={genre} onChange={setGenre} options={GENRES.includes(genre as (typeof GENRES)[number]) ? GENRES : [genre, ...GENRES]} />
         <Textarea label="About this song" value={description} maxLength={1000} rows={4} onChange={(e) => setDescription(e.target.value)} />
         <Checkbox checked={explicit} onChange={setExplicit}>Explicit lyrics</Checkbox>
+        <Checkbox checked={madeWithAi} onChange={setMadeWithAi}>Made with AI tools (like Suno)</Checkbox>
+        <div>
+          <p className="mb-3 text-[13px] font-medium text-muted">Featuring</p>
+          {featuring ? (
+            <FeaturePicker value={featuring} onChange={setFeaturing} exclude={song.artist_id} statuses={statuses} />
+          ) : credits.isError ? (
+            <p className="text-[13px] text-faint">Featured artists aren’t available yet.</p>
+          ) : (
+            <p className="text-[13px] text-faint">Loading…</p>
+          )}
+        </div>
         {length ? (
           <div>
             <p className="mb-3 text-[13px] font-medium text-muted">The hook: where the feed starts it</p>

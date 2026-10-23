@@ -5,7 +5,7 @@ import { LuHeart, LuListMusic, LuMusic, LuPlay, LuPlus, LuUpload } from 'react-i
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { SongRow } from '../components/music/Song';
 import { Button, Checkbox, Cover, EmptyState, Input, Modal, Skeleton, Textarea } from '../components/ui';
-import { keys, useLiked, useMyPlaylists, useUserSongs } from '../hooks/data';
+import { keys, useAppearances, useFeatureInvites, useLiked, useMyPlaylists, useUserSongs } from '../hooks/data';
 import { api, type Song } from '../lib/api';
 import { useAuth } from '../store/auth';
 import { usePlayer } from '../store/player';
@@ -16,6 +16,7 @@ const tabs = [
   { id: 'liked', label: 'Liked songs' },
   { id: 'playlists', label: 'Playlists' },
   { id: 'uploads', label: 'Your uploads' },
+  { id: 'credits', label: 'Credits' },
 ] as const;
 type Tab = (typeof tabs)[number]['id'];
 
@@ -23,6 +24,7 @@ export function Library() {
   const session = useAuth((s) => s.session);
   const [params, setParams] = useSearchParams();
   const tab = (tabs.find((t) => t.id === params.get('tab'))?.id ?? 'liked') as Tab;
+  const invites = useFeatureInvites().data?.length ?? 0;
 
   if (!session) {
     return (
@@ -56,12 +58,16 @@ export function Library() {
             )}
           >
             {t.label}
+            {t.id === 'credits' && invites > 0 && (
+              <span className="ml-1.5 rounded-full bg-teal px-1.5 text-[11px] font-semibold text-bg">{invites}</span>
+            )}
           </button>
         ))}
       </div>
       {tab === 'liked' && <Liked />}
       {tab === 'playlists' && <Playlists />}
       {tab === 'uploads' && <Uploads userId={session.user.id} />}
+      {tab === 'credits' && <Credits userId={session.user.id} />}
     </div>
   );
 }
@@ -230,5 +236,81 @@ function Uploads({ userId }: { userId: string }) {
       )}
       {editing && <EditSong song={editing} onClose={() => setEditing(null)} />}
     </>
+  );
+}
+
+/** Songs you've been asked to feature on, and songs you're credited on. */
+function Credits({ userId }: { userId: string }) {
+  const client = useQueryClient();
+  const invites = useFeatureInvites();
+  const appearances = useAppearances(userId);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const answer = async (song: Song, accept: boolean) => {
+    setBusy(song.id);
+    try {
+      await api.respondToFeature(song.id, accept);
+      void client.invalidateQueries({ queryKey: keys.invites });
+      void client.invalidateQueries({ queryKey: keys.appearances(userId) });
+      void client.invalidateQueries({ queryKey: keys.song(song.id) });
+      toast(accept ? `You’re on “${song.title}” now` : 'Done', 'success');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (invites.isLoading || appearances.isLoading) return <Skeleton className="h-48 w-full rounded-2xl" />;
+  const pending = invites.data ?? [];
+  const mine = appearances.data ?? [];
+
+  return (
+    <div className="space-y-10">
+      <section>
+        <h2 className="mb-1 text-base">Asked to feature</h2>
+        <p className="mb-4 text-[13px] text-muted">Accept and your name shows on the song, and the song on your page.</p>
+        {pending.length ? (
+          <ul className="space-y-2">
+            {pending.map((s) => (
+              <li key={s.id} className="card flex flex-wrap items-center gap-3 p-3">
+                <Cover src={s.cover_image_url} title={s.title} className="h-12 w-12" rounded="rounded-lg" />
+                <div className="min-w-0 flex-1">
+                  <Link to={`/songs/${s.id}`} className="block truncate font-medium hover:underline">{s.title}</Link>
+                  <p className="truncate text-[13px] text-muted">by {s.artist_display_name || s.artist_username}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" disabled={busy === s.id} onClick={() => void answer(s, false)}>
+                    Decline
+                  </Button>
+                  <Button size="sm" variant="brand" loading={busy === s.id} onClick={() => void answer(s, true)}>
+                    Accept
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-faint">No requests right now.</p>
+        )}
+      </section>
+      <section>
+        <h2 className="mb-4 text-base">Songs you’re on</h2>
+        {mine.length ? (
+          mine.map((s, i) => (
+            <SongRow
+              key={s.id}
+              song={s}
+              list={mine}
+              index={i}
+              source="Songs you’re on"
+              extraMenu={[{ label: 'Take my name off', danger: true, onClick: () => void answer(s, false) }]}
+            />
+          ))
+        ) : (
+          <p className="text-sm text-faint">When you accept a feature, the song shows here and on your page.</p>
+        )}
+      </section>
+    </div>
   );
 }

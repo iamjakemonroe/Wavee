@@ -3,12 +3,12 @@ import { LuHeart, LuPause, LuPlay } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { useLike } from '../../hooks/data';
 import type { Song } from '../../lib/api';
-import { artistName, count, duration } from '../../lib/format';
+import { count, duration } from '../../lib/format';
 import { withAccount } from '../../store/auth';
 import { currentSong, usePlayer } from '../../store/player';
 import { Bars, Cover, IconButton, Spinner } from '../ui';
 import { SongMenu } from './SongMenu';
-import { Verified } from './Verified';
+import { AiTag, Artists } from './Artists';
 
 /** Whether [song] is the one playing, and whether it's sounding. */
 export function useIsCurrent(song: Song) {
@@ -127,15 +127,9 @@ export function SongRow({
           {song.explicit && (
             <span className="ml-2 rounded bg-line/10 px-1 align-middle text-[10px] font-semibold text-muted">E</span>
           )}
+          {song.made_with_ai && <AiTag className="ml-1.5" />}
         </p>
-        <Link
-          to={`/u/${song.artist_username}`}
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex max-w-full items-center gap-1 truncate text-[13px] text-muted transition hover:text-ink hover:underline"
-        >
-          <span className="truncate">{artistName(song)}</span>
-          {song.artist_verified && <Verified className="h-3.5 w-3.5" />}
-        </Link>
+        <Artists song={song} className="block text-[13px] text-muted" />
       </div>
       <span className="hidden text-[13px] tabular-nums text-faint md:block">{count(song.plays_count)} plays</span>
       <div className="flex items-center gap-1">
@@ -199,9 +193,7 @@ export function SongTile({
       <Link to={`/songs/${song.id}`} className="mt-3 block truncate text-[15px] font-medium hover:underline">
         {song.title}
       </Link>
-      <Link to={`/u/${song.artist_username}`} className="block truncate text-[13px] text-muted hover:text-ink hover:underline">
-        {artistName(song)}
-      </Link>
+      <Artists song={song} className="block text-[13px] text-muted" />
     </div>
   );
 }

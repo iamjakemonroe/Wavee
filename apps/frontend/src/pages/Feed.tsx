@@ -5,11 +5,11 @@ import { LuPause, LuPlay, LuShare2 } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { LikeButton, useIsCurrent } from '../components/music/Song';
 import { SongMenu, shareSong } from '../components/music/SongMenu';
-import { Verified } from '../components/music/Verified';
+import { AiTag, Artists } from '../components/music/Artists';
 import { Bars, Button, Cover, EmptyState, IconButton, Spinner } from '../components/ui';
 import { useFeed } from '../hooks/data';
 import { api, type Song } from '../lib/api';
-import { artistName, count, duration } from '../lib/format';
+import { count, duration } from '../lib/format';
 import { currentSong, usePlayer } from '../store/player';
 
 /** One song, filling the screen. */
@@ -39,11 +39,11 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
             <Link to={`/songs/${song.id}`} className="block truncate text-2xl font-semibold tracking-tight hover:underline">
               {song.title}
             </Link>
-            <Link to={`/u/${song.artist_username}`} className="mt-1 flex items-center gap-2 text-muted hover:text-ink">
-              {playing && <Bars playing className="h-3.5 w-3.5" />}
-              {artistName(song)}
-              {song.artist_verified && <Verified className="h-4 w-4" />}
-            </Link>
+            <span className="mt-1 flex items-center gap-2 text-muted">
+              {playing && <Bars playing className="h-3.5 w-3.5 shrink-0" />}
+              <Artists song={song} badgeClassName="h-4 w-4" />
+              {song.made_with_ai && <AiTag />}
+            </span>
             <p className="mt-2 text-[13px] text-faint">
               {song.genre} · {count(song.plays_count)} plays
               {song.hook_start ? <> · from the hook at {duration(song.hook_start)}</> : null}
@@ -140,7 +140,7 @@ export function Feed() {
     <div className="relative">
       <div
         ref={scroller}
-        className="-mx-4 h-[calc(100dvh-var(--top-h)-var(--player-h)-64px-var(--sab)-24px)] snap-y snap-mandatory space-y-4 overflow-y-auto px-2 sm:-mx-6 sm:px-4 lg:h-[calc(100svh-64px-var(--player-h)-32px)]"
+        className="-mx-4 h-[calc(100dvh-var(--top-h)-var(--player-h)-var(--nav-h)-24px)] snap-y snap-mandatory space-y-4 overflow-y-auto px-2 sm:-mx-6 sm:px-4 lg:h-[calc(100svh-64px-var(--player-h)-32px)]"
       >
         {songs.map((s, i) => (
           <div key={s.id} data-index={i} className="h-full">

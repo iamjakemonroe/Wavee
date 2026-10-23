@@ -37,6 +37,26 @@ export function ago(iso: string): string {
 export const artistName = (s: { artist_display_name: string | null; artist_username: string }) =>
   s.artist_display_name || s.artist_username;
 
+/** Everyone credited on a song, the uploader first: "Wavee, Jake, Drake". */
+export const artistNames = (s: {
+  artist_display_name: string | null;
+  artist_username: string;
+  features?: { username: string; display_name: string | null }[];
+}) => [artistName(s), ...(s.features ?? []).map((f) => f.display_name || f.username)].join(', ');
+
+/** Music roles: the keys the database keeps, and how they read. */
+export const ROLES = [
+  ['singer', 'Singer'],
+  ['rapper', 'Rapper'],
+  ['producer', 'Producer'],
+  ['songwriter', 'Songwriter'],
+  ['dj', 'DJ'],
+  ['instrumentalist', 'Instrumentalist'],
+  ['engineer', 'Engineer'],
+  ['manager', 'Manager'],
+] as const;
+export const roleLabel = (key: string) => ROLES.find(([k]) => k === key)?.[1] ?? key;
+
 export const GENRES = [
   'Afrobeats',
   'Amapiano',

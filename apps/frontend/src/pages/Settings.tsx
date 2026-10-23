@@ -7,13 +7,13 @@ import { passwordStrength, StrengthMeter } from '../components/auth/AuthLayout';
 import { LinksEditor, linksValid } from '../components/music/Links';
 import { Avatar, Button, Checkbox, EmptyState, Input, Modal, Spinner, Textarea } from '../components/ui';
 import { api } from '../lib/api';
+import { ROLES } from '../lib/format';
 import { purgeMyMedia, uploadMedia } from '../lib/media';
 import { ARTIST_PLATFORMS, type Links } from '../lib/platforms';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../store/auth';
 import { toast } from '../store/toast';
 
-const ROLES = ['Singer', 'Rapper', 'Producer', 'Songwriter', 'DJ', 'Instrumentalist', 'Engineer'];
 const USERNAME = /^[a-z0-9_.]{3,30}$/;
 
 function Panel({ title, text, children }: { title: string; text?: string; children: ReactNode }) {
@@ -60,7 +60,8 @@ function ProfileForm() {
   const [username, setUsername] = useState(account.username);
   const [bio, setBio] = useState(account.bio ?? '');
   const [isArtist, setArtist] = useState(account.is_artist);
-  const [roles, setRoles] = useState<string[]>(account.music_roles ?? []);
+  // Roles are keys (singer, dj...); anything the database doesn't know is dropped, so a save never fails on it.
+  const [roles, setRoles] = useState<string[]>((account.music_roles ?? []).filter((r) => ROLES.some(([k]) => k === r)));
   const [avatar, setAvatar] = useState(account.avatar_url);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -156,19 +157,20 @@ function ProfileForm() {
         <Checkbox checked={isArtist} onChange={setArtist}>I make music</Checkbox>
         {isArtist && (
           <div className="mt-4 flex flex-wrap gap-2 pl-7">
-            {ROLES.map((r) => {
+            {ROLES.map(([r, label]) => {
               const on = roles.includes(r);
               return (
                 <button
                   key={r}
                   type="button"
+                  aria-pressed={on}
                   onClick={() => setRoles(on ? roles.filter((x) => x !== r) : [...roles, r])}
                   className={clsx(
                     'h-8 rounded-full border px-3 text-[13px] transition',
                     on ? 'border-teal/60 bg-teal/10 text-ink' : 'border-line/10 text-muted hover:border-line/25 hover:text-ink',
                   )}
                 >
-                  {r}
+                  {label}
                 </button>
               );
             })}

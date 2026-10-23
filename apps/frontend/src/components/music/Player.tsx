@@ -20,8 +20,9 @@ import {
 import { Link } from 'react-router-dom';
 import { usePlaybackTime } from '../../hooks/data';
 import { audio } from '../../lib/audio';
-import { artistName, duration } from '../../lib/format';
+import { artistNames, duration } from '../../lib/format';
 import { currentSong, usePlayer } from '../../store/player';
+import { Artists } from './Artists';
 import { Bars, Cover, IconButton, Spinner } from '../ui';
 import { LikeButton } from './Song';
 import { SongMenu } from './SongMenu';
@@ -179,7 +180,7 @@ export function PlayerBar() {
     <motion.div
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="fixed inset-x-0 bottom-[calc(64px+var(--sab))] z-40 pl-[max(0.5rem,var(--sal))] pr-[max(0.5rem,var(--sar))] lg:bottom-0 lg:px-0"
+      className="fixed inset-x-0 bottom-[var(--nav-h)] z-40 pl-[max(0.5rem,var(--sal))] pr-[max(0.5rem,var(--sar))] lg:bottom-0 lg:px-0"
     >
       {/* Phone */}
       <div className="glass relative overflow-hidden rounded-2xl shadow-lift lg:hidden">
@@ -187,7 +188,7 @@ export function PlayerBar() {
           <Cover src={song.cover_image_url} title={song.title} className="h-11 w-11" rounded="rounded-lg" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{song.title}</p>
-            <p className="truncate text-[12px] text-muted">{artistName(song)}</p>
+            <p className="truncate text-[12px] text-muted">{artistNames(song)}</p>
           </div>
           <div onClick={(e) => e.stopPropagation()} className="flex items-center">
             <LikeButton song={song} size="sm" />
@@ -216,9 +217,7 @@ export function PlayerBar() {
             <Link to={`/songs/${song.id}`} className="block truncate text-sm font-medium hover:underline">
               {song.title}
             </Link>
-            <Link to={`/u/${song.artist_username}`} className="block truncate text-[12px] text-muted hover:text-ink hover:underline">
-              {artistName(song)}
-            </Link>
+            <Artists song={song} className="block text-[12px] text-muted" />
           </div>
           <LikeButton song={song} size="sm" />
         </div>
@@ -308,13 +307,9 @@ export function NowPlaying() {
                   <Link to={`/songs/${song.id}`} onClick={() => setOpen(false)} className="block truncate text-2xl font-semibold tracking-tight hover:underline">
                     {song.title}
                   </Link>
-                  <Link
-                    to={`/u/${song.artist_username}`}
-                    onClick={() => setOpen(false)}
-                    className="mt-1 block truncate text-muted hover:text-ink hover:underline"
-                  >
-                    {artistName(song)}
-                  </Link>
+                  <span onClick={() => setOpen(false)} className="mt-1 block truncate">
+                    <Artists song={song} className="text-muted" badgeClassName="h-4 w-4" />
+                  </span>
                 </div>
                 <LikeButton song={song} size="lg" />
               </div>
@@ -399,7 +394,7 @@ export function QueuePanel() {
                   <Cover src={s.cover_image_url} title={s.title} className="h-10 w-10" rounded="rounded-md" />
                   <span className="min-w-0">
                     <span className={clsx('block truncate text-sm', i === index ? 'text-teal' : 'text-ink')}>{s.title}</span>
-                    <span className="block truncate text-[12px] text-muted">{artistName(s)}</span>
+                    <span className="block truncate text-[12px] text-muted">{artistNames(s)}</span>
                   </span>
                 </button>
                 {i !== index && (

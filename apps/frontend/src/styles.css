@@ -24,6 +24,10 @@
   --sar: env(safe-area-inset-right, 0px);
   /* The top bar: 64px, plus the status bar above it. */
   --top-h: calc(64px + var(--sat));
+  /* The tabs on phones: 52px of icons and labels, then just enough room to clear the home bar
+   * (the full inset is more than Apple's own tab bars leave). */
+  --nav-pad: max(calc(var(--sab) - 14px), 6px);
+  --nav-h: calc(52px + var(--nav-pad));
   color-scheme: dark;
 }
 

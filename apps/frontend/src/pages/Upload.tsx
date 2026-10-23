@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { LuCheck, LuFilm, LuImage, LuMusic, LuRefreshCw, LuUpload, LuX } from 'react-icons/lu';
 import { Link, useNavigate } from 'react-router-dom';
+import { FeaturePicker, type Person } from '../components/music/FeaturePicker';
 import { HookPicker } from '../components/music/HookPicker';
 import { LinksEditor, linksValid } from '../components/music/Links';
 import { Avatar, Button, Checkbox, Cover, EmptyState, Input, Select, Textarea } from '../components/ui';
@@ -222,6 +223,8 @@ export function Upload() {
   const [genre, setGenre] = useState<string>('Afrobeats');
   const [description, setDescription] = useState('');
   const [explicit, setExplicit] = useState(false);
+  const [madeWithAi, setMadeWithAi] = useState(false);
+  const [featuring, setFeaturing] = useState<Person[]>([]);
   const [rights, setRights] = useState(false);
   const [length, setLength] = useState<number | null>(null);
   const [hook, setHook] = useState<number | null>(null);
@@ -291,7 +294,14 @@ export function Upload() {
         user_id: session.user.id,
         ...(hook !== null && length && hook < length ? { hook_start: hook } : {}),
         ...(Object.keys(links).length ? { links } : {}),
+        ...(madeWithAi ? { made_with_ai: true } : {}),
       });
+      if (featuring.length) {
+        // The song is up either way; asking the featured artists is a second step.
+        await api.setSongFeatures(id, featuring.map((p) => p.id)).catch(() =>
+          toast('Your song is live, but we couldn’t ask the featured artists. Try again from Edit.', 'error'),
+        );
+      }
       published.current = true;
       void client.invalidateQueries({ queryKey: keys.userSongs(session.user.id) });
       void client.invalidateQueries({ queryKey: keys.fresh });
@@ -336,9 +346,14 @@ export function Upload() {
               <Input label="Title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="What’s it called?" />
               <div className="grid gap-4 sm:grid-cols-2">
                 <Select label="Genre" value={genre} onChange={setGenre} options={GENRES} />
-                <div className="flex items-end pb-3">
+                <div className="flex flex-col justify-end gap-2 pb-1">
                   <Checkbox checked={explicit} onChange={setExplicit}>Explicit lyrics</Checkbox>
+                  <Checkbox checked={madeWithAi} onChange={setMadeWithAi}>Made with AI tools (like Suno)</Checkbox>
                 </div>
+              </div>
+              <div>
+                <p className="mb-2 text-[13px] font-medium text-muted">Featuring (optional)</p>
+                <FeaturePicker value={featuring} onChange={setFeaturing} exclude={session.user.id} />
               </div>
               <Textarea
                 label="About this song (optional)"
