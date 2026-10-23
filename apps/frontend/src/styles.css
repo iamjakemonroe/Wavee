@@ -53,6 +53,14 @@
     body {
       overscroll-behavior-y: none;
     }
+
+    /* iOS 26 gives an installed app with a see-through status bar a screen that's short by the
+     * status bar's height (WebKit bug 301108), so the tabs stopped above a strip of background.
+     * A page at least as tall as the real screen makes iOS hand over the full height; the
+     * 100lvh cap keeps everyone else (who already has it) from scrolling. */
+    html {
+      min-height: min(100lvh, calc(100% + env(safe-area-inset-top)));
+    }
   }
 
   ::selection {
