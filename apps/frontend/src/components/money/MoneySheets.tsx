@@ -1,36 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import clsx from 'clsx';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { LuChartColumn, LuCrown, LuFlaskConical, LuGift, LuLock, LuRocket, LuUpload, LuUsers } from 'react-icons/lu';
 import { keys, useMyPlan } from '../../hooks/data';
 import type { Song } from '../../lib/api';
-import { homeCurrency, money, payApi, type Currency } from '../../lib/pay';
+import { CURRENCY, money, payApi } from '../../lib/pay';
 import { useAuth } from '../../store/auth';
 import { useMoney } from '../../store/money';
 import { toast } from '../../store/toast';
 import { Button, Cover, Modal, Spinner } from '../ui';
 
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
-
-function CurrencyToggle({ value, onChange }: { value: Currency; onChange: (c: Currency) => void }) {
-  return (
-    <div className="flex justify-center">
-      <div className="inline-flex rounded-full border border-line/10 bg-line/[0.04] p-1" role="tablist" aria-label="Currency">
-        {(['NGN', 'USD'] as const).map((c) => (
-          <button
-            key={c}
-            role="tab"
-            aria-selected={value === c}
-            onClick={() => onChange(c)}
-            className={clsx('h-8 rounded-full px-4 text-[13px] font-semibold transition', value === c ? 'bg-ink text-bg' : 'text-muted')}
-          >
-            {c === 'NGN' ? '₦ Naira' : '$ Dollars'}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /** Says so when payments are Flutterwave's test mode (no real money). */
 function TestNote() {
@@ -64,7 +43,7 @@ function BoostBody({ song }: { song: Song }) {
   const close = useMoney((s) => s.boost);
   const client = useQueryClient();
   const plan = useMyPlan().data;
-  const [currency, setCurrency] = useState<Currency>(homeCurrency());
+  const currency = CURRENCY;
   const shop = useQuery({ queryKey: ['wavee-shop', currency], queryFn: () => payApi.shop(currency) });
   const [going, setGoing] = useState<string | null>(null);
 
@@ -117,8 +96,7 @@ function BoostBody({ song }: { song: Song }) {
           {going === 'free' && <Spinner className="h-4 w-4" />}
         </button>
       )}
-      <CurrencyToggle value={currency} onChange={setCurrency} />
-      <div className="mt-4 space-y-2">
+      <div className="space-y-2">
         {!shop.data ? (
           <Spinner className="mx-auto my-8 block h-6 w-6 text-muted" />
         ) : (
@@ -157,7 +135,7 @@ function BoostBody({ song }: { song: Song }) {
 function ProBody() {
   const plan = useMyPlan().data;
   const client = useQueryClient();
-  const [currency, setCurrency] = useState<Currency>(homeCurrency());
+  const currency = CURRENCY;
   const shop = useQuery({ queryKey: ['wavee-shop', currency], queryFn: () => payApi.shop(currency) });
   const price = shop.data?.plans[0];
   const [busy, setBusy] = useState(false);
@@ -227,8 +205,7 @@ function ProBody() {
         ) : (
           <>
             <TestNote />
-            <CurrencyToggle value={currency} onChange={setCurrency} />
-            <Button variant="brand" size="lg" className="mt-4 w-full" loading={busy} disabled={!price} onClick={() => void join()}>
+                  <Button variant="brand" size="lg" className="w-full" loading={busy} disabled={!price} onClick={() => void join()}>
               {price ? `Go Pro for ${money(price.amount, price.currency)} a month` : 'Go Pro'}
             </Button>
             <p className="mt-3 text-center text-[12px] leading-5 text-faint">Renews every month until you cancel, any time, right here.</p>

@@ -1354,24 +1354,25 @@ def run_contract_tests(db, c):
         other = signup("other@example.com", {"username": "otherguy"})
         sid = new_song(artist, "Boost Me", duration=180)
         shop = db.anon("select public.wavee_shop('NGN')")[0][0]
-        c.ok("the shop lists Boost packs and Artist Pro in naira",
-             [p["listeners"] for p in shop["packs"]] == [100, 500, 2000] and shop["packs"][0]["currency"] == "NGN"
+        c.ok("the shop lists Boost packs and Artist Pro in dollars (even asked in naira)",
+             [p["listeners"] for p in shop["packs"]] == [100, 500, 2000] and shop["packs"][0]["currency"] == "USD"
+             and [float(p["amount"]) for p in shop["packs"]] == [2.99, 9.99, 29.99]
              and shop["plans"][0]["id"] == "wavee.pro.monthly", shop)
         c.raises("only an artist can boost their own song",
-                 lambda: db.user(other, "select public.boost_start(%s, 'wavee.boost.100', 'NGN')", (sid,)), "not your song")
-        start = db.user(artist, "select public.boost_start(%s, 'wavee.boost.100', 'NGN')", (sid,))[0][0]
+                 lambda: db.user(other, "select public.boost_start(%s, 'wavee.boost.100', 'USD')", (sid,)), "not your song")
+        start = db.user(artist, "select public.boost_start(%s, 'wavee.boost.100', 'USD')", (sid,))[0][0]
         c.ok("starting a Boost gives a checkout reference and the price",
-             start["ref"].startswith("wavee-boost-") and float(start["amount"]) == 4500 and start["listeners"] == 100
+             start["ref"].startswith("wavee-boost-") and float(start["amount"]) == 2.99 and start["listeners"] == 100
              and start["email"] == "boosty@example.com", start)
         c.ok("an unpaid Boost isn't promoted", db.user(fan, "select public.get_promoted(2)")[0][0] == [])
         c.raises("paying less doesn't count",
-                 lambda: db.service("select public.wavee_credit(%s, 'flw-1', 100, 'NGN', 'sandbox')", (start["ref"],)), "expected")
-        paid = db.service("select public.wavee_credit(%s, 'flw-1', 4500, 'NGN', 'sandbox')", (start["ref"],))[0][0]
+                 lambda: db.service("select public.wavee_credit(%s, 'flw-1', 1, 'USD', 'sandbox')", (start["ref"],)), "expected")
+        paid = db.service("select public.wavee_credit(%s, 'flw-1', 2.99, 'USD', 'sandbox')", (start["ref"],))[0][0]
         c.ok("paying makes it live", paid["kind"] == "boost"
              and db.su("select status from public.boosts where ref = %s", (start["ref"],))[0][0] == "active")
-        db.service("select public.wavee_credit(%s, 'flw-1', 4500, 'NGN', 'sandbox')", (start["ref"],))
+        db.service("select public.wavee_credit(%s, 'flw-1', 2.99, 'USD', 'sandbox')", (start["ref"],))
         c.ok("the same payment twice counts once", db.su("select count(*) from public.wavee_charges where ref = %s", (start["ref"],))[0][0] == 1)
-        c.raises("players can't credit payments", lambda: db.user(artist, "select public.wavee_credit(%s, 'x', 1, 'NGN')", (start["ref"],)), "permission denied")
+        c.raises("players can't credit payments", lambda: db.user(artist, "select public.wavee_credit(%s, 'x', 1, 'USD')", (start["ref"],)), "permission denied")
         promo = db.user(fan, "select public.get_promoted(2)")[0][0]
         c.ok("a live Boost is promoted to listeners", [p["song"]["id"] for p in promo] == [sid], promo)
         c.ok("…and to signed-out visitors", len(db.anon("select public.get_promoted(2)")[0][0]) == 1)

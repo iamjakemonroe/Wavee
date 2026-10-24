@@ -13,9 +13,9 @@
 --     cancelled; the Worker makes the plan the first time a price is paid.
 --   * wavee_charges: every payment, credited once.
 --
--- Prices are in naira and dollars (about 1,500 to the dollar); change them in
--- the SQL editor, e.g.
---   update boost_prices set amount = 5000 where pack = 'wavee.boost.100' and currency = 'NGN';
+-- Prices are in US dollars (Flutterwave converts for cards in other
+-- currencies); change them in the SQL editor, e.g.
+--   update boost_prices set amount = 3.49 where pack = 'wavee.boost.100' and currency = 'USD';
 --   (for a plan, also set flw_plan_id = null so a Flutterwave plan at the new price is made)
 
 -- ── Boost ───────────────────────────────────────────────────────────────
@@ -41,11 +41,8 @@ create table if not exists public.boost_prices (
 
 insert into public.boost_prices (pack, currency, amount) values
   ('wavee.boost.100', 'USD', 2.99),
-  ('wavee.boost.100', 'NGN', 4500),
   ('wavee.boost.500', 'USD', 9.99),
-  ('wavee.boost.500', 'NGN', 14900),
-  ('wavee.boost.2000', 'USD', 29.99),
-  ('wavee.boost.2000', 'NGN', 44900)
+  ('wavee.boost.2000', 'USD', 29.99)
 on conflict (pack, currency) do nothing;
 
 create table if not exists public.boosts (
@@ -104,8 +101,7 @@ create table if not exists public.wavee_plan_prices (
 );
 
 insert into public.wavee_plan_prices (plan_id, currency, amount) values
-  ('wavee.pro.monthly', 'USD', 4.99),
-  ('wavee.pro.monthly', 'NGN', 7500)
+  ('wavee.pro.monthly', 'USD', 4.99)
 on conflict (plan_id, currency) do nothing;
 
 create table if not exists public.wavee_subscriptions (
@@ -296,7 +292,7 @@ begin
   if v_song.status <> 'active' then raise exception 'song not live'; end if;
   insert into public.boosts (ref, song_id, user_id, pack, listeners, source, currency, amount, status, paid_at)
   values ('wavee-free-' || replace(gen_random_uuid()::text, '-', ''), p_song, v_me, 'wavee.boost.100', 100,
-          'pro', 'NGN', 0, 'active', now())
+          'pro', 'USD', 0, 'active', now())
   returning id into v_id;
   return jsonb_build_object('id', v_id, 'listeners', 100);
 end;

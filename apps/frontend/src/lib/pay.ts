@@ -3,7 +3,10 @@ import type { Song } from './api';
 
 /** Wavee's money: Boost and Artist Pro, paid on Flutterwave's checkout (the Worker's /api/pay). */
 
-export type Currency = 'NGN' | 'USD';
+/** Everything is priced and charged in US dollars: Flutterwave converts for cards in other
+ * currencies. */
+export type Currency = 'USD';
+export const CURRENCY: Currency = 'USD';
 
 export interface Pack {
   id: string;
@@ -49,17 +52,6 @@ export interface Stats {
   heard_pct: number;
   likes: number;
   days: { day: string; plays: number; listeners: number }[] | null;
-}
-
-/** Naira for people in Nigeria, dollars (which any card can pay) for everyone else. */
-export function homeCurrency(): Currency {
-  try {
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (zone === 'Africa/Lagos' || navigator.languages?.some((l) => /-NG$/i.test(l))) return 'NGN';
-  } catch {
-    // Dollars.
-  }
-  return 'USD';
 }
 
 export const money = (amount: number, currency: string) =>
