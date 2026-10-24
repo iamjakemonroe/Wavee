@@ -9,7 +9,7 @@ import { GenrePicker } from '../components/music/GenrePicker';
 import { HookPicker } from '../components/music/HookPicker';
 import { LinksEditor, linksValid } from '../components/music/Links';
 import { Avatar, Button, Checkbox, Cover, EmptyState, Input, Textarea } from '../components/ui';
-import { keys } from '../hooks/data';
+import { keys, useMyPlan } from '../hooks/data';
 import { api } from '../lib/api';
 import { duration } from '../lib/format';
 import { checkFile, deleteMedia, MEDIA_LIMITS, readDuration, uploadMedia, type MediaKind, type Uploaded } from '../lib/media';
@@ -30,6 +30,7 @@ interface Slot {
 }
 
 function useSlot(kind: MediaKind, keep: { current: boolean }) {
+  const pro = !!useMyPlan().data?.pro_until;
   const [slot, setSlot] = useState<Slot | null>(null);
   const current = useRef<Slot | null>(null);
   const uploaded = useRef<string[]>([]);
@@ -46,7 +47,7 @@ function useSlot(kind: MediaKind, keep: { current: boolean }) {
   );
 
   const start = (file: File) => {
-    const problem = checkFile(file, kind, true);
+    const problem = checkFile(file, kind, true, pro);
     if (problem) {
       toast(problem, 'error');
       return false;

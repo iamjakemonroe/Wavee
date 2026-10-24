@@ -35,6 +35,8 @@ export interface Song {
   position?: number;
   /** Only on a single song (get_song). */
   links?: Links;
+  /** In the feed as a Boost: the boost's id (a listener who hears it for a while counts). */
+  promoted?: string;
 }
 
 export interface Featured {

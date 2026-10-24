@@ -24,6 +24,7 @@ import { useToasts } from '../../store/toast';
 import { SignOutConfirm } from '../auth/SignOutConfirm';
 import { InstallPrompt } from '../install/InstallPrompt';
 import { InstallSheet } from '../install/InstallSheet';
+import { MoneySheets, PaymentReturn } from '../money/MoneySheets';
 import { NowPlaying, PlayerBar, QueuePanel } from '../music/Player';
 import { Avatar, Button, Cover, Logo, Modal } from '../ui';
 
@@ -346,6 +347,8 @@ export function Shell({ children }: { children?: ReactNode }) {
       <SignInPrompt />
       <InstallSheet />
       <InstallPrompt />
+      <MoneySheets />
+      <PaymentReturn />
     </div>
   );
 }

@@ -56,10 +56,14 @@ export function mediaType(file: File): string {
 
 /** Why [file] can't be uploaded as [kind], or null if it can. Pictures not yet shrunk
  * ([original]) may be big: what's uploaded is the shrunk copy. */
-export function checkFile(file: File, kind: MediaKind, original = false): string | null {
+/** [pro]: Artist Pro members upload three times bigger audio and video. */
+export function checkFile(file: File, kind: MediaKind, original = false, pro = false): string | null {
   const limit = MEDIA_LIMITS[kind];
-  const maxMb = original && kind !== 'audio' && kind !== 'video' ? 40 : limit.maxMb;
-  if (file.size > maxMb * 1024 * 1024) return `That file is too big. ${limit.label}.`;
+  const big = kind === 'audio' || kind === 'video';
+  const maxMb = original && !big ? 40 : big && pro ? limit.maxMb * 3 : limit.maxMb;
+  if (file.size > maxMb * 1024 * 1024) {
+    return `That file is too big. ${limit.label}${big && !pro ? ` (${limit.maxMb * 3} MB with Artist Pro)` : ''}.`;
+  }
   const type = mediaType(file);
   const family = kind === 'audio' ? 'audio/' : kind === 'video' ? 'video/' : 'image/';
   if (!type.startsWith(family)) return `That isn’t a supported file. ${limit.label}.`;

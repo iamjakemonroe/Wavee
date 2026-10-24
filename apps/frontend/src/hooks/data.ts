@@ -1,3 +1,4 @@
+import { payApi } from '../lib/pay';
 import {
   useInfiniteQuery,
   useMutation,
@@ -31,7 +32,27 @@ export const keys = {
   tastemakers: ['tastemakers'] as const,
   invites: ['feature-invites'] as const,
   appearances: (id: string) => ['appearances', id] as const,
+  myPlan: ['my-plan'] as const,
+  myBoosts: ['my-boosts'] as const,
+  promoted: ['promoted'] as const,
 };
+
+/** The signed-in artist's Artist Pro plan (and this month's free Boost). */
+export function useMyPlan() {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({ queryKey: keys.myPlan, queryFn: payApi.myPlan, enabled: signedIn, staleTime: 60_000 });
+}
+
+export function useMyBoosts() {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({ queryKey: keys.myBoosts, queryFn: payApi.myBoosts, enabled: signedIn });
+}
+
+/** Boosted songs for this listener's feed (fetched once a visit). */
+export function usePromoted() {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({ queryKey: [...keys.promoted, signedIn], queryFn: () => payApi.promoted(2), staleTime: 10 * 60_000, retry: false });
+}
 
 /** The For You feed, a page at a time: each page continues the same order. */
 export function useFeed() {

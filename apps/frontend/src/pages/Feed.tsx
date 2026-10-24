@@ -8,7 +8,8 @@ import { ProgressBar } from '../components/music/Player';
 import { SongMenu, shareSong } from '../components/music/SongMenu';
 import { AiTag, Artists } from '../components/music/Artists';
 import { Bars, Button, Cover, EmptyState, IconButton, Spinner } from '../components/ui';
-import { useFeed } from '../hooks/data';
+import { useFeed, usePromoted } from '../hooks/data';
+import { payApi } from '../lib/pay';
 import { api, type Song } from '../lib/api';
 import { count, duration, songGenres } from '../lib/format';
 import { currentSong, usePlayer } from '../store/player';
@@ -46,6 +47,11 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
               {song.made_with_ai && <AiTag />}
             </span>
             <p className="mt-2 text-[13px] text-faint">
+              {song.promoted && (
+                <span className="mr-2 rounded-full bg-line/10 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted">
+                  Promoted
+                </span>
+              )}
               {songGenres(song).join(', ')} · {count(song.plays_count)} plays
               {song.hook_start ? <> · from the hook at {duration(song.hook_start)}</> : null}
             </p>
@@ -94,6 +100,7 @@ export function Feed() {
   const source = usePlayer((s) => s.source);
   const queue = usePlayer((s) => s.queue);
   const nowId = usePlayer((s) => currentSong(s)?.id);
+  const promoted = usePromoted().data;
   const playingFeed = source === 'Feed' && !!nowId;
   // Come back while the feed is playing and it carries on where the music is.
   const [listening, setListening] = useState(playingFeed);
@@ -102,9 +109,25 @@ export function Feed() {
   // shift it by one.
   const songs = useMemo(() => {
     const seen = new Set<string>();
-    const all = [...(source === 'Feed' ? queue : []), ...(feed.data?.pages.flat() ?? [])];
+    // Boosted songs join the feed at the 3rd and 9th places, marked Promoted.
+    const pages = [...(feed.data?.pages.flat() ?? [])];
+    (promoted ?? []).forEach((p, k) => pages.splice(Math.min(2 + k * 6, pages.length), 0, { ...p.song, promoted: p.boost_id }));
+    const all = [...(source === 'Feed' ? queue : []), ...pages];
     return all.filter((s) => !seen.has(s.id) && !!seen.add(s.id));
-  }, [feed.data, queue, source]);
+  }, [feed.data, queue, source, promoted]);
+
+  // A promoted song heard for ten seconds counts toward its Boost (once a visit).
+  const promotedNow = usePlayer((s) => currentSong(s)?.promoted);
+  const playing = usePlayer((s) => s.playing);
+  const heard = useRef(new Set<string>());
+  useEffect(() => {
+    if (!promotedNow || !playing || heard.current.has(promotedNow)) return;
+    const t = window.setTimeout(() => {
+      heard.current.add(promotedNow);
+      void payApi.heard(promotedNow).catch(() => undefined);
+    }, 10_000);
+    return () => window.clearTimeout(t);
+  }, [promotedNow, playing]);
   const scroller = useRef<HTMLDivElement>(null);
 
   const playAt = (i: number) => {

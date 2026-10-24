@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
+import { Boosts } from '../components/money/Boosts';
 import { useState } from 'react';
 import { LuHeart, LuListMusic, LuMusic, LuPlay, LuPlus, LuUpload } from 'react-icons/lu';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -17,6 +18,7 @@ const tabs = [
   { id: 'playlists', label: 'Playlists' },
   { id: 'uploads', label: 'Your uploads' },
   { id: 'credits', label: 'Credits' },
+  { id: 'boosts', label: 'Boosts' },
 ] as const;
 type Tab = (typeof tabs)[number]['id'];
 
@@ -68,6 +70,7 @@ export function Library() {
       {tab === 'playlists' && <Playlists />}
       {tab === 'uploads' && <Uploads userId={session.user.id} />}
       {tab === 'credits' && <Credits userId={session.user.id} />}
+      {tab === 'boosts' && <Boosts />}
     </div>
   );
 }

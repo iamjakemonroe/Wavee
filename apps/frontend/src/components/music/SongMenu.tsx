@@ -4,13 +4,15 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  LuChartColumn,
+  LuEllipsis,
   LuFlag,
   LuImage,
   LuListEnd,
   LuListPlus,
   LuListStart,
-  LuEllipsis,
   LuPlus,
+  LuRocket,
   LuShare2,
   LuTrash2,
   LuUser,
@@ -20,6 +22,7 @@ import { keys, useMyPlaylists } from '../../hooks/data';
 import { api, type ReportReason, type Song } from '../../lib/api';
 import { deleteMedia } from '../../lib/media';
 import { useAuth, withAccount } from '../../store/auth';
+import { useMoney } from '../../store/money';
 import { usePlayer } from '../../store/player';
 import { toast } from '../../store/toast';
 import { Button, Checkbox, Cover, IconButton, Input, Modal, Spinner, Textarea } from '../ui';
@@ -174,6 +177,12 @@ export function SongMenu({
     { label: 'Story card', icon: <LuImage />, onClick: () => setCard(true) },
     { label: 'Go to artist', icon: <LuUser />, onClick: () => navigate(`/u/${song.artist_username}`) },
     ...(extra ?? []).map((e) => ({ icon: <LuListEnd />, ...e })),
+    ...(me === song.artist_id
+      ? [
+          { label: 'Boost this song', icon: <LuRocket />, onClick: () => useMoney.getState().boost(song) },
+          { label: 'Stats', icon: <LuChartColumn />, onClick: () => useMoney.getState().showStats(song) },
+        ]
+      : []),
     ...(me === song.artist_id
       ? [{ label: 'Delete song', icon: <LuTrash2 />, danger: true, onClick: () => setDeleting(true) }]
       : [{ label: 'Report', icon: <LuFlag />, danger: true, onClick: () => setReporting(true) }]),

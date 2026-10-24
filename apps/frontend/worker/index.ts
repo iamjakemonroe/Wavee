@@ -1,3 +1,5 @@
+import { isPro, pay, type PayEnv } from './pay';
+
 /**
  * wavee.kaivon.app: serves the web app, takes uploads into R2, and gives
  * shared song and artist links a proper preview (title, cover) for chat
@@ -5,13 +7,14 @@
  *
  *   POST   /api/upload?kind=audio|video|cover|avatar|playlist|bug   → { key, url }
  *   DELETE /api/object?key=<key>                                    → { ok }
+ *   POST   /api/pay/*   Boost and Artist Pro through Flutterwave (worker/pay.ts)
  *
  * Uploads need the user's Supabase access token (bugs may be anonymous).
  * Each file's first bytes are checked against its kind, so a renamed file
  * can't pass as audio.
  */
 
-interface Env {
+interface Env extends PayEnv {
   ASSETS: Fetcher;
   MEDIA: R2Bucket;
   SUPABASE_URL: string;
@@ -109,8 +112,13 @@ async function upload(request: Request, env: Env): Promise<Response> {
 
   const length = Number(request.headers.get('content-length'));
   if (!Number.isFinite(length) || length <= 0) return json({ error: 'Empty upload.' }, 411);
-  if (length > rule.max) {
-    return json({ error: `That file is too big (the limit is ${rule.max / MB} MB).` }, 413);
+  // Artist Pro uploads three times bigger audio and video (lossless masters, longer videos).
+  const proMax = kind === 'audio' || kind === 'video' ? rule.max * 3 : rule.max;
+  if (length > rule.max && !(length <= proMax && uid && (await isPro(env, request.headers.get('authorization')!)))) {
+    return json(
+      { error: `That file is too big (the limit is ${rule.max / MB} MB${proMax > rule.max ? `, ${proMax / MB} MB with Artist Pro` : ''}).` },
+      413,
+    );
   }
   if (!request.body) return json({ error: 'Empty upload.' }, 400);
 
@@ -271,6 +279,7 @@ export default {
     if (url.pathname === '/api/upload' && request.method === 'POST') return upload(request, env);
     if (url.pathname === '/api/object' && request.method === 'DELETE') return remove(request, env);
     if (url.pathname === '/api/media/mine' && request.method === 'DELETE') return removeAll(request, env);
+    if (url.pathname.startsWith('/api/pay/')) return pay(request, env, url.pathname.slice('/api/pay/'.length));
     if (url.pathname.startsWith('/api/')) return json({ error: 'Not found.' }, 404);
     if (request.method === 'GET' && /^\/(songs|u)\//.test(url.pathname)) {
       return withPreview(request, env, url.pathname);

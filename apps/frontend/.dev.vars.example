@@ -1,0 +1,13 @@
+# Local secrets for the Worker (npm run dev:api = wrangler dev): payments in
+# Flutterwave TEST mode against Wavee's Supabase project. Copy to .dev.vars
+# (git-ignored) and fill in.
+#
+# The publishable key (the same as VITE_SUPABASE_ANON_KEY in .env.local).
+SUPABASE_ANON_KEY=
+# Supabase dashboard > Project settings > API keys > service_role (secret).
+SUPABASE_SERVICE_ROLE_KEY=
+# Flutterwave TEST keys (FLWSECK_TEST-...) and any long random webhook secret.
+FLW_SECRET_KEY=
+FLW_WEBHOOK_HASH=
+# Checkout comes back to the local app.
+PUBLIC_URL=http://localhost:5173

@@ -9,9 +9,11 @@ export default defineConfig({
     },
   },
   server: {
-    // In development, uploads go to the live Worker (it holds the storage).
+    // In development, uploads go to the live Worker (it holds the storage);
+    // npm run dev:local sends /api to the Worker on this Mac instead
+    // (npm run dev:api), to try payments in Flutterwave's test mode.
     proxy: {
-      '/api': { target: 'https://wavee.kaivon.app', changeOrigin: true },
+      '/api': { target: process.env.WAVEE_API || 'https://wavee.kaivon.app', changeOrigin: true },
     },
   },
   build: {

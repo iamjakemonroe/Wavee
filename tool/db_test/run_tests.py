@@ -1344,6 +1344,93 @@ def run_contract_tests(db, c):
 
     c.safe("genres", genres)
 
+    # ── Money: Boost and Artist Pro (the Worker's /api/pay talks to Flutterwave) ──
+    c.start("money")
+
+    def money():
+        artist = signup("boosty@example.com", {"username": "boosty", "music_roles": ["singer"]})
+        fan = signup("fan@example.com", {"username": "fanny"})
+        fan2 = signup("fan2@example.com", {"username": "fanny2"})
+        other = signup("other@example.com", {"username": "otherguy"})
+        sid = new_song(artist, "Boost Me", duration=180)
+        shop = db.anon("select public.wavee_shop('NGN')")[0][0]
+        c.ok("the shop lists Boost packs and Artist Pro in naira",
+             [p["listeners"] for p in shop["packs"]] == [100, 500, 2000] and shop["packs"][0]["currency"] == "NGN"
+             and shop["plans"][0]["id"] == "wavee.pro.monthly", shop)
+        c.raises("only an artist can boost their own song",
+                 lambda: db.user(other, "select public.boost_start(%s, 'wavee.boost.100', 'NGN')", (sid,)), "not your song")
+        start = db.user(artist, "select public.boost_start(%s, 'wavee.boost.100', 'NGN')", (sid,))[0][0]
+        c.ok("starting a Boost gives a checkout reference and the price",
+             start["ref"].startswith("wavee-boost-") and float(start["amount"]) == 4500 and start["listeners"] == 100
+             and start["email"] == "boosty@example.com", start)
+        c.ok("an unpaid Boost isn't promoted", db.user(fan, "select public.get_promoted(2)")[0][0] == [])
+        c.raises("paying less doesn't count",
+                 lambda: db.service("select public.wavee_credit(%s, 'flw-1', 100, 'NGN', 'sandbox')", (start["ref"],)), "expected")
+        paid = db.service("select public.wavee_credit(%s, 'flw-1', 4500, 'NGN', 'sandbox')", (start["ref"],))[0][0]
+        c.ok("paying makes it live", paid["kind"] == "boost"
+             and db.su("select status from public.boosts where ref = %s", (start["ref"],))[0][0] == "active")
+        db.service("select public.wavee_credit(%s, 'flw-1', 4500, 'NGN', 'sandbox')", (start["ref"],))
+        c.ok("the same payment twice counts once", db.su("select count(*) from public.wavee_charges where ref = %s", (start["ref"],))[0][0] == 1)
+        c.raises("players can't credit payments", lambda: db.user(artist, "select public.wavee_credit(%s, 'x', 1, 'NGN')", (start["ref"],)), "permission denied")
+        promo = db.user(fan, "select public.get_promoted(2)")[0][0]
+        c.ok("a live Boost is promoted to listeners", [p["song"]["id"] for p in promo] == [sid], promo)
+        c.ok("…and to signed-out visitors", len(db.anon("select public.get_promoted(2)")[0][0]) == 1)
+        c.ok("…but not to the artist", db.user(artist, "select public.get_promoted(2)")[0][0] == [])
+        bid = promo[0]["boost_id"]
+        c.ok("hearing it counts once", db.user(fan, "select public.boost_heard(%s)", (bid,))[0][0]["counted"] is True
+             and db.user(fan, "select public.boost_heard(%s)", (bid,))[0][0]["counted"] is False)
+        c.ok("the artist doesn't count", db.user(artist, "select public.boost_heard(%s)", (bid,))[0][0]["counted"] is False)
+        c.ok("a reached listener isn't shown it again", db.user(fan, "select public.get_promoted(2)")[0][0] == [])
+        mine = db.user(artist, "select public.my_boosts()")[0][0]
+        c.ok("the artist sees their Boost and its reach", mine[0]["reached"] == 1 and mine[0]["listeners"] == 100, mine)
+        # Boosted listeners never count toward the charts.
+        db.user(fan, "select public.record_play(%s, 120, 180, false, null)", (sid,))
+        db.user(fan2, "select public.record_play(%s, 120, 180, false, null)", (sid,))
+        db.su("update public.plays set created_at = now() - interval '2 hours' where song_id = %s", (sid,))
+        weekly = {str(r[0]): r[1] for r in db.su("select song_id, this_week from public.wavee_chart_plays()")}
+        c.ok("a boosted listener's play doesn't count toward the charts", weekly.get(sid) == 1, weekly.get(sid))
+        db.su("update public.boosts set reached = listeners - 1 where id = %s", (bid,))
+        db.user(fan2, "select public.boost_heard(%s)", (bid,))
+        c.ok("a Boost that reaches everyone is done",
+             db.su("select status from public.boosts where id = %s", (bid,))[0][0] == "done"
+             and db.user(other, "select public.get_promoted(2)")[0][0] == [])
+
+        # Artist Pro.
+        c.ok("not Pro yet", db.user(artist, "select public.wavee_my_plan()")[0][0] == {"pro_until": None, "free_boost": False})
+        st = db.user(artist, "select public.song_stats(%s)", (sid,))[0][0]
+        c.ok("stats without Pro: the totals", st["pro"] is False and st["days"] is None and st["plays"] == 2, st)
+        c.raises("only the artist sees a song's stats", lambda: db.user(fan, "select public.song_stats(%s)", (sid,)), "not your song")
+        sub = db.user(artist, "select public.wavee_subscribe_start('wavee.pro.monthly', 'USD')")[0][0]
+        c.ok("subscribing gives a reference and the price", sub["ref"].startswith("wavee-sub-") and float(sub["amount"]) == 4.99
+             and sub["flw_plan_id"] is None, sub)
+        db.service("select public.wavee_plan_flw('wavee.pro.monthly', 'USD', 'flw-plan-9', %s)", (sub["ref"],))
+        c.ok("the Flutterwave plan is kept for the price",
+             db.su("select flw_plan_id from public.wavee_plan_prices where plan_id = 'wavee.pro.monthly' and currency = 'USD'")[0][0] == "flw-plan-9")
+        pro = db.service("select public.wavee_credit(%s, 'flw-2', 4.99, 'USD', 'sandbox')", (sub["ref"],))[0][0]
+        plan = db.user(artist, "select public.wavee_my_plan()")[0][0]
+        c.ok("the first payment makes them Pro, with a free Boost", pro["kind"] == "pro" and plan["pro_until"] is not None
+             and plan["free_boost"] is True, plan)
+        c.raises("…once", lambda: db.user(artist, "select public.wavee_subscribe_start('wavee.pro.monthly', 'USD')"), "already a member")
+        free = db.user(artist, "select public.boost_free(%s)", (sid,))[0][0]
+        c.ok("the free Boost goes live at once", free["listeners"] == 100
+             and db.user(artist, "select public.wavee_my_plan()")[0][0]["free_boost"] is False)
+        c.raises("one free Boost a month", lambda: db.user(artist, "select public.boost_free(%s)", (sid,)), "no free boost")
+        st = db.user(artist, "select public.song_stats(%s)", (sid,))[0][0]
+        c.ok("Pro stats: every day of the last 30", st["pro"] is True and len(st["days"]) == 30
+             and sum(d["plays"] for d in st["days"]) == 2, st)
+        before = db.su("select period_end from public.wavee_subscriptions where ref = %s", (sub["ref"],))[0][0]
+        db.service("select public.wavee_renew('flw-plan-9', 'BOOSTY@example.com', 'flw-3', 4.99, 'USD', 'sandbox')")
+        after = db.su("select period_end from public.wavee_subscriptions where ref = %s", (sub["ref"],))[0][0]
+        c.ok("a renewal adds a month", (after - before).days == 31, (before, after))
+        c.ok("the member's own plan, to cancel", db.user(artist, "select public.wavee_subscription_mine()")[0][0]["flw_plan_id"] == "flw-plan-9")
+        db.service("select public.wavee_end('flw-plan-9', 'boosty@example.com')")
+        c.ok("cancelling keeps what's paid for",
+             db.su("select status from public.wavee_subscriptions where ref = %s", (sub["ref"],))[0][0] == "cancelled"
+             and db.user(artist, "select public.wavee_my_plan()")[0][0]["pro_until"] is not None)
+        c.raises("players can't read payments directly", lambda: db.user(artist, "select * from public.boosts"), "permission denied")
+
+    c.safe("money", money)
+
     # ── Account deletion (the delete-account Edge Function deletes the auth user) ──
     c.start("account deletion")
 

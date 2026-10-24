@@ -25,3 +25,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local Worker secrets (wrangler dev): never commit
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
