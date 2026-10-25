@@ -71,21 +71,23 @@ export function AuthLayout({
   );
 }
 
-/** "Weak", "Good", "Strong", from length and variety. */
+/** The rule our sign-in provider enforces (supabase/config.toml): 8 or more characters, with letters
+ * and numbers. Meeting it is "Good" (score 2), so the forms never allow what the server will refuse. */
+export const PASSWORD_RULE = 'At least 8 characters, with letters and numbers.';
+
+/** Below the rule, what's missing; above it, "Good" or "Strong" from length and variety. */
 export function passwordStrength(pw: string): { score: 0 | 1 | 2 | 3; label: string } {
   if (!pw) return { score: 0, label: '' };
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12) score++;
-  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw) && /\d/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  const s = Math.min(3, score) as 0 | 1 | 2 | 3;
-  return { score: s, label: ['Too short', 'Weak', 'Good', 'Strong'][s] };
+  if (pw.length < 8) return { score: 0, label: 'Too short' };
+  if (!/[A-Za-z]/.test(pw)) return { score: 1, label: 'Add a letter' };
+  if (!/\d/.test(pw)) return { score: 1, label: 'Add a number' };
+  const strong = pw.length >= 12 || (/[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[^A-Za-z0-9]/.test(pw));
+  return strong ? { score: 3, label: 'Strong' } : { score: 2, label: 'Good' };
 }
 
 export function StrengthMeter({ password }: { password: string }) {
   const { score, label } = passwordStrength(password);
-  if (!password) return null;
+  if (!password) return <p className="mt-2 text-[12px] text-faint">{PASSWORD_RULE}</p>;
   const colours = ['bg-danger', 'bg-warn', 'bg-teal', 'bg-teal'];
   return (
     <div className="mt-2 flex items-center gap-3">

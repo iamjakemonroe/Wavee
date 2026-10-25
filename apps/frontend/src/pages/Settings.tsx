@@ -320,7 +320,7 @@ function PasswordForm() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Input type="password" autoComplete="new-password" label="New password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            {password && <StrengthMeter password={password} />}
+            <StrengthMeter password={password} />
           </div>
           <Input
             type="password"
