@@ -1,4 +1,5 @@
 import { isPro, pay, type PayEnv } from './pay';
+import { session } from './session';
 
 /**
  * wavee.kaivon.app: serves the web app, takes uploads into R2, and gives
@@ -8,6 +9,7 @@ import { isPro, pay, type PayEnv } from './pay';
  *   POST   /api/upload?kind=audio|video|cover|avatar|playlist|bug   → { key, url }
  *   DELETE /api/object?key=<key>                                    → { ok }
  *   POST   /api/pay/*   Boost and Artist Pro through Flutterwave (worker/pay.ts)
+ *   POST   /api/session  a copy of the sign-in that outlives cleared storage (worker/session.ts)
  *
  * Uploads need the user's Supabase access token (bugs may be anonymous).
  * Each file's first bytes are checked against its kind, so a renamed file
@@ -324,6 +326,7 @@ export default {
     if (url.pathname === '/api/object' && request.method === 'DELETE') return remove(request, env);
     if (url.pathname === '/api/media/mine' && request.method === 'DELETE') return removeAll(request, env);
     if (url.pathname.startsWith('/api/pay/')) return pay(request, env, url.pathname.slice('/api/pay/'.length));
+    if (/^\/api\/session(\/|$)/.test(url.pathname)) return session(request, env, url.pathname.slice('/api/session/'.length));
     if (url.pathname === '/api/geo') {
       // The listener's country, from Cloudflare, for artists' stats (never stored with anything else).
       const country = (request.cf as { country?: string } | undefined)?.country ?? null;

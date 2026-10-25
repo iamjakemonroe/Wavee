@@ -33,11 +33,11 @@ export function SignOutConfirm({ open, onClose }: { open: boolean; onClose: () =
       <p className="text-sm leading-6 text-muted">
         {account ? (
           <>
-            You’re signed in as <b className="text-ink">@{account.username}</b>. Your library, playlists and uploads stay safe:
-            sign back in anytime.
+            You’re signed in as <b className="text-ink">@{account.username}</b>. This signs you out on this device only. Your
+            library, playlists and uploads stay safe: sign back in anytime.
           </>
         ) : (
-          'Your library, playlists and uploads stay safe: sign back in anytime.'
+          'This signs you out on this device only. Your library, playlists and uploads stay safe: sign back in anytime.'
         )}
       </p>
       <div className="mt-6 flex gap-3">

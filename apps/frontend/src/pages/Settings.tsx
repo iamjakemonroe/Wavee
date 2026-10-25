@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useEffect, useState, type ReactNode } from 'react';
-import { LuCamera, LuCheck, LuCopy, LuDownload, LuLogOut, LuSettings, LuTrash2 } from 'react-icons/lu';
+import { LuCamera, LuCheck, LuCopy, LuDownload, LuLaptopMinimal, LuLogOut, LuSettings, LuTrash2 } from 'react-icons/lu';
 import { useNavigate } from 'react-router-dom';
 import { SignedOut } from '../components/auth/SignedOut';
 import { passwordStrength, StrengthMeter, authMessage } from '../components/auth/AuthLayout';
@@ -303,7 +303,7 @@ function PasswordForm() {
     }
     setPassword('');
     setConfirm('');
-    toast('Password changed', 'success');
+    toast('Password changed. Your other devices will ask you to sign in again.', 'success');
   };
 
   return (
@@ -345,8 +345,58 @@ function PasswordForm() {
           </Button>
         </div>
       </form>
+      <OtherDevices />
       <SignOutConfirm open={signingOut} onClose={() => setSigningOut(false)} />
     </Panel>
+  );
+}
+
+/** You stay signed in on each device until you sign out there; this is for a lost phone or a
+ * computer someone else uses. */
+function OtherDevices() {
+  const signOutOthers = useAuth((s) => s.signOutOthers);
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const confirm = async () => {
+    setBusy(true);
+    try {
+      await signOutOthers();
+      setAsking(false);
+      toast('Signed out everywhere else. You’re still signed in here.', 'success');
+    } catch {
+      toast('We couldn’t reach Wavee. Please try again.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-6 flex flex-col items-start gap-3 border-t border-line/[0.06] pt-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 sm:flex-1">
+        <p className="text-sm font-medium">Your devices</p>
+        <p className="mt-1 text-[13px] leading-5 text-muted">
+          You stay signed in on each phone and computer until you sign out there.
+        </p>
+      </div>
+      <Button type="button" variant="ghost" icon={<LuLaptopMinimal />} onClick={() => setAsking(true)}>
+        Sign out everywhere else
+      </Button>
+      <Modal open={asking} onClose={() => setAsking(false)} title="Sign out everywhere else?">
+        <p className="text-sm leading-6 text-muted">
+          Every other phone, computer and browser signed in as you will need to sign in again. You stay signed in here.
+          Do this if you lost a device or signed in on someone else’s.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={() => setAsking(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" className="flex-1" loading={busy} onClick={() => void confirm()}>
+            Sign them out
+          </Button>
+        </div>
+      </Modal>
+    </div>
   );
 }
 

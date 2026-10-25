@@ -125,6 +125,8 @@ function FooterLinks({ className }: { className?: string }) {
  * your avatar, which opens everything about your account. Signed out: sign in or join. */
 function TopBar() {
   const session = useAuth((s) => s.session);
+  // Until we know, neither: no "Sign in" flashing at someone who is.
+  const loading = useAuth((s) => s.loading);
   return (
     <header className="sticky top-0 z-20 box-content flex h-16 shrink-0 items-center justify-between gap-4 border-b border-line/[0.06] bg-bg/90 px-4 pt-[var(--sat)] backdrop-blur-xl sm:px-6">
       <Link to="/" className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-violet/60 lg:hidden" aria-label="Wavee home">
@@ -133,7 +135,7 @@ function TopBar() {
       <div className="hidden lg:block" />
       {session ? (
         <AccountMenu />
-      ) : (
+      ) : loading ? null : (
         <div className="flex items-center gap-1.5">
           <Link to="/signin">
             <Button size="sm" variant="ghost" icon={<LuLogIn />}>

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type Session } from '@supabase/supabase-js';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -7,10 +7,14 @@ if (!url || !key) {
   throw new Error('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (see .env.example).');
 }
 
+/** Where the session is saved: the library's own default, named here so it can't drift. */
+const storageKey = `sb-${new URL(url).hostname.split('.')[0]}-auth-token`;
+
 /** The one Supabase client: sessions are kept and refreshed for us, and
  * links from emails (confirmations, password resets) sign the user in. */
 export const supabase = createClient(url, key, {
   auth: {
+    storageKey,
     flowType: 'pkce',
     persistSession: true,
     autoRefreshToken: true,
@@ -37,4 +41,16 @@ export function recordPlayOnExit(args: Record<string, unknown>, token: string | 
 export async function accessToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
+}
+
+/** The session saved on this device, read as is. When it can't be refreshed right now (offline,
+ * the server slow to answer) Supabase keeps it but reports no session; this lets the app keep the
+ * person signed in until the next refresh works. */
+export function savedSession(): Session | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null') as Session | null;
+    return saved?.refresh_token && saved.user?.id ? saved : null;
+  } catch {
+    return null;
+  }
 }
