@@ -98,7 +98,9 @@ export function BugReport() {
         )}
         <div>
           <p className="mb-2 text-[13px] font-medium text-muted">Screenshot (optional)</p>
-          {shot ? (
+          {!account ? (
+            <p className="text-[13px] text-faint">Sign in to add a screenshot.</p>
+          ) : shot ? (
             <div className="relative inline-block">
               <img src={shot.preview} alt="Your screenshot" className="max-h-48 rounded-xl border border-line/10" />
               <button

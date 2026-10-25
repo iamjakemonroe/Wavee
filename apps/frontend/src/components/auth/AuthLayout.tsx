@@ -105,6 +105,7 @@ export function authMessage(message: string): string {
   if (/email not confirmed/i.test(message)) return 'Please confirm your email first. We can send the link again.';
   if (/already registered|already been registered/i.test(message)) return 'There’s already an account with that email. Try signing in.';
   if (/password should be at least/i.test(message)) return 'Use at least 8 characters for your password.';
+  if (/should contain at least one character/i.test(message)) return 'Use both letters and numbers in your password.';
   if (/rate limit|too many/i.test(message)) return 'Too many tries. Please wait a minute and try again.';
   if (/same.*password|different from the old/i.test(message)) return 'Choose a password you haven’t used here before.';
   if (/network|fetch/i.test(message)) return 'You seem to be offline. Check your connection.';

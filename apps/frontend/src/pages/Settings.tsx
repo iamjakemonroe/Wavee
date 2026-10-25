@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { LuCamera, LuCheck, LuCopy, LuDownload, LuLogOut, LuSettings, LuTrash2 } from 'react-icons/lu';
 import { useNavigate } from 'react-router-dom';
 import { SignedOut } from '../components/auth/SignedOut';
-import { passwordStrength, StrengthMeter } from '../components/auth/AuthLayout';
+import { passwordStrength, StrengthMeter, authMessage } from '../components/auth/AuthLayout';
 import { SignOutConfirm } from '../components/auth/SignOutConfirm';
 import { LinksEditor, linksValid } from '../components/music/Links';
 import { Avatar, Bars, Button, Checkbox, Input, LoadError, Modal, Spinner, Textarea } from '../components/ui';
@@ -291,7 +291,14 @@ function PasswordForm() {
     const { error } = await supabase.auth.updateUser({ password });
     setSaving(false);
     if (error) {
-      toast(/same|different/i.test(error.message) ? 'Choose a password you haven’t used here before.' : 'We couldn’t change your password. Please try again.', 'error');
+      toast(
+        /same|different/i.test(error.message)
+          ? 'Choose a password you haven’t used here before.'
+          : /should be at least|should contain/i.test(error.message)
+            ? authMessage(error.message)
+            : 'We couldn’t change your password. Please try again.',
+        'error',
+      );
       return;
     }
     setPassword('');

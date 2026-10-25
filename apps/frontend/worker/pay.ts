@@ -163,6 +163,9 @@ export async function pay(request: Request, env: PayEnv, path: string): Promise<
 
   const auth = request.headers.get('authorization');
   if (!auth?.startsWith('Bearer ')) return json({ error: 'Please sign in.' }, 401);
+  // A real, current session (checked with Supabase) before anything reaches Flutterwave.
+  const who = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, { headers: { authorization: auth, apikey: env.SUPABASE_ANON_KEY } });
+  if (!who.ok) return json({ error: 'Please sign in.' }, 401);
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const base = (env.PUBLIC_URL || new URL(request.url).origin).replace(/\/$/, '');
 

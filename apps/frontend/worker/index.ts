@@ -52,6 +52,8 @@ const images = {
   'image/webp': { ext: 'webp', matches: isWebp },
 };
 
+const PRO_AUDIO_MAX = 95 * MB;
+
 const RULES: Record<Kind, Rule> = {
   audio: {
     max: 50 * MB,
@@ -100,11 +102,26 @@ async function userId(request: Request, env: Env): Promise<string | null> {
 
 async function upload(request: Request, env: Env): Promise<Response> {
   const kind = new URL(request.url).searchParams.get('kind') as Kind | null;
-  const rule = kind ? RULES[kind] : undefined;
+  const rule = kind && Object.hasOwn(RULES, kind) ? RULES[kind] : undefined;
   if (!kind || !rule) return json({ error: 'Unknown upload kind.' }, 400);
 
+  // Every upload belongs to an account (no anonymous file hosting), and each account gets
+  // 60 an hour (the database keeps count).
   const uid = await userId(request, env);
-  if (!uid && kind !== 'bug') return json({ error: 'Please sign in to upload.' }, 401);
+  if (!uid) return json({ error: 'Please sign in to upload.' }, 401);
+  const allowed = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/upload_allowed`, {
+    method: 'POST',
+    headers: {
+      apikey: env.SUPABASE_ANON_KEY,
+      authorization: request.headers.get('authorization')!,
+      'content-type': 'application/json',
+    },
+    body: '{}',
+  });
+  // 404: the database doesn't have the check yet (it lands with a migration); let it through.
+  if (!allowed.ok && allowed.status !== 404) {
+    return json({ error: 'You’re uploading a lot. Please wait a while and try again.' }, 429);
+  }
 
   const type = (request.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
   const spec = rule.types[type];
@@ -112,8 +129,9 @@ async function upload(request: Request, env: Env): Promise<Response> {
 
   const length = Number(request.headers.get('content-length'));
   if (!Number.isFinite(length) || length <= 0) return json({ error: 'Empty upload.' }, 411);
-  // Artist Pro uploads three times bigger audio and video (lossless masters, longer videos).
-  const proMax = kind === 'audio' || kind === 'video' ? rule.max * 3 : rule.max;
+  // Artist Pro uploads bigger audio (lossless masters), up to just under Cloudflare's 100 MB
+  // limit on a single request.
+  const proMax = kind === 'audio' ? PRO_AUDIO_MAX : rule.max;
   if (length > rule.max && !(length <= proMax && uid && (await isPro(env, request.headers.get('authorization')!)))) {
     return json(
       { error: `That file is too big (the limit is ${rule.max / MB} MB${proMax > rule.max ? `, ${proMax / MB} MB with Artist Pro` : ''}).` },
@@ -156,7 +174,7 @@ async function upload(request: Request, env: Env): Promise<Response> {
     await writer.close();
   })();
 
-  const key = `${kind}/${uid ?? 'anon'}/${crypto.randomUUID()}.${spec.ext}`;
+  const key = `${kind}/${uid}/${crypto.randomUUID()}.${spec.ext}`;
   try {
     await Promise.all([
       env.MEDIA.put(key, stream.readable, {
@@ -164,7 +182,7 @@ async function upload(request: Request, env: Env): Promise<Response> {
           contentType: type.startsWith('audio/x-') ? type.replace('x-', '') : type,
           cacheControl: 'public, max-age=31536000, immutable',
         },
-        customMetadata: { owner: uid ?? 'anon' },
+        customMetadata: { owner: uid },
       }),
       pump,
     ]);

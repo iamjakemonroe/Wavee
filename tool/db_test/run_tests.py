@@ -287,11 +287,17 @@ def run_contract_tests(db, c):
     SONG3 = "10000000-0000-0000-0000-000000000003"
     LEGACY_PLAYLIST = "20000000-0000-0000-0000-000000000001"
 
-    def signup(email, meta=None, id_=None):
+    def signup(email, meta=None, id_=None, confirmed=True):
         id_ = id_ or uid()
-        db.q("insert into auth.users (id, email, raw_user_meta_data) values (%s, %s, %s)",
-             (id_, email, json.dumps(meta or {})), role="supabase_auth_admin")
+        db.q("insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values (%s, %s, %s, %s)",
+             (id_, email, json.dumps(meta or {}), "2026-10-01T00:00:00Z" if confirmed else None), role="supabase_auth_admin")
         return id_
+
+    def age(user, seconds=600):
+        """Time passes for a listener: their plays move into the past (a play can't claim more
+        listening than the time since the last one)."""
+        db.su("update public.plays set created_at = created_at - make_interval(secs => %s) where user_id = %s",
+              (seconds, user))
 
     def username_of(u):
         return db.su("select username from public.users where id = %s", (u,))[0][0]
@@ -722,8 +728,10 @@ def run_contract_tests(db, c):
         db.su("update public.plays set created_at = created_at - interval '31 seconds' where song_id = %s", (s100,))
         db.user(LISTENER, "select public.record_play(%s, 30, 100, false, null)", (s100,))
         c.ok("30 seconds counts", count(s100) == (2, 3), count(s100))
+        age(LISTENER)
         db.user(LISTENER, "select public.record_play(%s, 20, 40, false, null)", (s40,))
         c.ok("half of a 40 s song (20 s) counts", count(s40) == (1, 1), count(s40))
+        age(OTHER)
         db.user(OTHER, "select public.record_play(%s, 19, 40, false, null)", (s40,))
         c.ok("19 s of a 40 s song does not count", count(s40) == (1, 2), count(s40))
         db.anon("select public.record_play(%s, 40, 40, false, 'anon-session-A')", (s40,))
@@ -734,6 +742,7 @@ def run_contract_tests(db, c):
         db.user(LISTENER, "select public.record_play(%s, 'NaN', 'NaN', false, null)", (s_unknown,))
         row = db.su("select duration_listened, song_duration from public.plays where song_id = %s", (s_unknown,))
         c.ok("NaN listened stored as 0 and not counted", row == [(0, 0)] and count(s_unknown)[0] == 0, row)
+        age(OTHER)
         db.user(OTHER, "select public.record_play(%s, 5000, 200, false, null)", (s_unknown,))
         row = db.su("select max(duration_listened) from public.plays where song_id = %s", (s_unknown,))[0][0]
         c.ok("unknown stored duration: clamped to p_duration", row == 200, row)
@@ -977,6 +986,10 @@ def run_contract_tests(db, c):
         anon_feed = card_ids(db.anon("select * from public.get_feed(100, 0)"))
         c.ok("a song with many plays this week climbs the feed", anon_feed.index(quiet) < len(anon_feed) // 2,
              anon_feed.index(quiet))
+        for i in range(8):
+            fan_i = signup(f"trend{i}@example.com", {"username": f"trend_fan{i}"})
+            db.su("insert into public.plays (user_id, song_id, duration_listened, song_duration, created_at) "
+                  "values (%s, %s, 60, 100, now() - interval '2 days')", (fan_i, quiet))
         trending = card_ids(db.anon("select * from public.get_trending(5)"))
         c.ok("get_trending puts the most played song (last 7 days) first", trending[0] == quiet, trending[:3])
         new = db.anon("select id, created_at from public.get_new_releases(10)")
@@ -1151,6 +1164,7 @@ def run_contract_tests(db, c):
 
         # Early likes: listened properly, under 50 counted plays, not your own song.
         early = new_song(ARTIST, "Early One", duration=120)
+        age(LISTENER)
         db.user(LISTENER, "select public.record_play(%s, 40, 120, false, null)", (early,))
         db.user(LISTENER, "select public.toggle_like(%s, true)", (early,))
         db.user(OTHER, "select public.toggle_like(%s, true)", (early,))
@@ -1162,6 +1176,7 @@ def run_contract_tests(db, c):
         c.ok("liking your own song isn't early", flags.get(ARTIST) is False, flags)
         popular = new_song(ARTIST, "Already Big", duration=120)
         db.su("update public.songs set plays_count = 80 where id = %s", (popular,))
+        age(OTHER)
         db.user(OTHER, "select public.record_play(%s, 60, 120, false, null)", (popular,))
         db.user(OTHER, "select public.toggle_like(%s, true)", (popular,))
         c.ok("a like once a song has 50+ plays isn't early",
@@ -1178,10 +1193,13 @@ def run_contract_tests(db, c):
 
         # Charts: counted plays in the last 7 days (to the start of this hour), not the artist's.
         a, b, cc = (new_song(ARTIST, t, genre="Chart Test", duration=100) for t in ("Chart A", "Chart B", "Chart C"))
+        chart_fans = [signup(f"chartfan{i}@example.com", {"username": f"chart_fan{i}"}) for i in range(9)]
+
         def plays(song, n, days_ago, listened=60, user=None):
-            for _ in range(n):
+            for i in range(n):
                 db.su("insert into public.plays (user_id, song_id, duration_listened, song_duration, created_at) "
-                      "values (%s, %s, %s, 100, now() - %s::interval)", (user, song, listened, f"{days_ago} days 2 hours"))
+                      "values (%s, %s, %s, 100, now() - %s::interval)",
+                      (user or chart_fans[i], song, listened, f"{days_ago} days 2 hours"))
         plays(a, 5, 1)
         plays(b, 3, 2)
         plays(cc, 2, 3)
@@ -1283,13 +1301,13 @@ def run_contract_tests(db, c):
              db.su("select count(*) from public.song_artists where song_id = %s", (sid,))[0][0] == 0)
 
         # The official account
-        house = signup("house@example.com", {"username": "wavee_house"})
+        house = signup("house@example.com", {"username": "house_account"})
         c.raises("only admins mark official accounts",
                  lambda: db.user(house, "select public.set_official(%s, true)", (house,)), "42501")
         c.raises("nobody can make themselves official directly",
                  lambda: db.user(house, "update public.users set is_official = true where id = %s", (house,)), "42501")
         db.user(ADMIN, "select public.set_official(%s, true)", (house,))
-        c.ok("the profile says official", db.anon("select public.get_profile('wavee_house')")[0][0]["official"] is True)
+        c.ok("the profile says official", db.anon("select public.get_profile('house_account')")[0][0]["official"] is True)
         hs = new_song(house, "House Song", duration=120, made_with_ai=True)
         real = new_song(ARTIST, "Real Song", duration=120)
         for who in (LISTENER, OTHER):
@@ -1306,6 +1324,7 @@ def run_contract_tests(db, c):
         c.ok("official songs are in the feed, below real artists' songs of the same age",
              hs in feed and feed.index(real) < feed.index(hs), (feed.index(real) if real in feed else None, feed.index(hs) if hs in feed else None))
         fresh = new_song(house, "House Fresh", duration=120)
+        age(OTHER)
         db.user(OTHER, "select public.record_play(%s, 60, 120, false, null)", (fresh,))
         db.user(OTHER, "select public.toggle_like(%s, true)", (fresh,))
         c.ok("liking an official song isn't an early find",
@@ -1334,9 +1353,10 @@ def run_contract_tests(db, c):
         c.ok("song cards carry the genres",
              db.anon("select public.get_song(%s)", (sid,))[0][0]["genres"] == ["Pop", "Afrobeats"])
         gq = new_song(ARTIST, "Gqom Night", genre="Gqom", genres=["Gqom", "Afro House"], duration=100)
-        for _ in range(3):
+        for i in range(3):
+            fan_i = signup(f"gqom{i}@example.com", {"username": f"gqom_fan{i}"})
             db.su("insert into public.plays (user_id, song_id, duration_listened, song_duration, created_at) "
-                  "values (null, %s, 60, 100, now() - interval '2 hours')", (gq,))
+                  "values (%s, %s, 60, 100, now() - interval '2 hours')", (fan_i, gq))
         c.ok("a genre chart includes songs whose second genre matches",
              gq in [e["song"]["id"] for e in db.anon("select public.get_chart('top', 'afro-house', 50)")[0][0]])
         c.ok("search finds a song by its second genre",
@@ -1348,6 +1368,7 @@ def run_contract_tests(db, c):
     c.start("money")
 
     def money():
+        db.su("update public.wavee_money_settings set accept_test_payments = true")
         # First listens (free Boosts for new artists) are checked under growth.
         db.su("update public.wavee_growth set welcome_songs = 0")
         db.su("update public.boosts set status = 'done' where source = 'welcome'")
@@ -1381,20 +1402,24 @@ def run_contract_tests(db, c):
         c.ok("…and to signed-out visitors", len(db.anon("select public.get_promoted(2)")[0][0]) == 1)
         c.ok("…but not to the artist", db.user(artist, "select public.get_promoted(2)")[0][0] == [])
         bid = promo[0]["boost_id"]
-        c.ok("hearing it counts once", db.user(fan, "select public.boost_heard(%s)", (bid,))[0][0]["counted"] is True
-             and db.user(fan, "select public.boost_heard(%s)", (bid,))[0][0]["counted"] is False)
-        c.ok("the artist doesn't count", db.user(artist, "select public.boost_heard(%s)", (bid,))[0][0]["counted"] is False)
+        reached = lambda: db.su("select reached from public.boosts where id = %s", (bid,))[0][0]
+        c.ok("boost_heard alone counts nothing (the server counts real plays)",
+             db.user(fan, "select public.boost_heard(%s)", (bid,))[0][0]["counted"] is False and reached() == 0)
+        db.user(fan, "select public.record_play(%s, 120, 180, false, null)", (sid,))
+        c.ok("a listener it was shown to counts once they've heard it", reached() == 1)
+        db.user(fan2, "select public.record_play(%s, 120, 180, false, null)", (sid,))
+        c.ok("a listener who found it some other way doesn't", reached() == 1)
         c.ok("a reached listener isn't shown it again", db.user(fan, "select public.get_promoted(2)")[0][0] == [])
         mine = db.user(artist, "select public.my_boosts()")[0][0]
         c.ok("the artist sees their Boost and its reach", mine[0]["reached"] == 1 and mine[0]["listeners"] == 100, mine)
         # Boosted listeners never count toward the charts.
-        db.user(fan, "select public.record_play(%s, 120, 180, false, null)", (sid,))
-        db.user(fan2, "select public.record_play(%s, 120, 180, false, null)", (sid,))
         db.su("update public.plays set created_at = now() - interval '2 hours' where song_id = %s", (sid,))
         weekly = {str(r[0]): r[1] for r in db.su("select song_id, this_week from public.wavee_chart_plays()")}
         c.ok("a boosted listener's play doesn't count toward the charts", weekly.get(sid) == 1, weekly.get(sid))
         db.su("update public.boosts set reached = listeners - 1 where id = %s", (bid,))
-        db.user(fan2, "select public.boost_heard(%s)", (bid,))
+        fan3 = signup("fan3@example.com", {"username": "fanny3"})
+        db.user(fan3, "select public.get_promoted(2)")
+        db.user(fan3, "select public.record_play(%s, 120, 180, false, null)", (sid,))
         c.ok("a Boost that reaches everyone is done",
              db.su("select status from public.boosts where id = %s", (bid,))[0][0] == "done"
              and db.user(other, "select public.get_promoted(2)")[0][0] == [])
@@ -1402,7 +1427,7 @@ def run_contract_tests(db, c):
         # Artist Pro.
         c.ok("not Pro yet", db.user(artist, "select public.wavee_my_plan()")[0][0] == {"pro_until": None, "free_boost": False})
         st = db.user(artist, "select public.song_stats(%s)", (sid,))[0][0]
-        c.ok("stats without Pro: the totals", st["pro"] is False and st["days"] is None and st["plays"] == 2, st)
+        c.ok("stats without Pro: the totals", st["pro"] is False and st["days"] is None and st["plays"] == 3, st)
         c.raises("only the artist sees a song's stats", lambda: db.user(fan, "select public.song_stats(%s)", (sid,)), "not your song")
         sub = db.user(artist, "select public.wavee_subscribe_start('wavee.pro.monthly', 'USD')")[0][0]
         c.ok("subscribing gives a reference and the price", sub["ref"].startswith("wavee-sub-") and float(sub["amount"]) == 4.99
@@ -1421,7 +1446,7 @@ def run_contract_tests(db, c):
         c.raises("one free Boost a month", lambda: db.user(artist, "select public.boost_free(%s)", (sid,)), "no free boost")
         st = db.user(artist, "select public.song_stats(%s)", (sid,))[0][0]
         c.ok("Pro stats: every day of the last 30", st["pro"] is True and len(st["days"]) == 30
-             and sum(d["plays"] for d in st["days"]) == 2, st)
+             and sum(d["plays"] for d in st["days"]) == 3, st)
         before = db.su("select period_end from public.wavee_subscriptions where ref = %s", (sub["ref"],))[0][0]
         db.service("select public.wavee_renew('flw-plan-9', 'BOOSTY@example.com', 'flw-3', 4.99, 'USD', 'sandbox')")
         after = db.su("select period_end from public.wavee_subscriptions where ref = %s", (sub["ref"],))[0][0]
@@ -1432,6 +1457,14 @@ def run_contract_tests(db, c):
              db.su("select status from public.wavee_subscriptions where ref = %s", (sub["ref"],))[0][0] == "cancelled"
              and db.user(artist, "select public.wavee_my_plan()")[0][0]["pro_until"] is not None)
         c.raises("players can't read payments directly", lambda: db.user(artist, "select * from public.boosts"), "permission denied")
+        db.su("update public.wavee_money_settings set accept_test_payments = false")
+        c.ok("with test payments off, a test-card subscription isn't Pro",
+             db.user(artist, "select public.wavee_my_plan()")[0][0]["pro_until"] is None)
+        c.raises("…and test payments aren't credited",
+                 lambda: db.service("select public.wavee_credit(%s, 'flw-9', 4.99, 'USD', 'sandbox')", (sub["ref"],)), "test payments are off")
+        c.ok("real payments still are", db.service("select public.wavee_credit(%s, 'flw-10', 4.99, 'USD', 'production')", (sub["ref"],))[0][0]["kind"] == "pro"
+             and db.user(artist, "select public.wavee_my_plan()")[0][0]["pro_until"] is not None)
+        db.su("update public.wavee_money_settings set accept_test_payments = true")
 
     c.safe("money", money)
 
@@ -1450,6 +1483,20 @@ def run_contract_tests(db, c):
              and st["listeners"] == {"taken": 0, "cap": 70} and st["me"] is None and st["members"] == [], st)
         ear = signup("ear@example.com", {"username": "first_ear"})
         maker = signup("maker@example.com", {"username": "maker", "music_roles": ["producer"]})
+        crate = signup("crate@example.com", {"username": "crate_digger_artist"})
+        pool = [new_song(crate, f"Pool {i}", duration=120) for i in range(3)]
+
+        def listen_to_three(u):
+            for sid_ in pool:
+                age(u, 120)
+                db.user(u, "select public.record_play(%s, 60, 120, false, null)", (sid_,))
+
+        unconfirmed = signup("unconfirmed@example.com", {"username": "not_yet"}, confirmed=False)
+        c.raises("founding spots need a confirmed email",
+                 lambda: db.user(unconfirmed, "select public.claim_founding('listener')"), "WV001", "Confirm your email")
+        c.raises("founding listeners have listened to something first",
+                 lambda: db.user(ear, "select public.claim_founding('listener')"), "WV001", "Listen to three songs")
+        listen_to_three(ear)
         mine = db.user(ear, "select public.claim_founding('listener')")[0][0]
         c.ok("a listener takes a founding spot, numbered", mine == {"number": 1, "role": "listener"}, mine)
         c.ok("asking again keeps the same spot", db.user(ear, "select public.claim_founding('artist')")[0][0] == mine)
@@ -1462,6 +1509,7 @@ def run_contract_tests(db, c):
         c.ok("the status counts them and knows you", st["artists"]["taken"] == 1 and st["listeners"]["taken"] == 1
              and st["me"] == mine and [m["username"] for m in st["members"]] == ["maker", "first_ear"], st)
         late = signup("late@example.com", {"username": "late_ear"})
+        listen_to_three(late)
         db.su("update public.wavee_growth set founding_listeners = 1")
         c.raises("no spots left, no spot", lambda: db.user(late, "select public.claim_founding('listener')"), "WV001", "taken")
         db.su("update public.wavee_growth set founding_listeners = 70, founding_open = false")
@@ -1489,7 +1537,7 @@ def run_contract_tests(db, c):
         new_song(maker, "Third Again", duration=150)
         c.ok("deleting one and uploading again doesn't earn more",
              db.su("select count(*) from public.first_listens where user_id = %s", (maker,))[0][0] == 3)
-        house = signup("wavee.house@example.com", {"username": "wavee_house"})
+        house = signup("wavee.house@example.com", {"username": "house_two"})
         db.service("update public.users set is_official = true where id = %s", (house,))
         new_song(house, "House Song")
         c.ok("Wavee's own songs don't get first listens",
@@ -1506,7 +1554,7 @@ def run_contract_tests(db, c):
         promo = db.user(late, "select public.get_promoted(2)")[0][0]
         c.ok("paid Boosts and first listens take turns, each marked",
              [(p["kind"], p["song"]["id"]) for p in promo] == [("promoted", paid_song), ("new", first)], promo)
-        db.user(late, "select public.boost_heard(%s)", (promo[1]["boost_id"],))
+        age(late)
         heard(late, first)
         c.ok("a first listen counts toward the charts (a paid one doesn't)",
              db.su("select public._wavee_boosted(%s, %s)", (first, late))[0][0] is False)
@@ -1566,16 +1614,21 @@ def run_contract_tests(db, c):
         others = [new_song(signup(f"scene{i}@example.com", {"username": f"scene_{i}"}), f"Scene {i}", duration=120) for i in range(4)]
         explorer = signup("explorer@example.com", {"username": "explorer"})
         heard(explorer, others[0])
+        age(explorer, 120)
         heard(explorer, others[3], seconds=10)
         ch = db.user(explorer, "select public.my_challenge()")[0][0]
         c.ok("only real listens count toward the challenge", ch["found"] == 1 and ch["goal"] == 3 and ch["streak"] == 0
              and [a["username"] for a in ch["artists"]] == ["scene_0"], ch)
+        age(explorer, 120)
         heard(explorer, others[1])
+        age(explorer, 120)
         heard(explorer, others[2])
+        age(explorer, 120)
         heard(explorer, new_song(house, "House Two", duration=120))
         ch = db.user(explorer, "select public.my_challenge()")[0][0]
         c.ok("three new artists this week: done (Wavee's own don't count)", ch["found"] == 3 and ch["streak"] == 1, ch)
         db.su("update public.plays set created_at = created_at - interval '7 days' where user_id = %s", (explorer,))
+        age(explorer, 120)
         heard(explorer, first)
         ch = db.user(explorer, "select public.my_challenge()")[0][0]
         c.ok("last week's run stays a streak while this week is under way", ch["found"] == 1 and ch["streak"] == 1, ch)
@@ -1622,7 +1675,16 @@ def run_contract_tests(db, c):
         c.ok("every new artist, with how their start is going", row["songs"] == 4 and row["founding"] == 2
              and row["picked"] is True and row["feedback"] == 2 and row["welcomed_at"] is None
              and row["song"]["id"] == first and row["listeners"] >= 2, row)
-        c.ok("…never Wavee's own", all(r["user"]["username"] != "wavee_house" for r in new))
+        c.ok("…never Wavee's own", all(r["user"]["username"] != "house_two" for r in new))
+
+        # Reserved usernames are the team's.
+        taker = signup("taker@example.com", {"username": "wavee"})
+        c.ok("a new account asking for a reserved name gets a variation", username_of(taker).startswith("wavee_")
+             and username_of(taker) != "wavee", username_of(taker))
+        c.raises("nobody else can take one later",
+                 lambda: db.user(ear, "update public.users set username = 'support' where id = %s", (ear,)), "WV001", "reserved")
+        db.user(ADMIN, "update public.users set username = 'wavee_team' where id = %s", (ADMIN,))
+        c.ok("the team can", username_of(ADMIN) == "wavee_team")
         db.user(ADMIN, "select public.admin_welcome_artist(%s, 'DM on Instagram, helped with the hook')", (maker,))
         row = next(r for r in db.user(ADMIN, "select public.admin_new_artists(30)")[0][0] if r["user"]["username"] == "maker")
         c.ok("the team marks who they've welcomed", row["welcomed_at"] is not None
@@ -1722,6 +1784,41 @@ def run_contract_tests(db, c):
         c.raises("stats need an account", lambda: db.anon("select public.listener_insights(28)"), "permission denied")
 
     c.safe("insights", insights)
+
+    # ── Hardening: plays can't be faked in bulk ────────────────────────────
+    c.start("hardening")
+
+    def hardening():
+        band = signup("band@example.com", {"username": "the_band"})
+        tracks = [new_song(band, f"Track {i}", duration=200) for i in range(12)]
+        bot = signup("bot@example.com", {"username": "not_a_bot"})
+        for t in tracks:
+            db.user(bot, "select public.record_play(%s, 200, 200, false, null)", (t,))
+        heard = db.su("select count(*) from public.plays where user_id = %s and duration_listened >= 30", (bot,))[0][0]
+        c.ok("a burst of plays claims almost no listening (only the first is believed)", heard == 1, heard)
+        before = db.su("select count(*) from public.plays")[0][0]
+        db.anon("select public.record_play(%s, 60, 200, false, null)", (tracks[0],))
+        c.ok("a visitor's play without a session isn't recorded", db.su("select count(*) from public.plays")[0][0] == before)
+        ip = {"cf-connecting-ip": "203.0.113.9"}
+        for i in range(300):
+            db.anon("select public.record_play(%s, 60, 200, false, %s)", (tracks[i % 12], f"fake-{i}"), headers=ip)
+        c.raises("one address can't play more than 300 times an hour, whatever sessions it claims",
+                 lambda: db.anon("select public.record_play(%s, 60, 200, false, 'fake-x')", (tracks[0],), headers=ip),
+                 "Too many requests")
+        db.su("update public.plays set created_at = now() - interval '2 hours' where song_id = any(%s::uuid[])", (tracks,))
+        weekly = {str(r[0]): r[1] for r in db.su("select song_id, this_week from public.wavee_chart_plays()")}
+        c.ok("visitors' plays never reach the charts", all(weekly.get(t, 0) <= 1 for t in tracks),
+             [weekly.get(t) for t in tracks])
+        loyal = signup("loyal@example.com", {"username": "loyal_fan"})
+        for k in range(5):
+            db.su("insert into public.plays (user_id, song_id, duration_listened, song_duration, created_at) "
+                  "values (%s, %s, 200, 200, now() - interval '3 hours' - make_interval(mins => %s))", (loyal, tracks[5], k * 10))
+        weekly = {str(r[0]): r[1] for r in db.su("select song_id, this_week from public.wavee_chart_plays()")}
+        c.ok("one listener counts once a day on the charts, however often they play it", weekly.get(tracks[5]) == 1,
+             weekly.get(tracks[5]))
+        c.raises("old tables are closed to clients", lambda: db.anon("select * from public.subscriptions"), "permission denied")
+
+    c.safe("hardening", hardening)
 
     # ── Account deletion (the delete-account Edge Function deletes the auth user) ──
     c.start("account deletion")

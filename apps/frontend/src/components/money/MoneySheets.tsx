@@ -186,7 +186,7 @@ function ProBody() {
           title="Full stats"
           text="12 months of history, where your listeners are, your superfans, and how much of each song people hear."
         />
-        <Perk icon={<LuUpload />} title="Bigger uploads" text="Lossless masters up to 150 MB and videos up to 300 MB." />
+        <Perk icon={<LuUpload />} title="Bigger uploads" text="Lossless masters (WAV, FLAC) up to 95 MB." />
       </ul>
       <div className="mt-5">
         {plan?.pro_until ? (

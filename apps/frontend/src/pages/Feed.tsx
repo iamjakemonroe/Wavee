@@ -9,7 +9,6 @@ import { SongMenu, shareSong } from '../components/music/SongMenu';
 import { AiTag, Artists } from '../components/music/Artists';
 import { Bars, Button, Cover, EmptyState, IconButton, LoadError, Spinner } from '../components/ui';
 import { useFeed, usePromoted } from '../hooks/data';
-import { payApi } from '../lib/pay';
 import { api, type Song } from '../lib/api';
 import { count, duration, plural, songGenres } from '../lib/format';
 import { currentSong, usePlayer } from '../store/player';
@@ -139,18 +138,7 @@ export function Feed() {
     return all.filter((s) => !seen.has(s.id) && !!seen.add(s.id));
   }, [feed.data, queue, source, promoted]);
 
-  // A promoted song heard for ten seconds counts toward its Boost (once a visit).
-  const promotedNow = usePlayer((s) => currentSong(s)?.promoted);
-  const playing = usePlayer((s) => s.playing);
-  const heard = useRef(new Set<string>());
-  useEffect(() => {
-    if (!promotedNow || !playing || heard.current.has(promotedNow)) return;
-    const t = window.setTimeout(() => {
-      heard.current.add(promotedNow);
-      void payApi.heard(promotedNow).catch(() => undefined);
-    }, 10_000);
-    return () => window.clearTimeout(t);
-  }, [promotedNow, playing]);
+  // A promoted song's listeners are counted by the server, from the play itself.
   const scroller = useRef<HTMLDivElement>(null);
 
   const playAt = (i: number) => {
