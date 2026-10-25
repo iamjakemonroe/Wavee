@@ -1,19 +1,15 @@
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import {
   LuCompass,
   LuHouse,
   LuLibrary,
   LuLogIn,
-  LuLogOut,
   LuPlus,
   LuSearch,
-  LuSettings,
-  LuShield,
   LuTrophy,
   LuUpload,
-  LuDownload,
   LuChartColumn,
   LuGem,
   LuRadar,
@@ -21,15 +17,14 @@ import {
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useFeatureInvites, useMyPlaylists } from '../../hooks/data';
 import { useAuth } from '../../store/auth';
-import { installWay, useInstall } from '../../store/install';
 import { usePlayer } from '../../store/player';
 import { useToasts } from '../../store/toast';
-import { SignOutConfirm } from '../auth/SignOutConfirm';
 import { InstallPrompt } from '../install/InstallPrompt';
 import { InstallSheet } from '../install/InstallSheet';
 import { MoneySheets, PaymentReturn } from '../money/MoneySheets';
+import { AccountMenu } from './AccountMenu';
 import { NowPlaying, PlayerBar, QueuePanel } from '../music/Player';
-import { Avatar, Button, Cover, Logo, Modal } from '../ui';
+import { Button, Cover, Logo, Modal } from '../ui';
 
 const nav = [
   { to: '/', label: 'Home', icon: <LuHouse />, end: true },
@@ -125,81 +120,32 @@ function FooterLinks({ className }: { className?: string }) {
   );
 }
 
+/** The bar on top: the logo (phones; the sidebar has it on wide screens), and on the right only
+ * your avatar, which opens everything about your account. Signed out: sign in or join. */
 function TopBar() {
-  const account = useAuth((s) => s.account);
   const session = useAuth((s) => s.session);
-  const [signingOut, setSigningOut] = useState(false);
-  const installed = useInstall((s) => s.installed);
-  const offer = useInstall((s) => s.offer);
-  const showInstall = useInstall((s) => s.show);
-  // Phones and tablets can always add Wavee (or learn how); computers only where the browser can.
-  const way = installWay();
-  const touch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
-  const canInstall = !installed && (offer !== null || way === 'mac-safari' || (touch && way !== 'none'));
   return (
-    <header className="sticky top-0 z-20 box-content flex h-16 shrink-0 items-center justify-between gap-4 border-b border-line/[0.06] bg-bg px-4 pt-[var(--sat)] sm:px-6">
-      <Link to="/" className="lg:hidden">
+    <header className="sticky top-0 z-20 box-content flex h-16 shrink-0 items-center justify-between gap-4 border-b border-line/[0.06] bg-bg/90 px-4 pt-[var(--sat)] backdrop-blur-xl sm:px-6">
+      <Link to="/" className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-violet/60 lg:hidden" aria-label="Wavee home">
         <Logo />
       </Link>
       <div className="hidden lg:block" />
-      <div className="flex items-center gap-2">
-        {canInstall && (
-          <button
-            onClick={() => showInstall()}
-            aria-label="Install Wavee"
-            title="Install Wavee"
-            className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-line/[0.06] hover:text-ink"
-          >
-            <LuDownload />
-          </button>
-        )}
-        {session ? (
-          <>
-            <Link
-              to="/upload"
-              aria-label="Upload music"
-              className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-line/[0.06] hover:text-ink lg:hidden"
-            >
-              <LuUpload />
-            </Link>
-            {account?.is_admin && (
-              <Link to="/admin" aria-label="Moderation" className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-line/[0.06] hover:text-ink">
-                <LuShield />
-              </Link>
-            )}
-            <Link to="/settings" aria-label="Settings" className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-line/[0.06] hover:text-ink">
-              <LuSettings />
-            </Link>
-            <button
-              onClick={() => setSigningOut(true)}
-              aria-label="Sign out"
-              title="Sign out"
-              className="hidden h-9 w-9 place-items-center rounded-full text-muted hover:bg-line/[0.06] hover:text-ink sm:grid"
-            >
-              <LuLogOut />
-            </button>
-            {account && (
-              <Link to={`/u/${account.username}`} aria-label="Your profile">
-                <Avatar src={account.avatar_url} name={account.display_name || account.username} className="h-9 w-9 text-sm" />
-              </Link>
-            )}
-          </>
-        ) : (
-          <>
-            <Link to="/signin">
-              <Button size="sm" variant="ghost" icon={<LuLogIn />}>
-                Sign in
-              </Button>
-            </Link>
-            <Link to="/signup">
-              <Button size="sm" variant="primary" className="!shadow-none">
-                Join free
-              </Button>
-            </Link>
-          </>
-        )}
-      </div>
-      <SignOutConfirm open={signingOut} onClose={() => setSigningOut(false)} />
+      {session ? (
+        <AccountMenu />
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <Link to="/signin">
+            <Button size="sm" variant="ghost" icon={<LuLogIn />}>
+              Sign in
+            </Button>
+          </Link>
+          <Link to="/signup">
+            <Button size="sm" variant="primary" className="!shadow-none">
+              Join free
+            </Button>
+          </Link>
+        </div>
+      )}
     </header>
   );
 }

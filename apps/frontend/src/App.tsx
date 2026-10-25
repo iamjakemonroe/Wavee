@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, type ComponentType } from 'react';
-import { Outlet, Route, Routes } from 'react-router-dom';
+import { Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Bare, Shell } from './components/layout/Shell';
 import { Spinner } from './components/ui';
 import { Home } from './pages/Home';
@@ -47,12 +48,22 @@ function Loading() {
   );
 }
 
-function ShellLayout() {
+/** Each page gets its own safety net, reset when you move to another page. */
+function Page() {
+  const { pathname } = useLocation();
   return (
-    <Shell>
+    <ErrorBoundary key={pathname}>
       <Suspense fallback={<Loading />}>
         <Outlet />
       </Suspense>
+    </ErrorBoundary>
+  );
+}
+
+function ShellLayout() {
+  return (
+    <Shell>
+      <Page />
     </Shell>
   );
 }
@@ -60,9 +71,7 @@ function ShellLayout() {
 function BareLayout() {
   return (
     <Bare>
-      <Suspense fallback={<Loading />}>
-        <Outlet />
-      </Suspense>
+      <Page />
     </Bare>
   );
 }

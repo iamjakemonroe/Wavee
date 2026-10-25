@@ -60,7 +60,7 @@ export function PickCard({ pick, list, index, source }: { pick: Picks['picks'][n
 export function FreshFinds() {
   const picks = usePicks().data;
   const playList = usePlayer((s) => s.playList);
-  if (!picks?.picks.length) return null;
+  if (!picks?.picks?.length) return null;
   const list = picks.picks.map((p) => p.song);
   return (
     <section className="mt-12">

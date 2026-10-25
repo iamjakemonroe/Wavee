@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useMemo, type ReactNode } from 'react';
 import { LuArrowRight, LuChartColumn, LuDisc3, LuHeart, LuMoon, LuPlay, LuSparkles, LuSun, LuSunrise, LuSunset, LuTrophy, LuUpload, LuUsers } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Challenge, Collections, FoundingBanner, YourWeek } from '../components/growth/Home';
 import { FreshFinds } from '../components/growth/Picks';
 import { SongRow, SongTile } from '../components/music/Song';
@@ -356,9 +357,12 @@ export function Home() {
         <Hero trending={trending.data} />
       )}
 
-      <FoundingBanner />
-      {signedIn && account?.is_artist && <YourWeek />}
-      <FreshFinds />
+      {/* Extras that can be left out if they fail, without taking Home down. */}
+      <ErrorBoundary quiet>
+        <FoundingBanner />
+        {signedIn && account?.is_artist && <YourWeek />}
+        <FreshFinds />
+      </ErrorBoundary>
 
       <Section
         title="For you"
@@ -413,7 +417,7 @@ export function Home() {
         )}
       </Section>
 
-      {signedIn && <Challenge />}
+      <ErrorBoundary quiet>{signedIn && <Challenge />}</ErrorBoundary>
 
       <Section
         title="Trending this week"
@@ -431,7 +435,9 @@ export function Home() {
         <TileRow songs={fresh.data} loading={fresh.isLoading} source="New releases" />
       </Section>
 
-      <Collections />
+      <ErrorBoundary quiet>
+        <Collections />
+      </ErrorBoundary>
 
       <ArtistsToFollow songs={trending.data} />
 
