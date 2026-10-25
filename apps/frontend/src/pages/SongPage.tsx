@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LuCalendar, LuFilm, LuHeadphones, LuHeart, LuImage, LuMessageSquareHeart, LuShare2 } from 'react-icons/lu';
+import { LuCalendar, LuFilm, LuHeadphones, LuHeart, LuImage, LuMessageSquareHeart, LuPlay, LuShare2, LuUpload, LuUserCheck, LuUserPlus } from 'react-icons/lu';
 import { Link, useParams } from 'react-router-dom';
 import { FeedbackDialog } from '../components/growth/Feedback';
 import { LinkPills } from '../components/music/Links';
@@ -7,12 +7,14 @@ import { AiTag, Artists } from '../components/music/Artists';
 import { ShareCardDialog } from '../components/music/ShareCard';
 import { LikeButton, PlayToggle, SongRow } from '../components/music/Song';
 import { SongMenu, shareSong } from '../components/music/SongMenu';
-import { Avatar, Button, Cover, EmptyState, Skeleton } from '../components/ui';
-import { useSong, useUserSongs } from '../hooks/data';
-import { ago, artistName, count, duration, songGenres } from '../lib/format';
+import { Avatar, Button, Cover, LoadError, Skeleton } from '../components/ui';
+import { useFollow, useProfile, useSong, useUserSongs } from '../hooks/data';
+import { ago, artistName, count, duration, plural, songGenres } from '../lib/format';
+import type { Song } from '../lib/api';
 import { SONG_PLATFORMS } from '../lib/platforms';
 import { useAuth, withAccount } from '../store/auth';
 import { NotFound } from './NotFound';
+import { useTitle } from '../hooks/useTitle';
 
 export function SongPage() {
   const { id = '' } = useParams();
@@ -21,6 +23,7 @@ export function SongPage() {
   const [card, setCard] = useState(false);
   const [feedback, setFeedback] = useState(false);
   const me = useAuth((x) => x.session?.user.id);
+  useTitle(song.data ? `${song.data.title} by ${artistName(song.data)}` : null);
 
   if (song.isLoading) {
     return (
@@ -33,6 +36,7 @@ export function SongPage() {
       </div>
     );
   }
+  if (song.isError) return <LoadError what="this song" onRetry={() => void song.refetch()} />;
   if (!song.data) return <NotFound what="song" />;
   const s = song.data;
   const others = (more.data ?? []).filter((x) => x.id !== s.id).slice(0, 8);
@@ -46,7 +50,12 @@ export function SongPage() {
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-bg" />
         <div className="relative grid items-end gap-8 md:grid-cols-[minmax(220px,300px)_1fr]">
-          <Cover src={s.cover_image_url} title={s.title} className="aspect-square w-full max-w-[300px] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.9)]" rounded="rounded-3xl" />
+          <Cover
+            src={s.cover_image_url}
+            title={s.title}
+            className="mx-auto aspect-square w-full max-w-[340px] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.9)] md:mx-0 md:max-w-[300px]"
+            rounded="rounded-3xl"
+          />
           <div className="min-w-0">
             <p className="label">Song · {songGenres(s).join(', ')}</p>
             <h1 className="mt-3 break-words text-[34px] leading-[1.05] sm:text-5xl">
@@ -61,30 +70,34 @@ export function SongPage() {
               <Artists song={s} className="font-medium" badgeClassName="h-4 w-4" />
             </div>
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-muted">
-              <span className="inline-flex items-center gap-1.5"><LuHeadphones /> {count(s.plays_count)} plays</span>
-              <span className="inline-flex items-center gap-1.5"><LuHeart /> {count(s.likes_count)} likes</span>
+              <span className="inline-flex items-center gap-1.5"><LuHeadphones /> {count(s.plays_count)} {plural(s.plays_count, 'play')}</span>
+              <span className="inline-flex items-center gap-1.5"><LuHeart /> {count(s.likes_count)} {plural(s.likes_count, 'like')}</span>
               <span className="inline-flex items-center gap-1.5"><LuCalendar /> {ago(s.created_at)}</span>
               {s.duration_seconds ? <span>{duration(s.duration_seconds)}</span> : null}
             </div>
-            <div className="mt-7 flex items-center gap-2">
+            <div className="mt-7 flex items-center gap-3">
               <PlayToggle song={s} list={list} index={0} source={s.title} className="h-14 w-14 text-2xl" />
               <LikeButton song={s} size="lg" />
-              <Button variant="ghost" icon={<LuShare2 />} onClick={() => void shareSong(s)}>
-                <span className="max-sm:hidden">Share</span>
+              <span className="ml-auto sm:ml-0">
+                <SongMenu song={s} />
+              </span>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button size="sm" icon={<LuShare2 />} onClick={() => void shareSong(s)}>
+                Share
               </Button>
-              <Button variant="ghost" icon={<LuImage />} onClick={() => setCard(true)}>
-                <span className="max-sm:hidden">Story card</span>
+              <Button size="sm" icon={<LuImage />} onClick={() => setCard(true)}>
+                Story card
               </Button>
               {me !== s.artist_id && (
                 <Button
-                  variant="ghost"
+                  size="sm"
                   icon={<LuMessageSquareHeart />}
                   onClick={() => withAccount('Sign in to send the artist feedback.', () => setFeedback(true))}
                 >
-                  <span className="max-sm:hidden">Feedback</span>
+                  Feedback
                 </Button>
               )}
-              <SongMenu song={s} />
             </div>
             {s.links && Object.keys(s.links).length > 0 && (
               <div className="mt-6">
@@ -115,11 +128,53 @@ export function SongPage() {
         {others.length ? (
           others.map((o, i) => <SongRow key={o.id} song={o} list={list} index={i + 1} source={artistName(s)} />)
         ) : (
-          <EmptyState title="That’s all for now" text={`${artistName(s)} hasn’t uploaded anything else yet.`} />
+          <MoreSoon song={s} />
         )}
       </section>
       {card && <ShareCardDialog song={s} open={card} onClose={() => setCard(false)} />}
       {feedback && <FeedbackDialog song={s} open={feedback} onClose={() => setFeedback(false)} />}
+    </div>
+  );
+}
+
+/** The artist has only this song so far: follow them for the next one, or keep listening. */
+function MoreSoon({ song }: { song: Song }) {
+  const profile = useProfile(song.artist_username).data;
+  const follow = useFollow(song.artist_username);
+  const me = useAuth((x) => x.session?.user.id);
+  const name = artistName(song);
+  return (
+    <div className="rounded-3xl border border-line/10 bg-line/[0.03] p-5">
+      <p className="text-[15px] font-medium">That’s all from {name} so far.</p>
+      <p className="mt-1 text-[14px] text-muted">
+        {me === song.artist_id ? 'Upload your next one: every new song gets new listeners.' : `Follow ${name} to hear the next one first.`}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {me === song.artist_id ? (
+          <Link to="/upload">
+            <Button size="sm" variant="brand" icon={<LuUpload />}>
+              Upload a song
+            </Button>
+          </Link>
+        ) : (
+          profile && (
+            <Button
+              size="sm"
+              variant={profile.is_following ? 'secondary' : 'brand'}
+              icon={profile.is_following ? <LuUserCheck /> : <LuUserPlus />}
+              loading={follow.isPending}
+              onClick={() => withAccount(`Sign in to follow ${name}.`, () => follow.mutate({ userId: profile.id, follow: !profile.is_following }))}
+            >
+              {profile.is_following ? 'Following' : `Follow ${name}`}
+            </Button>
+          )
+        )}
+        <Link to="/feed">
+          <Button size="sm" icon={<LuPlay className="fill-current" />}>
+            Keep listening
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }

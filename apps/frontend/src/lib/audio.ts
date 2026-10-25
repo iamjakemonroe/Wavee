@@ -69,7 +69,8 @@ class AudioEngine {
   /** Loads [url] (from the start) and plays it, unless [autoplay] is off. */
   load(url: string, autoplay: boolean, startAt = 0) {
     const gen = ++this.generation;
-    if (this.src !== url) {
+    // A new song, or the same one after it failed (asking again must really try again).
+    if (this.src !== url || this.el.error) {
       this.el.src = url;
     }
     if (startAt > 0) {

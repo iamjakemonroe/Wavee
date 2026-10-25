@@ -223,19 +223,31 @@ export function useSearch(query: string) {
   return { q, songs, people };
 }
 
-/** Sets a song's fields everywhere it's cached (lists, pages, the queue). */
+/** Sets a song's fields everywhere it's cached: lists, feed pages, chart entries and Fresh Finds
+ * ({ song }), the week's top song, the queue. Only what changed is copied. */
 export function patchSong(client: QueryClient, id: string, changes: Partial<Song>) {
-  const fix = (s: Song) => (s.id === id ? { ...s, ...changes } : s);
-  client.setQueriesData<unknown>({}, (data: unknown) => {
-    if (!data || typeof data !== 'object') return data;
-    if (Array.isArray(data)) return data.map((s) => (s && typeof s === 'object' && 'audio_url' in s ? fix(s as Song) : s));
-    const d = data as { pages?: unknown[]; id?: string; audio_url?: string };
-    if (Array.isArray(d.pages)) {
-      return { ...d, pages: d.pages.map((p) => (Array.isArray(p) ? p.map((s) => fix(s as Song)) : p)) };
+  const walk = (value: unknown, depth: number): unknown => {
+    if (depth > 4 || !value || typeof value !== 'object') return value;
+    if (Array.isArray(value)) {
+      let changed = false;
+      const next = value.map((v) => {
+        const w = walk(v, depth + 1);
+        if (w !== v) changed = true;
+        return w;
+      });
+      return changed ? next : value;
     }
-    if (d.audio_url && d.id === id) return { ...d, ...changes };
-    return data;
-  });
+    const obj = value as Record<string, unknown>;
+    if ('audio_url' in obj && obj.id === id) return { ...obj, ...changes };
+    let next: Record<string, unknown> | null = null;
+    for (const [k, v] of Object.entries(obj)) {
+      if (!v || typeof v !== 'object') continue;
+      const w = walk(v, depth + 1);
+      if (w !== v) (next ??= { ...obj })[k] = w;
+    }
+    return next ?? value;
+  };
+  client.setQueriesData<unknown>({}, (data: unknown) => walk(data, 0));
   usePlayer.getState().updateSong(id, changes);
 }
 

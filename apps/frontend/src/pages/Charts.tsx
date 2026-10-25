@@ -14,7 +14,7 @@ import { usePlayer } from '../store/player';
 
 const TABS = [
   { id: 'top', label: 'Top 50', text: 'The most-played songs on Wavee in the last seven days.' },
-  { id: 'rising', label: 'Rising', text: 'The songs gaining the most listeners on last week.' },
+  { id: 'rising', label: 'Rising', text: 'The songs gaining the most listeners since last week.' },
   { id: 'fresh', label: 'Fresh', text: 'The best of what came out in the last two weeks.' },
   { id: 'tastemakers', label: 'Tastemakers', text: 'The listeners who find hits first.' },
 ] as const;
@@ -66,15 +66,16 @@ export function Charts() {
 
   return (
     <div className="animate-rise">
-      <section className="relative -mx-4 -mt-4 mb-6 overflow-hidden px-4 pb-8 pt-12 sm:-mx-6 sm:px-6">
+      <section className="relative -mx-4 -mt-4 mb-4 overflow-hidden px-4 pb-4 pt-12 sm:-mx-6 sm:px-6">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_90%_at_0%_0%,rgb(var(--teal)/0.18),transparent_60%),radial-gradient(50%_80%_at_100%_10%,rgb(var(--violet)/0.22),transparent_60%)]" />
         <div className="relative">
           <p className="label flex items-center gap-2">
             <LuTrophy /> Wavee Charts
           </p>
           <h1 className="mt-3 text-[34px] leading-tight sm:text-5xl">{info.label}</h1>
-          <p className="mt-2 max-w-xl text-muted">{info.text}</p>
-          <div className="mt-6 flex gap-2 overflow-x-auto pb-1" role="tablist">
+          {/* Two lines kept for the line under the title, so the tabs don't jump between charts. */}
+          <p className="mt-2 min-h-[3rem] max-w-xl text-muted sm:min-h-0">{info.text}</p>
+          <div className="mt-5 flex gap-2 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -110,13 +111,14 @@ function SongChart({ kind, genre, onGenre }: { kind: ChartKind; genre: string | 
   const me = useAuth((s) => s.session?.user.id);
   const [sharing, setSharing] = useState<{ song: Song; badge: string } | null>(null);
   const [posting, setPosting] = useState(false);
-  const entries = chart.data ?? [];
+  const entries = useMemo(() => chart.data ?? [], [chart.data]);
   const songs = useMemo(() => entries.map((e) => e.song), [entries]);
   const name = `${CHART_NAME[kind]}${genre ? ` ${genre}` : ''}`;
 
   return (
     <>
-      <div className="scroll-row mb-6 gap-2">
+      {/* The genres scroll sideways; the edge fades so it reads as "more this way". */}
+      <div className="scroll-row mb-6 gap-2 [mask-image:linear-gradient(to_right,black_85%,transparent)]">
         {[null, ...POPULAR_GENRES].map((g) => (
           <button
             key={g ?? 'all'}
@@ -247,7 +249,17 @@ function Tastemakers() {
           ))}
         </ol>
       ) : (
-        <EmptyState icon={<LuEar />} title="No tastemakers yet" text="Be the first: find a song in the feed before anyone else does." />
+        <EmptyState
+          title="No tastemakers yet"
+          text="The board fills up as songs people liked early take off. Start digging."
+          action={
+            <Link to="/feed">
+              <Button variant="brand" icon={<LuPlay className="fill-current" />}>
+                Start the feed
+              </Button>
+            </Link>
+          }
+        />
       )}
     </>
   );

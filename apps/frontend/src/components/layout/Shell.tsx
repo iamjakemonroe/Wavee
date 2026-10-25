@@ -25,6 +25,7 @@ import { MoneySheets, PaymentReturn } from '../money/MoneySheets';
 import { AccountMenu } from './AccountMenu';
 import { NowPlaying, PlayerBar, QueuePanel } from '../music/Player';
 import { Button, Cover, Logo, Modal } from '../ui';
+import { plural } from '../../lib/format';
 
 const nav = [
   { to: '/', label: 'Home', icon: <LuHouse />, end: true },
@@ -92,7 +93,7 @@ function Sidebar() {
                 <Cover src={p.cover_image_url} title={p.name} className="h-9 w-9" rounded="rounded-md" />
                 <span className="min-w-0">
                   <span className="block truncate text-sm">{p.name}</span>
-                  <span className="block text-[11px] text-faint">{p.songs_count ?? 0} songs</span>
+                  <span className="block text-[11px] text-faint">{p.songs_count ?? 0} {plural(p.songs_count, 'song')}</span>
                 </span>
               </NavLink>
             ))}
@@ -285,13 +286,19 @@ export function Shell({ children }: { children?: ReactNode }) {
         <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain lg:overflow-visible">
           <main
             className={clsx(
-              'mx-auto w-full max-w-[1400px] px-4 pt-4 sm:px-6 lg:pb-[calc(var(--player-h)+40px)]',
+              // A column at least the screen's height, so on a short page the links sit at the
+              // bottom rather than halfway up.
+              'mx-auto flex min-h-full w-full max-w-[1400px] flex-col px-4 pt-4 sm:px-6 lg:block lg:min-h-0 lg:pb-[calc(var(--player-h)+40px)]',
               // Room under the last thing on the page for the tabs, the home bar and the player.
               feed ? 'pb-0' : 'pb-[calc(var(--player-h)+var(--nav-h)+32px)]',
             )}
           >
-            {children ?? <Outlet />}
-            {!feed && <FooterLinks className="mt-16 justify-center border-t border-line/[0.05] pt-6 lg:hidden" />}
+            <div className="min-w-0">{children ?? <Outlet />}</div>
+            {!feed && (
+              <div className="mt-auto pt-16 lg:hidden">
+                <FooterLinks className="justify-center border-t border-line/[0.05] pt-6" />
+              </div>
+            )}
           </main>
         </div>
       </div>

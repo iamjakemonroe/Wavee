@@ -4,9 +4,11 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { authMessage, AuthLayout, StrengthMeter, passwordStrength } from '../../components/auth/AuthLayout';
 import { Button, Checkbox, Input, Spinner } from '../../components/ui';
 import { api } from '../../lib/api';
+import { safePath } from '../../lib/queryClient';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../store/auth';
 import { toast } from '../../store/toast';
+import { useTitle } from '../../hooks/useTitle';
 
 const callback = (next = '/') => `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
@@ -52,10 +54,11 @@ function useReturnTo() {
   const location = useLocation();
   const [params] = useSearchParams();
   const from = (location.state as { from?: string } | null)?.from ?? params.get('next') ?? '/';
-  return from.startsWith('/') && !from.startsWith('//') ? from : '/';
+  return safePath(from);
 }
 
 export function SignIn() {
+  useTitle('Sign in');
   const navigate = useNavigate();
   const returnTo = useReturnTo();
   const session = useAuth((s) => s.session);
@@ -129,6 +132,7 @@ export function SignIn() {
 const USERNAME = /^[a-z0-9_.]{3,30}$/;
 
 export function SignUp() {
+  useTitle('Join');
   const navigate = useNavigate();
   const returnTo = useReturnTo();
   const [name, setName] = useState('');
@@ -272,6 +276,7 @@ export function CheckEmail() {
 }
 
 export function ForgotPassword() {
+  useTitle('Reset your password');
   const location = useLocation();
   const [email, setEmail] = useState((location.state as { email?: string } | null)?.email ?? '');
   const [sent, setSent] = useState(false);
@@ -375,7 +380,7 @@ export function AuthCallback() {
   useEffect(() => {
     if (session) {
       toast('You’re in. Welcome to Wavee!', 'success');
-      navigate(next.startsWith('/') ? next : '/', { replace: true });
+      navigate(safePath(next), { replace: true });
     }
   }, [session, navigate, next]);
 

@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { LuArrowRight, LuChartColumn, LuCompass, LuFlame, LuGem, LuImage, LuRadar, LuSparkles, LuUserPlus } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { useChallenge, useCollections, useFounding, useMyWeek } from '../../hooks/data';
-import { count } from '../../lib/format';
+import { count, plural } from '../../lib/format';
 import { useMoney } from '../../store/money';
 import { ShareCardDialog } from '../music/ShareCard';
 import { Avatar, Button, Cover } from '../ui';
@@ -196,7 +196,9 @@ export function FoundingBanner() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="font-semibold">
-              Wavee Founding {s.artists.cap + s.listeners.cap} · {left} {left === 1 ? 'spot' : 'spots'} left
+              {s.artists.taken + s.listeners.taken < 10
+                ? `Be #${s.artists.taken + s.listeners.taken + 1} of Wavee’s first ${s.artists.cap + s.listeners.cap}`
+                : `The Founding ${s.artists.cap + s.listeners.cap}: ${left} ${left === 1 ? 'spot' : 'spots'} left`}
             </p>
             <p className="mt-0.5 text-[13.5px] leading-5 text-muted">
               Be one of the first artists and listeners building Wavee. Your number is yours for good.
@@ -237,7 +239,7 @@ export function Collections() {
               </div>
             )}
             <p className="mt-3 truncate text-sm font-medium">{c.name}</p>
-            <p className="truncate text-[12px] text-faint">{c.songs_count} songs</p>
+            <p className="truncate text-[12px] text-faint">{c.songs_count} {plural(c.songs_count, 'song')}</p>
           </Link>
         ))}
       </div>

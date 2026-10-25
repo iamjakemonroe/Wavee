@@ -18,6 +18,21 @@ export const supabase = createClient(url, key, {
   },
 });
 
+/** A play still in progress when the page closes (tab closed, app swiped away): sent with
+ * keepalive so it survives the page, signed in as whoever is (the session is already loaded). */
+export function recordPlayOnExit(args: Record<string, unknown>, token: string | null) {
+  try {
+    void fetch(`${url}/rest/v1/rpc/record_play`, {
+      method: 'POST',
+      keepalive: true,
+      headers: { apikey: key, authorization: `Bearer ${token ?? key}`, 'content-type': 'application/json' },
+      body: JSON.stringify(args),
+    }).catch(() => undefined);
+  } catch {
+    // Nothing more can be done as the page goes.
+  }
+}
+
 /** The current access token, for calls to our own Worker. */
 export async function accessToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();

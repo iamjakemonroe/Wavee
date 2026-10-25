@@ -16,6 +16,9 @@ export function count(n: number | null | undefined): string {
   return `${(v / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
 }
 
+/** "1 song", "2 songs": the word for a count. */
+export const plural = (n: number | null | undefined, one: string, many = `${one}s`) => ((n ?? 0) === 1 ? one : many);
+
 /** "3 days ago", "just now". */
 export function ago(iso: string): string {
   const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);

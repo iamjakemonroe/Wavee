@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /settings
+Disallow: /library
+Disallow: /upload
+Disallow: /stats
+Disallow: /auth/
+
+Sitemap: https://wavee.kaivon.app/sitemap.xml

@@ -8,14 +8,15 @@ import { LinkPills } from '../components/music/Links';
 import { Verified } from '../components/music/Verified';
 import { SongRow } from '../components/music/Song';
 import { Menu, ReportDialog } from '../components/music/SongMenu';
-import { Avatar, Button, Cover, EmptyState, Skeleton } from '../components/ui';
+import { Avatar, Button, Cover, EmptyState, LoadError, Skeleton } from '../components/ui';
 import { useAppearances, useFinds, useFollow, useProfile, useUserPlaylists, useUserSongs } from '../hooks/data';
-import { count, roleLabel } from '../lib/format';
+import { count, plural, roleLabel } from '../lib/format';
 import { ARTIST_PLATFORMS } from '../lib/platforms';
 import { useAuth, withAccount } from '../store/auth';
 import { usePlayer } from '../store/player';
 import { toast } from '../store/toast';
 import { NotFound } from './NotFound';
+import { useTitle } from '../hooks/useTitle';
 
 export function Artist() {
   const { username = '' } = useParams();
@@ -28,6 +29,7 @@ export function Artist() {
   const [tab, setTab] = useState<'songs' | 'appears' | 'finds' | 'playlists'>('songs');
   const appearances = useAppearances(profile.data?.id);
   const finds = useFinds(tab === 'finds' ? profile.data?.id : undefined);
+  useTitle(profile.data ? profile.data.display_name || profile.data.username : null);
   const [reporting, setReporting] = useState(false);
 
   if (profile.isLoading) {
@@ -41,6 +43,7 @@ export function Artist() {
       </div>
     );
   }
+  if (profile.isError) return <LoadError what="this profile" onRetry={() => void profile.refetch()} />;
   if (!profile.data) return <NotFound what="person" />;
   const p = profile.data;
   const name = p.display_name || p.username;
@@ -107,9 +110,9 @@ export function Artist() {
               </Link>
             )}
             <div className="mt-4 flex justify-center gap-6 text-sm sm:justify-start">
-              <span><b className="text-ink">{count(p.followers_count)}</b> <span className="text-muted">followers</span></span>
+              <span><b className="text-ink">{count(p.followers_count)}</b> <span className="text-muted">{plural(p.followers_count, 'follower')}</span></span>
               <span><b className="text-ink">{count(p.following_count)}</b> <span className="text-muted">following</span></span>
-              <span><b className="text-ink">{count(p.songs_count)}</b> <span className="text-muted">songs</span></span>
+              <span><b className="text-ink">{count(p.songs_count)}</b> <span className="text-muted">{plural(p.songs_count, 'song')}</span></span>
             </div>
           </div>
         </div>
@@ -134,7 +137,7 @@ export function Artist() {
               {p.is_following ? 'Following' : 'Follow'}
             </Button>
           )}
-          <Button variant="ghost" icon={<LuShare2 />} onClick={() => void share()}>
+          <Button variant="secondary" icon={<LuShare2 />} onClick={() => void share()}>
             Share
           </Button>
           {!mine && <Menu label="More" items={[{ label: 'Report', icon: <LuFlag />, danger: true, onClick: () => setReporting(true) }]} />}
@@ -209,7 +212,7 @@ export function Artist() {
               <Link key={pl.id} to={`/playlists/${pl.id}`} className="group">
                 <Cover src={pl.cover_image_url} title={pl.name} className="aspect-square w-full shadow-lift transition duration-500 group-hover:-translate-y-1" rounded="rounded-2xl" />
                 <p className="mt-3 truncate text-sm font-medium">{pl.name}</p>
-                <p className="text-[12px] text-faint">{pl.songs_count ?? 0} songs</p>
+                <p className="text-[12px] text-faint">{pl.songs_count ?? 0} {plural(pl.songs_count, 'song')}</p>
               </Link>
             ))}
           </div>

@@ -21,6 +21,7 @@ import { keys, useFounding, useUserSongs } from '../hooks/data';
 import { api, type Founding as FoundingSpot } from '../lib/api';
 import { useAuth, withAccount } from '../store/auth';
 import { toast } from '../store/toast';
+import { useTitle } from '../hooks/useTitle';
 
 function Meter({ label, taken, cap, icon }: { label: string; taken: number; cap: number; icon: ReactNode }) {
   const left = Math.max(0, cap - taken);
@@ -61,6 +62,7 @@ function Perk({ icon, title, children }: { icon: ReactNode; title: string; child
 /** Wavee Founding 100: the first 30 artists and 70 listeners, by name and number. The counts are
  * the real ones. */
 export function Founding() {
+  useTitle('Founding 100');
   const status = useFounding();
   const account = useAuth((s) => s.account);
   const signedIn = !!useAuth((s) => s.session);
@@ -121,8 +123,23 @@ export function Founding() {
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Meter label="Founding artists" icon={<LuMicVocal />} taken={s.artists.taken} cap={s.artists.cap} />
-            <Meter label="Founding listeners" icon={<LuHeadphones />} taken={s.listeners.taken} cap={s.listeners.cap} />
+            {s.artists.taken + s.listeners.taken >= 10 ? (
+              <>
+                <Meter label="Founding artists" icon={<LuMicVocal />} taken={s.artists.taken} cap={s.artists.cap} />
+                <Meter label="Founding listeners" icon={<LuHeadphones />} taken={s.listeners.taken} cap={s.listeners.cap} />
+              </>
+            ) : (
+              // The very start: no empty bars, just the numbers waiting to be taken.
+              <div className="rounded-3xl border border-line/10 bg-line/[0.04] p-5 sm:col-span-2">
+                <p className="flex items-center gap-2 font-semibold">
+                  <LuGem className="text-[#f0c060]" /> The first spots are open
+                </p>
+                <p className="mt-1.5 text-[14px] leading-6 text-muted">
+                  Spots are numbered #1 to #{s.artists.cap + s.listeners.cap} in the order they’re taken.{' '}
+                  <b className="text-ink">#{s.artists.taken + s.listeners.taken + 1} is next.</b>
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 rounded-4xl border border-line/10 bg-raised/60 p-6 sm:p-8">

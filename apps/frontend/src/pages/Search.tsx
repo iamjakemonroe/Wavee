@@ -1,16 +1,19 @@
-import { LuSearch, LuX } from 'react-icons/lu';
+import { LuMusic, LuPlay, LuSearch, LuUpload, LuX } from 'react-icons/lu';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SongRow } from '../components/music/Song';
-import { Avatar, Bars, EmptyState, Skeleton } from '../components/ui';
+import { Avatar, Bars, Button, EmptyState, Skeleton } from '../components/ui';
 import { useSearch } from '../hooks/data';
-import { count, GENRES, POPULAR_GENRES } from '../lib/format';
+import { count, GENRES, plural, POPULAR_GENRES } from '../lib/format';
+import { useTitle } from '../hooks/useTitle';
 
 export function Search() {
+  useTitle('Search');
   const [params, setParams] = useSearchParams();
   const query = params.get('q') ?? '';
   const setQuery = (q: string) => setParams(q ? { q } : {}, { replace: true });
   const { q, songs, people } = useSearch(query);
   const searching = q.length >= 2;
+  const genre = GENRES.find((g) => g.toLowerCase() === q.toLowerCase()) ?? null;
 
   return (
     <div className="animate-rise">
@@ -76,7 +79,7 @@ export function Search() {
                   <Link key={u.id} to={`/u/${u.username}`} className="group w-[128px] shrink-0 snap-start text-center">
                     <Avatar src={u.avatar_url} name={u.display_name || u.username} className="mx-auto h-24 w-24 text-2xl ring-1 ring-line/10 transition group-hover:ring-teal/50" />
                     <p className="mt-3 truncate text-sm font-medium">{u.display_name || u.username}</p>
-                    <p className="truncate text-[12px] text-faint">{count(u.followers_count)} followers</p>
+                    <p className="truncate text-[12px] text-faint">{count(u.followers_count)} {plural(u.followers_count, 'follower')}</p>
                   </Link>
                 ))}
               </div>
@@ -96,6 +99,25 @@ export function Search() {
                   <SongRow key={s.id} song={s} list={songs.data!} index={i} source={`Search: ${q}`} />
                 ))}
               </div>
+            ) : genre ? (
+              // A genre nobody has uploaded yet is an opening, not a dead end.
+              <EmptyState
+                icon={<LuMusic />}
+                title={`No ${genre} on Wavee yet`}
+                text={`Make ${genre}? Your song could be the first one people find here.`}
+                action={
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Link to="/upload">
+                      <Button variant="brand" icon={<LuUpload />}>
+                        Upload yours
+                      </Button>
+                    </Link>
+                    <Link to="/feed">
+                      <Button icon={<LuPlay className="fill-current" />}>Hear what’s on Wavee</Button>
+                    </Link>
+                  </div>
+                }
+              />
             ) : (
               <EmptyState icon={<LuSearch />} title={`Nothing for “${q}” yet`} text="Try another spelling, an artist’s name or a genre." />
             )}

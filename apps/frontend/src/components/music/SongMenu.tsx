@@ -29,6 +29,7 @@ import { toast } from '../../store/toast';
 import { Button, Checkbox, Cover, IconButton, Input, Modal, Spinner, Textarea } from '../ui';
 import { FeedbackDialog } from '../growth/Feedback';
 import { ShareCardDialog } from './ShareCard';
+import { plural } from '../../lib/format';
 
 interface Item {
   label: string;
@@ -37,11 +38,13 @@ interface Item {
   danger?: boolean;
 }
 
-/** A small menu anchored to its button (Escape or a click outside closes it). */
+/** A small menu anchored to its button (Escape or a click outside closes it). From the keyboard:
+ * the first item takes focus, the arrows move, Escape returns to the button. */
 export function Menu({ label, items }: { label: string; items: Item[] }) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const viaKeyboard = useRef(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
   useLayoutEffect(() => {
@@ -67,14 +70,34 @@ export function Menu({ label, items }: { label: string; items: Item[] }) {
         setOpen(false);
       }
     };
+    const scrolled = () => setOpen(false);
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', close);
-    window.addEventListener('scroll', () => setOpen(false), { once: true, capture: true });
+    window.addEventListener('scroll', scrolled, { once: true, capture: true });
+    if (viaKeyboard.current) panel.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     return () => {
       document.removeEventListener('mousedown', close);
       document.removeEventListener('keydown', close);
+      window.removeEventListener('scroll', scrolled, { capture: true });
     };
   }, [open]);
+
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const all = [...(panel.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+    const at = all.indexOf(document.activeElement as HTMLElement);
+    const go = (i: number) => all[(i + all.length) % all.length]?.focus();
+    if (e.key === 'ArrowDown') go(at + 1);
+    else if (e.key === 'ArrowUp') go(at - 1);
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(all.length - 1);
+    else if (e.key === 'Escape') {
+      setOpen(false);
+      button.current?.focus();
+    } else if (e.key === 'Tab') setOpen(false);
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   return (
     <>
@@ -84,6 +107,11 @@ export function Menu({ label, items }: { label: string; items: Item[] }) {
         size="sm"
         aria-haspopup="menu"
         aria-expanded={open}
+        onPointerDown={() => (viaKeyboard.current = false)}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') viaKeyboard.current = true;
+        }}
         onClick={(e) => {
           e.stopPropagation();
           setOpen((o) => !o);
@@ -102,19 +130,22 @@ export function Menu({ label, items }: { label: string; items: Item[] }) {
               exit={{ opacity: 0, y: -4, scale: 0.98 }}
               transition={{ duration: 0.16 }}
               style={{ top: pos.top, left: pos.left }}
+              aria-label={label}
               className="fixed z-[80] w-[230px] overflow-hidden rounded-2xl border border-line/10 bg-raised/95 p-1.5 shadow-lift backdrop-blur-xl"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={onKey}
             >
               {items.map((item) => (
                 <button
                   key={item.label}
                   role="menuitem"
+                  tabIndex={-1}
                   onClick={() => {
                     setOpen(false);
                     item.onClick();
                   }}
                   className={clsx(
-                    'flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition hover:bg-line/[0.07]',
+                    'flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-sm outline-none transition hover:bg-line/[0.07] focus-visible:bg-line/[0.09]',
                     item.danger ? 'text-danger' : 'text-ink',
                   )}
                 >
@@ -292,7 +323,7 @@ function AddToPlaylist({ song, open, onClose }: { song: Song; open: boolean; onC
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{p.name}</span>
               <span className="text-[12px] text-faint">
-                {p.songs_count ?? 0} songs{p.is_private ? ' · Private' : ''}
+                {p.songs_count ?? 0} {plural(p.songs_count, 'song')}{p.is_private ? ' · Private' : ''}
               </span>
             </span>
             {busy === p.id && <Spinner className="h-4 w-4 text-muted" />}

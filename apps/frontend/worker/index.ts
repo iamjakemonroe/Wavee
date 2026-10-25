@@ -210,7 +210,7 @@ async function removeAll(request: Request, env: Env): Promise<Response> {
  * its preview tags. */
 async function withPreview(request: Request, env: Env, path: string): Promise<Response> {
   const page = await env.ASSETS.fetch(new Request(new URL('/', request.url), request));
-  let meta: { title: string; description: string; image?: string } | null = null;
+  let meta: { title: string; description: string; image?: string; type?: string } | null = null;
   try {
     const rpc = async (fn: string, args: Record<string, string>) => {
       const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${fn}`, {
@@ -255,6 +255,7 @@ async function withPreview(request: Request, env: Env, path: string): Promise<Re
           title: `${s.title} · ${by} · Wavee`,
           description: `Listen to ${s.title} by ${by} on Wavee.`,
           image: s.cover_image_url || undefined,
+          type: 'music.song',
         };
       }
     } else if (user) {
@@ -264,6 +265,7 @@ async function withPreview(request: Request, env: Env, path: string): Promise<Re
           title: `${u.display_name || u.username} · Wavee`,
           description: u.bio || `Music by ${u.display_name || u.username} on Wavee.`,
           image: u.avatar_url || undefined,
+          type: 'profile',
         };
       }
     }
@@ -272,7 +274,14 @@ async function withPreview(request: Request, env: Env, path: string): Promise<Re
   }
   if (!meta) return page;
   const found = meta;
+  const canonical = new URL(path, request.url).href;
   return new HTMLRewriter()
+    .on('meta[property="og:type"]', { element: (e) => { e.setAttribute('content', found.type ?? 'website'); } })
+    .on('head', {
+      element: (e) => {
+        e.append(`<meta property="og:url" content="${canonical}" /><link rel="canonical" href="${canonical}" />`, { html: true });
+      },
+    })
     .on('title', { element: (e) => { e.setInnerContent(found.title); } })
     .on('meta[property="og:title"]', { element: (e) => { e.setAttribute('content', found.title); } })
     .on('meta[name="twitter:title"]', { element: (e) => { e.setAttribute('content', found.title); } })

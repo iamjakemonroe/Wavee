@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useState } from 'react';
 import { LuImage, LuPlay, LuRadar } from 'react-icons/lu';
+import { Link } from 'react-router-dom';
 import { renderPicksCard } from '../components/growth/cards';
 import { PickCard } from '../components/growth/Picks';
 import { PictureDialog } from '../components/music/ShareCard';
@@ -8,9 +9,11 @@ import { Button, EmptyState, Skeleton } from '../components/ui';
 import { usePicks } from '../hooks/data';
 import { weekLabel } from '../lib/growth';
 import { usePlayer } from '../store/player';
+import { useTitle } from '../hooks/useTitle';
 
 /** Fresh Finds: the songs the team picked each week, with why. Come back every week. */
 export function Picks() {
+  useTitle('Fresh Finds');
   const [week, setWeek] = useState<string | null>(null);
   const picks = usePicks(week);
   const latest = usePicks(null).data;
@@ -33,14 +36,16 @@ export function Picks() {
             Every week the Wavee team picks new songs we can’t stop playing, and says why. Hear them first, then tell the
             artists what you think.
           </p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Button variant="primary" icon={<LuPlay className="fill-current" />} disabled={!list.length} onClick={() => playList(list, 0, 'Fresh Finds')}>
-              Play all
-            </Button>
-            <Button variant="secondary" icon={<LuImage />} disabled={!list.length} onClick={() => setCard(true)}>
-              Story card
-            </Button>
-          </div>
+          {list.length > 0 && (
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Button variant="primary" icon={<LuPlay className="fill-current" />} onClick={() => playList(list, 0, 'Fresh Finds')}>
+                Play all
+              </Button>
+              <Button variant="secondary" icon={<LuImage />} onClick={() => setCard(true)}>
+                Story card
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -78,7 +83,14 @@ export function Picks() {
         <EmptyState
           icon={<LuRadar />}
           title="This week’s picks are on their way"
-          text="The team is listening to everything new. Check back in a day or two, or find your own in the feed."
+          text="The team is listening to everything new, and the picks land on Wednesday. Until then, find your own."
+          action={
+            <Link to="/feed">
+              <Button variant="brand" icon={<LuPlay className="fill-current" />}>
+                Start the feed
+              </Button>
+            </Link>
+          }
         />
       )}
 

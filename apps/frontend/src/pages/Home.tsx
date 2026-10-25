@@ -346,8 +346,15 @@ export function Home() {
   const trending = useTrending(20);
   const fresh = useNewReleases(20);
   const feed = useFeed();
-  const forYou = feed.data?.pages.flat().slice(0, 10) ?? [];
+  const forYou = useMemo(() => feed.data?.pages.flat().slice(0, 10) ?? [], [feed.data]);
   const playList = usePlayer((s) => s.playList);
+  // While Wavee has only a handful of songs, three rows would show the same ones three times:
+  // one "On Wavee now" grid instead, until there's enough for the rows.
+  const everything = useMemo(() => {
+    const seen = new Set<string>();
+    return [...forYou, ...(trending.data ?? []), ...(fresh.data ?? [])].filter((s) => !seen.has(s.id) && !!seen.add(s.id));
+  }, [forYou, trending.data, fresh.data]);
+  const small = !feed.isLoading && !trending.isLoading && !fresh.isLoading && everything.length > 0 && everything.length < 6;
 
   return (
     <div className="animate-rise">
@@ -364,76 +371,108 @@ export function Home() {
         <FreshFinds />
       </ErrorBoundary>
 
-      <Section
-        title="For you"
-        subtitle={signedIn ? 'Picked from what you play, and what’s rising.' : 'A taste of what’s playing on Wavee.'}
-        action={
-          forYou.length > 0 && (
-            <Button
-              size="sm"
-              icon={<LuPlay className="fill-current" />}
-              onClick={() =>
-                playList(forYou, 0, 'For you', async () => {
-                  const offset = usePlayer.getState().queue.length;
-                  return api.feed(20, offset);
-                })
-              }
-            >
-              Play
+      {small ? (
+        <Section
+          title="On Wavee now"
+          subtitle="Every song on Wavee so far. Be one of the first to hear them."
+          action={
+            <Button size="sm" icon={<LuPlay className="fill-current" />} onClick={() => playList(everything, 0, 'On Wavee now')}>
+              Play all
             </Button>
-          )
-        }
-      >
-        {feed.isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          }
+        >
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-5">
+            {everything.map((s, i) => (
+              <SongTile key={s.id} song={s} list={everything} index={i} source="On Wavee now" fill />
             ))}
+            <Link
+              to="/upload"
+              className="group grid aspect-square w-full place-items-center rounded-2xl border border-dashed border-line/20 text-center transition hover:border-teal/50 hover:bg-teal/[0.04]"
+            >
+              <span className="px-4">
+                <LuUpload className="mx-auto text-[26px] text-teal" />
+                <span className="mt-2 block text-[14px] font-semibold">Upload yours</span>
+                <span className="mt-0.5 block text-[12px] text-muted">Your first songs get real listeners</span>
+              </span>
+            </Link>
           </div>
-        ) : forYou.length ? (
-          <div className="grid gap-x-6 lg:grid-cols-2">
-            {forYou.map((s, i) => (
-              <SongRow key={s.id} song={s} list={forYou} index={i} source="For you" showNumber={false} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={<LuSparkles />}
-            title="The first songs are on their way"
-            text="Wavee is brand new. Upload a song and you could be the first thing people hear."
-            action={
-              <Link to="/upload">
-                <Button variant="brand" icon={<LuUpload />}>
-                  Upload music
-                </Button>
-              </Link>
-            }
-          />
-        )}
-        {forYou.length > 0 && (
-          <Link to="/feed" className="mt-4 inline-flex items-center gap-2 text-sm text-muted hover:text-ink">
-            Keep going in the Feed <LuArrowRight />
-          </Link>
-        )}
-      </Section>
+        </Section>
+      ) : (
+        <Section
+          title="For you"
+          subtitle={signedIn ? 'Picked from what you play, and what’s rising.' : 'A taste of what’s playing on Wavee.'}
+          action={
+            forYou.length > 0 && (
+              <Button
+                size="sm"
+                icon={<LuPlay className="fill-current" />}
+                onClick={() =>
+                  playList(forYou, 0, 'For you', async () => {
+                    const offset = usePlayer.getState().queue.length;
+                    return api.feed(20, offset);
+                  })
+                }
+              >
+                Play
+              </Button>
+            )
+          }
+        >
+          {feed.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : forYou.length ? (
+            <div className="grid gap-x-6 lg:grid-cols-2">
+              {forYou.map((s, i) => (
+                <SongRow key={s.id} song={s} list={forYou} index={i} source="For you" showNumber={false} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<LuSparkles />}
+              title="The first songs are on their way"
+              text="Wavee is brand new. Upload a song and you could be the first thing people hear."
+              action={
+                <Link to="/upload">
+                  <Button variant="brand" icon={<LuUpload />}>
+                    Upload music
+                  </Button>
+                </Link>
+              }
+            />
+          )}
+          {forYou.length > 0 && (
+            <Link to="/feed" className="mt-4 inline-flex items-center gap-2 text-sm text-muted hover:text-ink">
+              Keep going in the Feed <LuArrowRight />
+            </Link>
+          )}
+        </Section>
+      )}
 
       <ErrorBoundary quiet>{signedIn && <Challenge />}</ErrorBoundary>
 
-      <Section
-        title="Trending this week"
-        subtitle="The most played songs of the last seven days."
-        action={
-          <Link to="/charts" className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-muted hover:text-ink">
-            See the charts <LuArrowRight />
-          </Link>
-        }
-      >
-        <TileRow songs={trending.data} loading={trending.isLoading} source="Trending this week" ranked />
-      </Section>
+      {!small && (
+        <>
+          <Section
+            title="Trending this week"
+            subtitle="The most played songs of the last seven days."
+            action={
+              <Link to="/charts" className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-muted hover:text-ink">
+                See the charts <LuArrowRight />
+              </Link>
+            }
+          >
+            <TileRow songs={trending.data} loading={trending.isLoading} source="Trending this week" ranked />
+          </Section>
 
-      <Section title="New releases" subtitle="Fresh uploads from artists on Wavee.">
-        <TileRow songs={fresh.data} loading={fresh.isLoading} source="New releases" />
-      </Section>
+          <Section title="New releases" subtitle="Fresh uploads from artists on Wavee.">
+            <TileRow songs={fresh.data} loading={fresh.isLoading} source="New releases" />
+          </Section>
+        </>
+      )}
 
       <ErrorBoundary quiet>
         <Collections />

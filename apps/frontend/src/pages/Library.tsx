@@ -4,6 +4,7 @@ import { Boosts } from '../components/money/Boosts';
 import { useState } from 'react';
 import { LuHeart, LuListMusic, LuMusic, LuPlay, LuPlus, LuUpload } from 'react-icons/lu';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { SignedOut } from '../components/auth/SignedOut';
 import { SongRow } from '../components/music/Song';
 import { Button, Checkbox, Cover, EmptyState, Input, Modal, Skeleton, Textarea } from '../components/ui';
 import { keys, useAppearances, useFeatureInvites, useLiked, useMyPlaylists, useUserSongs } from '../hooks/data';
@@ -12,6 +13,8 @@ import { useAuth } from '../store/auth';
 import { usePlayer } from '../store/player';
 import { toast } from '../store/toast';
 import { EditSong } from './EditSong';
+import { plural } from '../lib/format';
+import { useTitle } from '../hooks/useTitle';
 
 const tabs = [
   { id: 'liked', label: 'Liked songs' },
@@ -23,6 +26,7 @@ const tabs = [
 type Tab = (typeof tabs)[number]['id'];
 
 export function Library() {
+  useTitle('Your library');
   const session = useAuth((s) => s.session);
   const [params, setParams] = useSearchParams();
   const tab = (tabs.find((t) => t.id === params.get('tab'))?.id ?? 'liked') as Tab;
@@ -30,16 +34,11 @@ export function Library() {
 
   if (!session) {
     return (
-      <EmptyState
+      <SignedOut
         icon={<LuListMusic />}
         title="Your library lives here"
-        text="Sign in to keep the songs you like, make playlists and upload your own music."
-        action={
-          <div className="flex gap-3">
-            <Link to="/signin?next=/library"><Button variant="secondary">Sign in</Button></Link>
-            <Link to="/signup?next=/library"><Button variant="primary">Create an account</Button></Link>
-          </div>
-        }
+        text="Keep the songs you like, make playlists, and upload your own music. It’s free."
+        next="/library"
       />
     );
   }
@@ -126,7 +125,7 @@ function Playlists() {
               <p className="mt-3 truncate text-sm font-medium">{p.name}</p>
               <p className="text-[12px] text-faint">
                 {p.is_private ? 'Private · ' : ''}
-                {p.songs_count ?? 0} songs
+                {p.songs_count ?? 0} {plural(p.songs_count, 'song')}
               </p>
             </Link>
           ))}

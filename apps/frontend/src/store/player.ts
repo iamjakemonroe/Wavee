@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { api, type Song } from '../lib/api';
 import { audio, sessionId } from '../lib/audio';
 import { country } from '../lib/geo';
+import { recordPlayOnExit } from '../lib/supabase';
+import { useAuth } from './auth';
 import { originHere, type Origin } from '../lib/origin';
 import { artistNames } from '../lib/format';
 import { toast } from './toast';
@@ -76,6 +78,7 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
   let listened = 0;
   let lastTime = 0;
   let failures = 0;
+  let loadingMore = false;
 
   const report = (song: Song | null, ended: boolean) => {
     if (!song || listened < 1) return;
@@ -90,6 +93,34 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
       .catch(() => undefined);
     listened = 0;
   };
+
+  // Closing the page mid-song: count what was heard so far (the song only reports when it ends).
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', () => {
+      const song = currentSong(get());
+      if (!song || listened < 1) return;
+      const length = audio.duration || song.duration_seconds || listened;
+      let saved: string | null = null;
+      try {
+        saved = sessionStorage.getItem('wavee.country');
+      } catch {
+        // No country then.
+      }
+      recordPlayOnExit(
+        {
+          p_song: song.id,
+          p_listened: Math.round(listened),
+          p_duration: Math.max(1, Math.round(length)),
+          p_skipped: listened < Math.min(30, length * 0.5),
+          p_session: sessionId(),
+          p_source: song.promoted ? (song.promoted_kind === 'new' ? 'new' : 'boost') : get().origin,
+          p_country: saved && saved !== '-' ? saved : null,
+        },
+        useAuth.getState().session?.access_token ?? null,
+      );
+      listened = 0;
+    });
+  }
 
   const start = (index: number, autoplay = true) => {
     const { queue } = get();
@@ -120,7 +151,8 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
     if (!next || conn?.saveData || warmed.has(next.audio_url)) return;
     warmed.add(next.audio_url);
-    void fetch(next.audio_url, { mode: 'no-cors', headers: { Range: 'bytes=0-262143' } }).catch(() => undefined);
+    // Only the first 256 KB: a no-cors request would drop the Range header and fetch the whole song.
+    void fetch(next.audio_url, { mode: 'cors', credentials: 'omit', headers: { Range: 'bytes=0-262143' } }).catch(() => undefined);
     if (next.cover_image_url) {
       const img = new Image();
       img.decoding = 'async';
@@ -160,7 +192,10 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
       return;
     }
     toast(song ? `Couldn’t play “${song.title}”. Skipping it.` : 'Couldn’t play that song.', 'error');
-    window.setTimeout(() => void get().next(false), 900);
+    // Skip only if that song is still the one up: if they've picked another meanwhile, leave it.
+    window.setTimeout(() => {
+      if (song && currentSong(get())?.id === song.id) void get().next(false);
+    }, 900);
   });
 
   return {
@@ -231,15 +266,21 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
         return;
       }
       if (more) {
+        // Two quick Nexts at the end of the queue: one fetch, then both move on through it.
+        if (loadingMore) return;
+        loadingMore = true;
         try {
-          const extra = (await more()).filter((s) => !queue.some((q) => q.id === s.id));
+          const latest = get().queue;
+          const extra = (await more()).filter((s) => !latest.some((q) => q.id === s.id));
           if (extra.length) {
-            set({ queue: [...queue, ...extra] });
-            start(index + 1);
+            set({ queue: [...latest, ...extra] });
+            start(get().index + 1);
             return;
           }
         } catch {
           // Fall through: end of the queue.
+        } finally {
+          loadingMore = false;
         }
       }
       if (repeat === 'all' && queue.length) {

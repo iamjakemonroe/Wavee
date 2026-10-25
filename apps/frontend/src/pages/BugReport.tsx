@@ -6,8 +6,10 @@ import { api } from '../lib/api';
 import { uploadMedia } from '../lib/media';
 import { useAuth } from '../store/auth';
 import { toast } from '../store/toast';
+import { useTitle } from '../hooks/useTitle';
 
 export function BugReport() {
+  useTitle('Report a problem');
   const account = useAuth((s) => s.account);
   const [params] = useSearchParams();
   const [message, setMessage] = useState('');

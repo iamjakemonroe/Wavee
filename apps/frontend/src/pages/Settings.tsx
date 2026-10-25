@@ -1,12 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useEffect, useState, type ReactNode } from 'react';
-import { LuCamera, LuCheck, LuCopy, LuDownload, LuLogOut, LuTrash2 } from 'react-icons/lu';
-import { Link, useNavigate } from 'react-router-dom';
+import { LuCamera, LuCheck, LuCopy, LuDownload, LuLogOut, LuSettings, LuTrash2 } from 'react-icons/lu';
+import { useNavigate } from 'react-router-dom';
+import { SignedOut } from '../components/auth/SignedOut';
 import { passwordStrength, StrengthMeter } from '../components/auth/AuthLayout';
 import { SignOutConfirm } from '../components/auth/SignOutConfirm';
 import { LinksEditor, linksValid } from '../components/music/Links';
-import { Avatar, Bars, Button, Checkbox, EmptyState, Input, Modal, Spinner, Textarea } from '../components/ui';
+import { Avatar, Bars, Button, Checkbox, Input, LoadError, Modal, Spinner, Textarea } from '../components/ui';
 import { api } from '../lib/api';
 import { ROLES } from '../lib/format';
 import { purgeMyMedia, uploadMedia } from '../lib/media';
@@ -15,6 +16,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../store/auth';
 import { installWay, useInstall } from '../store/install';
 import { toast } from '../store/toast';
+import { useTitle } from '../hooks/useTitle';
 
 const USERNAME = /^[a-z0-9_.]{3,30}$/;
 
@@ -31,15 +33,22 @@ function Panel({ title, text, children }: { title: string; text?: string; childr
 }
 
 export function Settings() {
+  useTitle('Settings');
   const session = useAuth((s) => s.session);
   const account = useAuth((s) => s.account);
   const loading = useAuth((s) => s.loading);
+  const accountFailed = useAuth((s) => s.accountFailed);
+  if (session && !account && accountFailed) {
+    return <LoadError what="your account" onRetry={() => void useAuth.getState().refreshAccount()} />;
+  }
   if (loading || (session && !account)) return <Spinner className="mx-auto mt-24 block h-8 w-8 text-muted" />;
   if (!session || !account) {
     return (
-      <EmptyState
-        title="Sign in to change your settings"
-        action={<Link to="/signin?next=/settings"><Button variant="primary">Sign in</Button></Link>}
+      <SignedOut
+        icon={<LuSettings />}
+        title="Your settings live here"
+        text="Your profile, your links, notifications and your account."
+        next="/settings"
       />
     );
   }

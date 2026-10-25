@@ -1,18 +1,19 @@
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { LuPause, LuPlay, LuShare2 } from 'react-icons/lu';
+import { LuCheck, LuPause, LuPlay, LuShare2 } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { LikeButton, useIsCurrent } from '../components/music/Song';
 import { ProgressBar } from '../components/music/Player';
 import { SongMenu, shareSong } from '../components/music/SongMenu';
 import { AiTag, Artists } from '../components/music/Artists';
-import { Bars, Button, Cover, EmptyState, IconButton, Spinner } from '../components/ui';
+import { Bars, Button, Cover, EmptyState, IconButton, LoadError, Spinner } from '../components/ui';
 import { useFeed, usePromoted } from '../hooks/data';
 import { payApi } from '../lib/pay';
 import { api, type Song } from '../lib/api';
-import { count, duration, songGenres } from '../lib/format';
+import { count, duration, plural, songGenres } from '../lib/format';
 import { currentSong, usePlayer } from '../store/player';
+import { useTitle } from '../hooks/useTitle';
 
 /** One song, filling the screen. */
 function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
@@ -29,12 +30,21 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
           <Cover src={song.cover_image_url} title={song.title} className="aspect-square w-full shadow-[0_50px_100px_-30px_rgba(0,0,0,0.95)]" rounded="rounded-[28px]" />
           <span
             className={clsx(
-              'absolute inset-0 grid place-items-center rounded-[28px] bg-black/30 text-5xl text-white transition duration-300',
+              'absolute inset-0 grid place-items-center rounded-[28px] bg-black/20 transition duration-300',
               playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100',
             )}
           >
-            {buffering ? <Spinner className="h-10 w-10" /> : playing ? <LuPause className="fill-current" /> : <LuPlay className="ml-1 fill-current" />}
+            {/* A dark disc, so the button shows on any artwork, light or dark. */}
+            <span className="grid h-20 w-20 place-items-center rounded-full bg-black/50 text-4xl text-white ring-1 ring-white/15 backdrop-blur-md">
+              {buffering ? <Spinner className="h-9 w-9" /> : playing ? <LuPause className="fill-current" /> : <LuPlay className="ml-1 fill-current" />}
+            </span>
           </span>
+          {/* While it plays (no hover on phones), a small pause button stays in the corner. */}
+          {playing && (
+            <span className="absolute bottom-3 right-3 grid h-11 w-11 place-items-center rounded-full bg-black/55 text-lg text-white ring-1 ring-white/15 backdrop-blur-md">
+              <LuPause className="fill-current" />
+            </span>
+          )}
         </button>
         <div className="mt-8 flex w-full items-end justify-between gap-4">
           <div className="min-w-0">
@@ -60,13 +70,15 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
                     Promoted
                   </span>
                 ))}
-              {songGenres(song).join(', ')} · {count(song.plays_count)} plays
-              {song.hook_start ? <> · from the hook at {duration(song.hook_start)}</> : null}
+              {songGenres(song).join(', ')} · {count(song.plays_count)} {plural(song.plays_count, 'play')}
+              {song.hook_start ? <> · starts at the best part ({duration(song.hook_start)})</> : null}
             </p>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <LikeButton song={song} size="lg" />
-            <span className="text-[11px] text-faint">{count(song.likes_count)}</span>
+            <span className="flex flex-col items-center">
+              <LikeButton song={song} size="lg" />
+              <span className="-mt-1 text-[11px] tabular-nums text-faint">{count(song.likes_count)}</span>
+            </span>
             <IconButton label="Share" size="lg" onClick={() => void shareSong(song)}>
               <LuShare2 />
             </IconButton>
@@ -103,6 +115,7 @@ function showCard(root: HTMLElement, i: number, smooth: boolean) {
 /** The feed, a screen per song: swipe or scroll to the next. Once you
  * start listening, the song on screen plays. */
 export function Feed() {
+  useTitle('Feed');
   const feed = useFeed();
   const playList = usePlayer((s) => s.playList);
   const source = usePlayer((s) => s.source);
@@ -226,6 +239,7 @@ export function Feed() {
   }, [nowId, listening, source, songs]);
 
   if (feed.isLoading && !songs.length) return <Spinner className="mx-auto mt-24 block h-8 w-8 text-muted" />;
+  if (feed.isError && !songs.length) return <LoadError what="the feed" onRetry={() => void feed.refetch()} />;
   if (!songs.length) {
     return <EmptyState title="The feed is warming up" text="New songs appear here as artists upload them. Check back soon." />;
   }
@@ -244,6 +258,30 @@ export function Feed() {
           </div>
         ))}
         {feed.isFetchingNextPage && <Spinner className="mx-auto my-8 block h-6 w-6 text-muted" />}
+        {!feed.hasNextPage && !feed.isFetchingNextPage && (
+          // The end of everything new: say so, and where to go next.
+          <div className="grid h-full snap-start place-items-center rounded-4xl border border-line/10 bg-line/[0.02] px-6 text-center">
+            <div>
+              <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-teal/10 text-2xl text-teal">
+                <LuCheck />
+              </span>
+              <h2 className="mt-4 text-xl">You’re all caught up</h2>
+              <p className="mx-auto mt-2 max-w-xs text-[14px] leading-6 text-muted">
+                You’ve heard everything new on Wavee. New songs land every day: check back soon, or put yours here.
+              </p>
+              <div className="mt-5 flex justify-center gap-2">
+                <Link to="/charts">
+                  <Button size="sm">See the charts</Button>
+                </Link>
+                <Link to="/upload">
+                  <Button size="sm" variant="brand">
+                    Upload a song
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       {!listening && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pointer-events-none absolute inset-x-0 bottom-8 flex justify-center">

@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { api, type Account } from '../lib/api';
 import { claimReferrer } from '../lib/growth';
+import { queryClient } from '../lib/queryClient';
 import { supabase } from '../lib/supabase';
 
 interface AuthState {
@@ -9,6 +10,8 @@ interface AuthState {
   account: Account | null;
   /** Still finding out whether someone is signed in. */
   loading: boolean;
+  /** Signed in, but their account couldn't be loaded (offline, usually). */
+  accountFailed: boolean;
   /** Something needs an account: the sign-in prompt is open. */
   prompt: string | null;
   refreshAccount: () => Promise<void>;
@@ -21,6 +24,7 @@ export const useAuth = create<AuthState>((set, get) => ({
   session: null,
   account: null,
   loading: true,
+  accountFailed: false,
   prompt: null,
 
   async refreshAccount() {
@@ -30,10 +34,11 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
     try {
       const account = await api.myAccount();
-      set({ account });
+      set({ account, accountFailed: false });
       if (account) void claimReferrer(account.username);
     } catch {
-      // Keep what we had; it refreshes on the next sign-in event.
+      // Keep what we had; it refreshes on the next sign-in event (or Try again).
+      set({ accountFailed: true });
     }
   },
 
@@ -46,14 +51,22 @@ export const useAuth = create<AuthState>((set, get) => ({
   closePrompt: () => set({ prompt: null }),
 }));
 
-/** Keeps the store in step with Supabase's session. */
+/** Keeps the store in step with Supabase's session. When the signed-in person changes (or signs
+ * out), everything cached for the last one goes: their likes, library and plans. */
 export function startAuth() {
+  let who: string | null | undefined;
+  const signedInAs = (id: string | null) => {
+    if (who !== undefined && who !== id) queryClient.clear();
+    who = id;
+  };
   void supabase.auth.getSession().then(async ({ data }) => {
+    signedInAs(data.session?.user.id ?? null);
     useAuth.setState({ session: data.session });
     await useAuth.getState().refreshAccount();
     useAuth.setState({ loading: false });
   });
   supabase.auth.onAuthStateChange((event, session) => {
+    signedInAs(session?.user.id ?? null);
     useAuth.setState({ session });
     if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
       // Outside the callback, as Supabase asks.

@@ -20,10 +20,14 @@ export default defineConfig({
     target: 'es2022',
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
-          data: ['@supabase/supabase-js', '@tanstack/react-query', 'zustand'],
-          motion: ['framer-motion'],
+        // Libraries in their own files, so a release only re-downloads the app's code. By path,
+        // so react-dom/client (most of React) lands with React rather than in the app.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) return 'react';
+          if (/[\\/](@supabase|@tanstack|zustand)[\\/]/.test(id)) return 'data';
+          if (/[\\/](framer-motion|motion-dom|motion-utils)[\\/]/.test(id)) return 'motion';
+          return undefined;
         },
       },
     },

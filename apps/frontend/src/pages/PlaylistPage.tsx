@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { LuImage, LuLock, LuPencil, LuPlay, LuShuffle, LuTrash2 } from 'react-icons/lu';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { SongRow } from '../components/music/Song';
-import { Avatar, Button, Checkbox, Cover, EmptyState, Input, Modal, Skeleton, Textarea } from '../components/ui';
+import { Avatar, Button, Checkbox, Cover, EmptyState, Input, LoadError, Modal, Skeleton, Textarea } from '../components/ui';
 import { keys, usePlaylist, usePlaylistSongs } from '../hooks/data';
 import { api, type Playlist } from '../lib/api';
-import { duration } from '../lib/format';
+import { duration, plural } from '../lib/format';
 import { uploadMedia } from '../lib/media';
 import { useAuth } from '../store/auth';
 import { usePlayer } from '../store/player';
@@ -23,6 +23,7 @@ export function PlaylistPage() {
   const [editing, setEditing] = useState(false);
 
   if (playlist.isLoading) return <Skeleton className="mt-6 h-56 w-full rounded-3xl" />;
+  if (playlist.isError) return <LoadError what="this playlist" onRetry={() => void playlist.refetch()} />;
   if (!playlist.data) return <NotFound what="playlist" />;
   const pl = playlist.data;
   const mine = me === pl.user_id;
@@ -58,7 +59,7 @@ export function PlaylistPage() {
                   {pl.owner.display_name || pl.owner.username}
                 </Link>
               )}
-              <span>· {list.length} songs · {duration(total)}</span>
+              <span>· {list.length} {plural(list.length, 'song')} · {duration(total)}</span>
             </div>
             <div className="mt-6 flex flex-wrap gap-2">
               <Button variant="primary" icon={<LuPlay className="fill-current" />} disabled={!list.length} onClick={() => playList(list, 0, pl.name)}>

@@ -4,11 +4,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { LuCheck, LuFilm, LuImage, LuMusic, LuRefreshCw, LuUpload, LuX } from 'react-icons/lu';
 import { Link, useNavigate } from 'react-router-dom';
+import { SignedOut } from '../components/auth/SignedOut';
 import { FeaturePicker, type Person } from '../components/music/FeaturePicker';
 import { GenrePicker } from '../components/music/GenrePicker';
 import { HookPicker } from '../components/music/HookPicker';
 import { LinksEditor, linksValid } from '../components/music/Links';
-import { Avatar, Button, Checkbox, Cover, EmptyState, Input, Textarea } from '../components/ui';
+import { Avatar, Button, Checkbox, Cover, Input, Textarea } from '../components/ui';
 import { keys, useMyPlan } from '../hooks/data';
 import { api } from '../lib/api';
 import { payApi } from '../lib/pay';
@@ -17,6 +18,7 @@ import { checkFile, deleteMedia, MEDIA_LIMITS, readDuration, uploadMedia, type M
 import { SONG_PLATFORMS, type Links } from '../lib/platforms';
 import { useAuth } from '../store/auth';
 import { toast } from '../store/toast';
+import { useTitle } from '../hooks/useTitle';
 
 /** One file on its way up: picked, uploading (with progress), done or
  * failed. Uploads start the moment a file is picked, so they're usually
@@ -214,6 +216,7 @@ function titleFrom(name: string) {
 }
 
 export function Upload() {
+  useTitle('Upload');
   const session = useAuth((s) => s.session);
   const account = useAuth((s) => s.account);
   const navigate = useNavigate();
@@ -253,16 +256,11 @@ export function Upload() {
 
   if (!session) {
     return (
-      <EmptyState
+      <SignedOut
         icon={<LuUpload />}
         title="Share your music with the world"
-        text="Create a free account to upload songs, cover art and music videos."
-        action={
-          <div className="flex gap-3">
-            <Link to="/signin?next=/upload"><Button variant="secondary">Sign in</Button></Link>
-            <Link to="/signup?next=/upload"><Button variant="brand">Create an account</Button></Link>
-          </div>
-        }
+        text="Upload songs, cover art and music videos for free. Your first songs are played to new listeners in the feed."
+        next="/upload"
       />
     );
   }

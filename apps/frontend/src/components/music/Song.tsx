@@ -3,7 +3,7 @@ import { LuHeart, LuPause, LuPlay } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { useLike } from '../../hooks/data';
 import type { Song } from '../../lib/api';
-import { count, duration } from '../../lib/format';
+import { count, duration, plural } from '../../lib/format';
 import { withAccount } from '../../store/auth';
 import { currentSong, usePlayer } from '../../store/player';
 import { Bars, Cover, IconButton, Spinner } from '../ui';
@@ -100,10 +100,15 @@ export function SongRow({
       tabIndex={0}
       onClick={start}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') start();
+        // Enter on the like or ••• button inside is theirs, not the row's.
+        if (e.key === 'Enter' && e.target === e.currentTarget) start();
       }}
       className={clsx(
-        'group grid cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl px-2 py-2 transition duration-200 hover:bg-line/[0.05] sm:grid-cols-[2rem_auto_1fr_auto_auto] sm:gap-4 sm:px-3',
+        // The negative margin lines the cover up with the heading above, while the hover wash
+        // still has room around it.
+        '-mx-2 grid cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl px-2 py-2 transition duration-200 hover:bg-line/[0.05] sm:-mx-3 sm:gap-4 sm:px-3',
+        showNumber ? 'sm:grid-cols-[2rem_auto_1fr_auto_auto]' : 'sm:grid-cols-[auto_1fr_auto_auto]',
+        'group',
         isCurrent && 'bg-line/[0.04]',
       )}
     >
@@ -119,24 +124,25 @@ export function SongRow({
           )}
         </span>
       )}
-      {!showNumber && <span className="hidden sm:block" />}
       <Cover src={song.cover_image_url} title={song.title} className="h-12 w-12" rounded="rounded-lg" />
       <div className="min-w-0">
-        <p className={clsx('truncate text-[15px] font-medium', isCurrent ? 'text-teal' : 'text-ink')}>
-          {song.title}
+        <p className={clsx('flex min-w-0 items-center gap-2 text-[15px] font-medium', isCurrent ? 'text-teal' : 'text-ink')}>
+          <span className="truncate">{song.title}</span>
           {song.explicit && (
-            <span className="ml-2 rounded bg-line/10 px-1 align-middle text-[10px] font-semibold text-muted">E</span>
+            <span className="shrink-0 rounded bg-line/10 px-1 text-[10px] font-semibold text-muted" title="Explicit">
+              E
+            </span>
           )}
-          {song.made_with_ai && <AiTag className="ml-1.5" />}
+          {song.made_with_ai && <AiTag className="shrink-0" />}
         </p>
         <Artists song={song} className="block text-[13px] text-muted" />
       </div>
-      <span className="hidden text-[13px] tabular-nums text-faint md:block">{count(song.plays_count)} plays</span>
+      <span className="hidden text-[13px] tabular-nums text-faint md:block">{count(song.plays_count)} {plural(song.plays_count, 'play')}</span>
       <div className="flex items-center gap-1">
         <span className="hidden w-12 text-right text-[13px] tabular-nums text-faint sm:block">
           {song.duration_seconds ? duration(song.duration_seconds) : ''}
         </span>
-        <span className="opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:has-[[aria-pressed=true]]:opacity-100">
+        <span className="opacity-100 transition sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100 sm:has-[[aria-pressed=true]]:opacity-100">
           <LikeButton song={song} size="sm" />
         </span>
         <SongMenu song={song} extra={extraMenu} />
@@ -152,16 +158,19 @@ export function SongTile({
   index,
   source,
   rank,
+  fill,
 }: {
   song: Song;
   list: Song[];
   index: number;
   source?: string;
   rank?: number;
+  /** In a grid: take the cell's width instead of a row's fixed one. */
+  fill?: boolean;
 }) {
   const { isCurrent, playing } = useIsCurrent(song);
   return (
-    <div className="group w-[156px] shrink-0 snap-start sm:w-[176px]">
+    <div className={clsx('group', fill ? 'w-full' : 'w-[156px] shrink-0 snap-start sm:w-[176px]')}>
       <div className="relative">
         <Link to={`/songs/${song.id}`} aria-label={song.title}>
           <Cover

@@ -13,15 +13,19 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { usePhone, useSwipeToClose } from '../../hooks/useSwipeToClose';
-import { LuX } from 'react-icons/lu';
+import { LuRefreshCw, LuWifiOff, LuX } from 'react-icons/lu';
 
 // ── Buttons ─────────────────────────────────────────────────────────────
 
 type Variant = 'primary' | 'brand' | 'secondary' | 'ghost' | 'danger';
 
+// A filled button that can't be pressed yet turns into a quiet outline, so it reads as "not yet"
+// rather than broken.
+const quietWhenOff = 'disabled:bg-none disabled:bg-line/[0.07] disabled:text-ink/40 disabled:shadow-none disabled:opacity-100';
+
 const variants: Record<Variant, string> = {
-  primary: 'bg-ink text-bg hover:bg-white shadow-[0_8px_30px_-12px_rgba(255,255,255,0.45)]',
-  brand: 'bg-brand text-bg shadow-glow-teal hover:brightness-110',
+  primary: `bg-ink text-bg hover:bg-white shadow-[0_8px_30px_-12px_rgba(255,255,255,0.45)] ${quietWhenOff}`,
+  brand: `bg-brand text-bg shadow-glow-teal hover:brightness-110 ${quietWhenOff}`,
   secondary: 'border border-line/15 bg-line/[0.04] text-ink hover:bg-line/[0.08] hover:border-line/25',
   ghost: 'text-muted hover:bg-line/[0.06] hover:text-ink',
   danger: 'bg-danger/15 text-danger hover:bg-danger/25',
@@ -247,12 +251,18 @@ export function Modal({
   const phone = usePhone();
   // On phones the sheet is pulled down to close; the X is only for wide screens.
   const dragY = useSwipeToClose(panel, onClose, open && phone);
+  // Callers pass a new onClose each render; the focus handling below must only run when the
+  // dialog opens or closes, or every keystroke in a field inside would move focus.
+  const closer = useRef(onClose);
+  useEffect(() => {
+    closer.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;
     const before = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') closer.current();
       if (e.key !== 'Tab' || !panel.current) return;
       const focusable = panel.current.querySelectorAll<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
@@ -283,7 +293,7 @@ export function Modal({
       document.body.style.overflow = overflow;
       before?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   return createPortal(
     <AnimatePresence>
@@ -423,6 +433,23 @@ export function EmptyState({
       {text && <p className="mt-2 max-w-sm text-sm text-muted">{text}</p>}
       {action && <div className="mt-6">{action}</div>}
     </div>
+  );
+}
+
+/** Something couldn't load (a weak connection, usually): say so, and offer to try again, rather
+ * than pretending it's empty or gone. */
+export function LoadError({ onRetry, what = 'this' }: { onRetry: () => void; what?: string }) {
+  return (
+    <EmptyState
+      icon={<LuWifiOff />}
+      title={`We couldn’t load ${what}`}
+      text="Check your connection and try again."
+      action={
+        <Button icon={<LuRefreshCw />} onClick={onRetry}>
+          Try again
+        </Button>
+      }
+    />
   );
 }
 

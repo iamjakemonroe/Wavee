@@ -202,7 +202,7 @@ export function PlayerBar() {
             <p className="truncate text-[12px] text-muted">{artistNames(song)}</p>
           </div>
           <div onClick={(e) => e.stopPropagation()} className="flex items-center">
-            <LikeButton song={song} size="sm" />
+            <LikeButton song={song} size="md" />
             <IconButton label={playing ? 'Pause' : 'Play'} onClick={toggle} className="text-ink">
               {playing ? <LuPause className="fill-current" /> : <LuPlay className="fill-current" />}
             </IconButton>

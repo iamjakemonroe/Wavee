@@ -10,6 +10,7 @@ import { toast } from '../../store/toast';
 import { Link } from 'react-router-dom';
 import { FeedbackSummaryView } from '../growth/Feedback';
 import { Button, Cover, Modal, Spinner } from '../ui';
+import { plural } from '../../lib/format';
 
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
 
@@ -265,7 +266,7 @@ function StatsBody({ song }: { song: Song }) {
                 {s.days.map((d) => (
                   <span
                     key={d.day}
-                    title={`${new Date(d.day).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}: ${d.plays} plays`}
+                    title={`${new Date(d.day).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}: ${d.plays} ${plural(d.plays, 'play')}`}
                     className="flex-1 rounded-t-sm bg-brand"
                     style={{ height: `${Math.max(3, (d.plays / top) * 100)}%`, opacity: d.plays ? 1 : 0.25 }}
                   />

@@ -2,14 +2,16 @@ import clsx from 'clsx';
 import { useState, type ReactNode } from 'react';
 import { LuChartColumn, LuCompass, LuEar, LuFlame, LuHeadphones, LuLock, LuMusic, LuSparkles, LuUserPlus } from 'react-icons/lu';
 import { Link, useSearchParams } from 'react-router-dom';
+import { SignedOut } from '../components/auth/SignedOut';
 import { FeedbackSummaryView } from '../components/growth/Feedback';
 import { BarList, ChartCard, Columns, SplitBar, StatTile, TrendChart } from '../components/stats/Charts';
 import { Avatar, Button, Cover, EmptyState, Skeleton } from '../components/ui';
 import { useInsights, useListening, useUserSongs } from '../hooks/data';
 import type { Insights, Listening, PlaySource } from '../lib/api';
-import { count } from '../lib/format';
-import { useAuth, withAccount } from '../store/auth';
+import { count, plural } from '../lib/format';
+import { useAuth } from '../store/auth';
 import { useMoney } from '../store/money';
+import { useTitle } from '../hooks/useTitle';
 
 const RANGES = [
   [7, '7 days'],
@@ -416,7 +418,7 @@ function ListeningStats({ days }: { days: number }) {
                     <span className="w-4 text-center text-[13px] tabular-nums text-faint">{n + 1}</span>
                     <Avatar src={a.avatar_url} name={a.display_name || a.username} className="h-10 w-10" />
                     <span className="min-w-0 flex-1 truncate font-medium">{a.display_name || a.username}</span>
-                    <span className="text-[13px] tabular-nums text-muted">{count(a.streams)} streams</span>
+                    <span className="text-[13px] tabular-nums text-muted">{count(a.streams)} {plural(a.streams, 'stream')}</span>
                   </Link>
                 </li>
               ))}
@@ -462,6 +464,7 @@ function Badge({ icon, title, children }: { icon: ReactNode; title: string; chil
 
 /** Stats: how your music is growing (artists), and your own listening (everyone). */
 export function Stats() {
+  useTitle('Your stats');
   const [params, setParams] = useSearchParams();
   const session = useAuth((s) => s.session);
   const account = useAuth((s) => s.account);
@@ -493,15 +496,11 @@ export function Stats() {
   if (loading) return <Skeleton className="mt-8 h-72 rounded-3xl" />;
   if (!session) {
     return (
-      <EmptyState
+      <SignedOut
         icon={<LuChartColumn />}
         title="Your stats live here"
-        text="Sign in to see how your music is growing, and your own listening."
-        action={
-          <Button variant="brand" onClick={() => withAccount('Sign in to see your stats.', () => undefined)}>
-            Sign in
-          </Button>
-        }
+        text="See how your music is growing: who’s listening, where they found you, and your own listening."
+        next="/stats"
       />
     );
   }

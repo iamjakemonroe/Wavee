@@ -7,10 +7,11 @@ import { OfficialTag } from '../components/music/Artists';
 import { Verified } from '../components/music/Verified';
 import { Avatar, Button, EmptyState, Input, Skeleton, Spinner } from '../components/ui';
 import { api, type Report } from '../lib/api';
-import { ago } from '../lib/format';
+import { ago, plural } from '../lib/format';
 import { CollectionsAdmin, FoundingAdmin, NewArtists, PicksAdmin, Pulse } from './AdminGrowth';
 import { useAuth } from '../store/auth';
 import { toast } from '../store/toast';
+import { useTitle } from '../hooks/useTitle';
 
 const REPORT_STATUSES = ['open', 'reviewing', 'actioned', 'dismissed'] as const;
 
@@ -37,10 +38,12 @@ function Pills<T extends string>({ value, options, onChange }: { value: T; optio
 }
 
 export function Admin() {
+  useTitle('Team tools');
   const account = useAuth((s) => s.account);
   const loading = useAuth((s) => s.loading);
+  const session = useAuth((s) => s.session);
   const [tab, setTab] = useState<Tab>('pulse');
-  if (loading) return <Spinner className="mx-auto mt-24 block h-8 w-8 text-muted" />;
+  if (loading || (session && !account)) return <Spinner className="mx-auto mt-24 block h-8 w-8 text-muted" />;
   if (!account?.is_admin) return <EmptyState icon={<LuShield />} title="Moderators only" text="This page is for the Wavee team." />;
   return (
     <div className="animate-rise">
@@ -320,7 +323,7 @@ function VerifyArtists() {
                     {p.official && <OfficialTag className="ml-1" />}
                   </p>
                   <p className="text-[13px] text-muted">
-                    @{p.username} · {p.followers_count} followers · {p.songs_count} songs
+                    @{p.username} · {p.followers_count} {plural(p.followers_count, 'follower')} · {p.songs_count} {plural(p.songs_count, 'song')}
                   </p>
                 </div>
               </div>

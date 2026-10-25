@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { LuArrowDownRight, LuArrowUpRight, LuTable } from 'react-icons/lu';
-import { count } from '../../lib/format';
+import { count, plural } from '../../lib/format';
 
 // Chart colours (validated for this dark surface with the dataviz palette checks): one series
 // wears the brand teal; two-part charts use a deeper teal next to the violet.
@@ -334,7 +334,7 @@ export function Columns({ values, label }: { values: number[]; label: (i: number
             onPointerEnter={() => setAt(i)}
             onFocus={() => setAt(i)}
             onBlur={() => setAt(null)}
-            aria-label={`${label(i)}: ${count(v)} plays`}
+            aria-label={`${label(i)}: ${count(v)} ${plural(v, 'play')}`}
           >
             <span
               className={clsx('block w-full max-w-[24px] rounded-t-[4px] transition', at === i && 'brightness-125')}
@@ -353,7 +353,7 @@ export function Columns({ values, label }: { values: number[]; label: (i: number
           className="pointer-events-none absolute -top-2 rounded-xl border border-line/10 bg-bg/95 px-3 py-2 text-[12px] shadow-lift"
           style={{ left: `clamp(0px, calc(${((at + 0.5) / values.length) * 100}% - 70px), calc(100% - 140px))`, width: 140 }}
         >
-          <p className="text-[15px] font-bold tabular-nums">{count(values[at])} plays</p>
+          <p className="text-[15px] font-bold tabular-nums">{count(values[at])} {plural(values[at], 'play')}</p>
           <p className="text-muted">{label(at)}</p>
         </div>
       )}

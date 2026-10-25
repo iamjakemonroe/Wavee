@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://wavee.kaivon.app/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://wavee.kaivon.app/feed</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://wavee.kaivon.app/charts</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://wavee.kaivon.app/picks</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://wavee.kaivon.app/founding</loc><changefreq>weekly</changefreq></url>
+  <url><loc>https://wavee.kaivon.app/terms</loc><changefreq>yearly</changefreq></url>
+  <url><loc>https://wavee.kaivon.app/privacy</loc><changefreq>yearly</changefreq></url>
+  <url><loc>https://wavee.kaivon.app/copyright</loc><changefreq>yearly</changefreq></url>
+  <url><loc>https://wavee.kaivon.app/guidelines</loc><changefreq>yearly</changefreq></url>
+</urlset>
