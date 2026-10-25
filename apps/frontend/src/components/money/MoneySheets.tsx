@@ -14,6 +14,23 @@ import { plural } from '../../lib/format';
 
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
 
+/** Under every pay button: what the payment agrees to, opened in a new tab so the sheet stays. */
+function PayTerms() {
+  return (
+    <p className="mt-1 text-center text-[11.5px] leading-5 text-faint">
+      By paying you agree to the{' '}
+      <Link to="/terms" target="_blank" className="underline decoration-line/30 underline-offset-2 hover:text-muted">
+        Terms
+      </Link>{' '}
+      and{' '}
+      <Link to="/refunds" target="_blank" className="underline decoration-line/30 underline-offset-2 hover:text-muted">
+        Refund Policy
+      </Link>
+      .
+    </p>
+  );
+}
+
 /** Says so when payments are Flutterwave's test mode (no real money). */
 function TestNote() {
   const status = useQuery({ queryKey: ['pay-status'], queryFn: payApi.status, staleTime: 5 * 60_000 }).data;
@@ -129,6 +146,7 @@ function BoostBody({ song }: { song: Song }) {
       <p className="mt-3 flex items-center justify-center gap-1.5 text-[12px] text-faint">
         <LuLock /> Paid securely with Flutterwave
       </p>
+      <PayTerms />
     </div>
   );
 }
@@ -219,6 +237,7 @@ function ProBody() {
             <p className="mt-1 flex items-center justify-center gap-1.5 text-[12px] text-faint">
               <LuLock /> Paid securely with Flutterwave (card)
             </p>
+            <PayTerms />
           </>
         )}
       </div>

@@ -113,6 +113,7 @@ function FooterLinks({ className }: { className?: string }) {
     <div className={clsx('flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-faint', className)}>
       <Link to="/terms" className="hover:text-muted">Terms</Link>
       <Link to="/privacy" className="hover:text-muted">Privacy</Link>
+      <Link to="/refunds" className="hover:text-muted">Refunds</Link>
       <Link to="/copyright" className="hover:text-muted">Copyright</Link>
       <Link to="/guidelines" className="hover:text-muted">Guidelines</Link>
       <Link to={`/report-a-bug?from=${encodeURIComponent(pathname)}`} className="hover:text-muted">Report a bug</Link>

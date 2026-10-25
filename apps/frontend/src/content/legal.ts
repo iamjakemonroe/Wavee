@@ -2,7 +2,7 @@
 export type Block = string | string[];
 
 export interface LegalDoc {
-  slug: 'terms' | 'privacy' | 'copyright' | 'guidelines';
+  slug: 'terms' | 'privacy' | 'refunds' | 'copyright' | 'guidelines';
   title: string;
   summary: string;
   updated: string;
@@ -13,17 +13,19 @@ export const CONTACT = 'wavee@kaivon.app';
 /** Takedown notices and counter-notices go here, so they never wait behind other mail. */
 export const COPYRIGHT = 'copyright@kaivon.app';
 const updated = 'October 23, 2026';
+/** The Terms, Privacy and Refund Policy, revised when Boost and Artist Pro arrived. */
+const revised = 'October 25, 2026';
 
 export const terms: LegalDoc = {
   slug: 'terms',
   title: 'Terms of Service',
-  summary: 'The agreement between you and Kaivon when you listen to, upload or share music on Wavee.',
-  updated,
+  summary: 'The agreement between you and Kaivon when you listen to, upload, share or pay for anything on Wavee.',
+  updated: revised,
   sections: [
     {
       heading: 'Who we are',
       body: [
-        'Wavee is a place to stream, share and discover music, at wavee.kaivon.app. It is made and run by Kaivon (“we”, “us”), a product studio. By using Wavee you agree to these terms, the Community Guidelines and the Copyright Policy. If you don’t agree, please don’t use Wavee.',
+        'Wavee is a place to stream, share and discover music, at wavee.kaivon.app. It is made and run by Kaivon (“we”, “us”), a product studio. By using Wavee you agree to these terms, the Community Guidelines and the Copyright Policy, and when you pay for something, the Refund Policy. If you don’t agree, please don’t use Wavee.',
       ],
     },
     {
@@ -62,7 +64,7 @@ export const terms: LegalDoc = {
       body: [
         'Music on Wavee is for your personal, non-commercial listening. Please don’t download, record, rip or redistribute songs unless the artist allows it, and don’t play Wavee in public or commercial spaces as background music.',
         [
-          'Don’t inflate plays, likes or follows, for example with bots, scripts or paid schemes. We may remove counts that we believe aren’t real.',
+          'Don’t inflate plays, likes or follows, for example with bots, scripts or paid schemes (Boost is the only paid way to reach listeners on Wavee). We may remove counts that we believe aren’t real.',
           'Don’t scrape Wavee, interfere with how it works, try to get around its security, or use it to break the law.',
         ],
       ],
@@ -77,13 +79,45 @@ export const terms: LegalDoc = {
       heading: 'When we remove content or close accounts',
       body: [
         'We may hide or remove content, limit features or suspend or close an account when we believe these terms or the guidelines have been broken, when the law requires it, or to protect listeners, artists or Wavee. Where it’s safe and lawful to, we’ll tell you why. If you think we got it wrong, write to us and we’ll look again.',
-        'You can delete your songs at any time, and your whole account from Settings.',
+        'You can delete your songs at any time, and your whole account from Settings. If you are on Artist Pro, deleting your account cancels it first.',
       ],
     },
     {
-      heading: 'Wavee is free',
+      heading: 'Free, and what you can pay for',
       body: [
-        'Listening and uploading are free. If we offer paid features in the future, we’ll explain them, and their terms, before you pay for anything.',
+        'Listening and uploading are free. Artists can choose to pay for two extras, Boost and Artist Pro. What each one includes and its price, in US dollars, are shown before you pay.',
+      ],
+    },
+    {
+      heading: 'Boost',
+      body: [
+        'A Boost plays one of your songs to new listeners in their feed, marked “Promoted”, until it has reached the number of listeners you paid for.',
+        [
+          'A listener counts once they have really listened (at least 10 seconds), and each person counts once. Your own plays never count.',
+          'Boosted listens never count toward the charts or trending, so the charts stay fair for everyone.',
+          'How quickly a Boost finishes depends on how many people are listening. We don’t promise how long it takes, or that listeners will like, save or follow.',
+          'A Boost runs only while its song is live. If you hide or delete the song, or we remove it for breaking these terms, the Community Guidelines or the Copyright Policy, the Boost stops.',
+          'You may boost only songs you have the rights to, and boosted songs must follow the Community Guidelines like any other.',
+        ],
+      ],
+    },
+    {
+      heading: 'Artist Pro',
+      body: [
+        'Artist Pro is a monthly membership for artists. It includes a free Boost to 100 listeners each month (an unused one doesn’t carry over), full stats and bigger, lossless uploads. We may add to what it includes.',
+        [
+          'It renews automatically every month, charged to the card you joined with, until you cancel.',
+          'You can cancel any time in Wavee, from Artist Pro › Cancel my plan. Nothing more is charged, and you keep Pro until the end of the month you’ve paid for.',
+          'If a renewal payment fails, Pro ends when your paid month does.',
+          'If we change the price, we’ll tell you at least 30 days before your first payment at the new price, so you can cancel before then.',
+          'Songs you uploaded while a member stay up after Pro ends.',
+        ],
+      ],
+    },
+    {
+      heading: 'Payments',
+      body: [
+        'Payments on the web are processed by Flutterwave; we never see your full card details. If your card is in another currency, your bank converts the price and may add its own fee. If you are under 18, you need a parent or guardian’s permission to pay. Refunds follow our Refund Policy.',
       ],
     },
     {
@@ -95,7 +129,7 @@ export const terms: LegalDoc = {
     {
       heading: 'Our responsibility to you',
       body: [
-        'Wavee is provided “as is”. We work hard to keep it running and safe, but we can’t promise it will always be available or free of errors, or that content others upload is accurate or lawful. As far as the law allows, we aren’t liable for indirect losses, lost profits or lost data. Nothing in these terms limits rights you have that can’t be limited by law.',
+        'Wavee is provided “as is”. We work hard to keep it running and safe, but we can’t promise it will always be available or free of errors, or that content others upload is accurate or lawful. As far as the law allows, we aren’t liable for indirect losses, lost profits or lost data, and our total liability to you is limited to what you paid us in the 12 months before the claim. Nothing in these terms limits rights you have that can’t be limited by law.',
       ],
     },
     {
@@ -121,7 +155,7 @@ export const privacy: LegalDoc = {
   slug: 'privacy',
   title: 'Privacy Policy',
   summary: 'What Wavee collects, why, who helps us run it, and the choices you have.',
-  updated,
+  updated: revised,
   sections: [
     {
       heading: 'Who is responsible',
@@ -136,7 +170,9 @@ export const privacy: LegalDoc = {
           'Your account: your email address, username, name and password (stored only as a secure hash by our sign-in provider).',
           'Your profile: photo, bio and whether you make music, if you add them.',
           'What you upload: songs, cover art, music videos and their details.',
-          'What you do on Wavee: songs you play (and roughly how long you listen), likes, follows and playlists.',
+          'What you do on Wavee: songs you play (and roughly how long you listen), where in Wavee you played them (such as the feed or a playlist), likes, follows and playlists.',
+          'The country you’re listening from, worked out from your connection when you play a song. Never your precise location.',
+          'Payments: if you buy a Boost or Artist Pro, Flutterwave processes the payment and sends us its reference, amount, currency, result and the email used, so we can deliver what you bought, renew or cancel your plan, and handle refunds. We never receive your full card details.',
           'Reports and bug reports you send us, with any email address or screenshot you include, and your browser’s name and version.',
           'Basic technical data our hosting provider records to keep the service secure, such as IP addresses in short-lived logs.',
         ],
@@ -148,7 +184,8 @@ export const privacy: LegalDoc = {
       body: [
         [
           'To run your account and Wavee itself: sign-in, uploads, streaming, playlists, likes and follows.',
-          'To count plays fairly and show what’s trending.',
+          'To count plays fairly, show what’s trending, and give artists their stats.',
+          'To take payments, deliver Boosts and Artist Pro, and handle refunds and fraud.',
           'To recommend music in your feed.',
           'To keep Wavee safe: investigating reports, stopping abuse and fake plays, and handling copyright claims.',
           'To send emails you need, such as confirming your address or resetting your password.',
@@ -161,6 +198,7 @@ export const privacy: LegalDoc = {
       heading: 'What others can see',
       body: [
         'Your profile, the songs you upload, your public playlists and your follower counts are public: anyone, including people without an account, can see them, and links to them show a preview when shared. Your email address is never shown to other people. Private playlists are visible only to you.',
+        'Artists see totals about their listeners, such as plays, listening time and the countries their listeners are in, never who you are. A country only appears in an artist’s stats once at least 5 of their listeners are there.',
       ],
     },
     {
@@ -170,6 +208,7 @@ export const privacy: LegalDoc = {
           'Supabase stores our database and runs sign-in (servers in the European Union).',
           'Cloudflare hosts the website and stores uploaded files (servers in Western Europe, delivered through its global network).',
           'An email delivery provider sends sign-in and account emails.',
+          'Flutterwave processes payments.',
         ],
         'They process information only on our instructions. When information leaves Nigeria or your country, we rely on safeguards the law recognises.',
       ],
@@ -177,13 +216,13 @@ export const privacy: LegalDoc = {
     {
       heading: 'How long we keep it',
       body: [
-        'We keep your information while your account exists. When you delete your account, we delete your profile, songs, files, playlists, likes and follows; backups are overwritten in the normal course of time. We keep reports and records of copyright claims for as long as we need them to protect people and meet legal duties.',
+        'We keep your information while your account exists. When you delete your account, we delete your profile, songs, files, playlists, likes and follows; backups are overwritten in the normal course of time. We keep reports and records of copyright claims for as long as we need them to protect people and meet legal duties. A record of each payment (its reference, amount and currency, without your account) is kept for as long as accounting and tax law require.',
       ],
     },
     {
       heading: 'On your device',
       body: [
-        'Wavee stores a few things in your browser so it works: your sign-in session, your volume, and a random listening-session number used to count plays fairly. These aren’t used for advertising.',
+        'Wavee stores a few things in your browser so it works: your sign-in session and your account details (so Wavee opens straight away), your volume, and a random listening-session number used to count plays fairly. So you stay signed in even if your browser clears its storage, a copy of your sign-in is also kept in a secure cookie that only Wavee’s server can read; signing out removes it. None of this is used for advertising.',
       ],
     },
     {
@@ -207,6 +246,80 @@ export const privacy: LegalDoc = {
     {
       heading: 'Changes',
       body: ['If we change this policy in a way that matters, we’ll tell you before it takes effect.'],
+    },
+  ],
+};
+
+export const refunds: LegalDoc = {
+  slug: 'refunds',
+  title: 'Refund Policy',
+  summary: 'When and how we refund Boosts and Artist Pro.',
+  updated: revised,
+  sections: [
+    {
+      heading: 'What you can buy',
+      body: [
+        'Artists can buy a Boost (one payment, for one song) and Artist Pro (a membership that renews every month). Both are digital services that start as soon as your payment is confirmed. Listening and uploading are free.',
+      ],
+    },
+    {
+      heading: 'Always refunded in full',
+      body: [
+        [
+          'You were charged more than once for the same thing.',
+          'You were charged but your Boost or Artist Pro never started, and we can’t start it.',
+          'A payment was made from your card without your permission (please tell us as soon as you notice).',
+          'You were charged after deleting your account.',
+        ],
+      ],
+    },
+    {
+      heading: 'Boost',
+      body: [
+        [
+          'Changed your mind? Write to us within 24 hours of paying. If the Boost hasn’t reached anyone yet, we refund it in full.',
+          'If a Boost hasn’t reached everyone you paid for within 60 days, you can ask for a refund for the listeners it didn’t reach. For example, if it reached half of them, half the price comes back.',
+          'If we remove a song by mistake, we put it back and its Boost carries on, or we refund the listeners it didn’t reach, if you prefer.',
+          'There’s no refund for listeners not reached if you hide or delete the song yourself, or if we remove the song or close the account for breaking our Terms, Community Guidelines or Copyright Policy.',
+          'Likes, follows and saves from a Boost aren’t guaranteed, so they aren’t a reason for a refund.',
+          'The free monthly Boost that comes with Artist Pro has no cash value and can’t be refunded.',
+        ],
+      ],
+    },
+    {
+      heading: 'Artist Pro',
+      body: [
+        [
+          'Cancel any time in Wavee: nothing more is charged, and you keep Pro until the end of the month you’ve paid for. We don’t refund part of a month.',
+          'Forgot to cancel? Write to us within 7 days of a renewal. If you haven’t used Pro since it renewed (no free Boost and no lossless uploads), we refund that renewal and end your membership.',
+          'If we stop offering Artist Pro, we refund the unused part of your month.',
+          'If we close your account for breaking our Terms, Community Guidelines or Copyright Policy, the rest of the month isn’t refunded.',
+        ],
+      ],
+    },
+    {
+      heading: 'How to ask',
+      body: [
+        `Write to ${CONTACT} from your account’s email address, with your username, the date and amount, and the payment reference from your receipt. We reply within 3 business days.`,
+      ],
+    },
+    {
+      heading: 'How you’re refunded',
+      body: [
+        'Approved refunds go back to the card you paid with, through Flutterwave, in US dollars. Depending on your bank, the money usually arrives within 5 to 10 business days. If your card is in another currency, your bank’s exchange rate on the day of the refund may differ slightly from the day you paid. A refunded Boost stops, and a refunded Artist Pro membership ends.',
+      ],
+    },
+    {
+      heading: 'Before a chargeback',
+      body: [
+        'If something went wrong with a payment, please contact us first: it’s the fastest way to fix it. While a chargeback is reviewed, we may pause paid features on the account.',
+      ],
+    },
+    {
+      heading: 'Your rights',
+      body: [
+        'Nothing in this policy affects rights you have under consumer protection law, including the Federal Competition and Consumer Protection Act of Nigeria, or the law where you live.',
+      ],
     },
   ],
 };
@@ -322,4 +435,4 @@ export const guidelines: LegalDoc = {
   ],
 };
 
-export const legalDocs = { terms, privacy, copyright, guidelines };
+export const legalDocs = { terms, privacy, refunds, copyright, guidelines };

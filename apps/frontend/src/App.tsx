@@ -37,7 +37,7 @@ const Founding = later(() => import('./pages/Founding'), 'Founding');
 const Picks = later(() => import('./pages/Picks'), 'Picks');
 const Stats = later(() => import('./pages/Stats'), 'Stats');
 const Legal = later(() => import('./pages/Legal'), 'Legal') as ComponentType<{
-  slug: 'terms' | 'privacy' | 'copyright' | 'guidelines';
+  slug: 'terms' | 'privacy' | 'refunds' | 'copyright' | 'guidelines';
 }>;
 
 function Loading() {
@@ -115,6 +115,7 @@ export function App() {
         <Route path="/report-a-bug" element={<BugReport />} />
         <Route path="/terms" element={<Legal slug="terms" />} />
         <Route path="/privacy" element={<Legal slug="privacy" />} />
+        <Route path="/refunds" element={<Legal slug="refunds" />} />
         <Route path="/copyright" element={<Legal slug="copyright" />} />
         <Route path="/guidelines" element={<Legal slug="guidelines" />} />
         <Route path="*" element={<NotFound />} />

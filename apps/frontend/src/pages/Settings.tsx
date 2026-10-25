@@ -11,11 +11,13 @@ import { Avatar, Bars, Button, Checkbox, Input, LoadError, Modal, Spinner, Texta
 import { api } from '../lib/api';
 import { ROLES } from '../lib/format';
 import { purgeMyMedia, uploadMedia } from '../lib/media';
+import { payApi } from '../lib/pay';
 import { ARTIST_PLATFORMS, type Links } from '../lib/platforms';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../store/auth';
 import { installWay, useInstall } from '../store/install';
 import { toast } from '../store/toast';
+import { useMyPlan } from '../hooks/data';
 import { useTitle } from '../hooks/useTitle';
 
 const USERNAME = /^[a-z0-9_.]{3,30}$/;
@@ -403,6 +405,7 @@ function OtherDevices() {
 function DangerZone() {
   const account = useAuth((s) => s.account)!;
   const signOut = useAuth((s) => s.signOut);
+  const plan = useMyPlan().data;
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');
@@ -410,6 +413,17 @@ function DangerZone() {
 
   const remove = async () => {
     setDeleting(true);
+    // Artist Pro is cancelled with Flutterwave first, so the card is never charged for an account
+    // that's gone. If that can't be done, nothing is deleted.
+    if (plan?.pro_until) {
+      try {
+        await payApi.cancel();
+      } catch {
+        toast('We couldn’t cancel your Artist Pro plan, so nothing was deleted. Please try again.', 'error');
+        setDeleting(false);
+        return;
+      }
+    }
     try {
       await purgeMyMedia();
       const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
@@ -428,7 +442,7 @@ function DangerZone() {
     <Panel title="Delete account" text="This can’t be undone.">
       <p className="text-sm leading-6 text-muted">
         Deleting your account removes your profile, your songs and their files, your playlists, likes and follows. Anyone with a link to your songs will
-        find them gone.
+        find them gone.{plan?.pro_until ? ' Your Artist Pro plan is cancelled first, so you’re never charged again.' : ''}
       </p>
       <Button variant="danger" className="mt-5" icon={<LuTrash2 />} onClick={() => setOpen(true)}>
         Delete my account

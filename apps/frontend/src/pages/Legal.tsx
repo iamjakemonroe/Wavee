@@ -6,6 +6,7 @@ import { CONTACT, legalDocs, type LegalDoc } from '../content/legal';
 const order: { slug: LegalDoc['slug']; label: string }[] = [
   { slug: 'terms', label: 'Terms' },
   { slug: 'privacy', label: 'Privacy' },
+  { slug: 'refunds', label: 'Refunds' },
   { slug: 'copyright', label: 'Copyright' },
   { slug: 'guidelines', label: 'Guidelines' },
 ];
