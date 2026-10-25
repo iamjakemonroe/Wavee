@@ -2,6 +2,8 @@ import { motion } from 'framer-motion';
 import { useMemo, type ReactNode } from 'react';
 import { LuArrowRight, LuDisc3, LuHeart, LuMoon, LuPlay, LuSparkles, LuSun, LuSunrise, LuSunset, LuTrophy, LuUpload, LuUsers } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
+import { Challenge, Collections, FoundingBanner, YourWeek } from '../components/growth/Home';
+import { FreshFinds } from '../components/growth/Picks';
 import { SongRow, SongTile } from '../components/music/Song';
 import { Avatar, Bars, Button, EmptyState, Skeleton } from '../components/ui';
 import { useFeatureInvites, useFeed, useNewReleases, useTrending, useUserSongs } from '../hooks/data';
@@ -349,6 +351,10 @@ export function Home() {
         <Hero trending={trending.data} />
       )}
 
+      <FoundingBanner />
+      {signedIn && account?.is_artist && <YourWeek />}
+      <FreshFinds />
+
       <Section
         title="For you"
         subtitle={signedIn ? 'Picked from what you play, and what’s rising.' : 'A taste of what’s playing on Wavee.'}
@@ -402,6 +408,8 @@ export function Home() {
         )}
       </Section>
 
+      {signedIn && <Challenge />}
+
       <Section
         title="Trending this week"
         subtitle="The most played songs of the last seven days."
@@ -417,6 +425,8 @@ export function Home() {
       <Section title="New releases" subtitle="Fresh uploads from artists on Wavee.">
         <TileRow songs={fresh.data} loading={fresh.isLoading} source="New releases" />
       </Section>
+
+      <Collections />
 
       <ArtistsToFollow songs={trending.data} />
 

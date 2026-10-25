@@ -1,14 +1,15 @@
 import clsx from 'clsx';
 import { useState } from 'react';
-import { LuEar, LuFlag, LuMusic, LuPencil, LuPlay, LuShare2, LuUserCheck, LuUserPlus } from 'react-icons/lu';
+import { LuEar, LuFlag, LuFlame, LuMusic, LuPencil, LuPlay, LuShare2, LuUserCheck, LuUserPlus } from 'react-icons/lu';
 import { Link, useParams } from 'react-router-dom';
+import { FoundingBadge } from '../components/growth/Founding';
 import { OfficialTag } from '../components/music/Artists';
 import { LinkPills } from '../components/music/Links';
 import { Verified } from '../components/music/Verified';
 import { SongRow } from '../components/music/Song';
 import { Menu, ReportDialog } from '../components/music/SongMenu';
 import { Avatar, Button, Cover, EmptyState, Skeleton } from '../components/ui';
-import { useAppearances, useFollow, useProfile, useUserPlaylists, useUserSongs } from '../hooks/data';
+import { useAppearances, useFinds, useFollow, useProfile, useUserPlaylists, useUserSongs } from '../hooks/data';
 import { count, roleLabel } from '../lib/format';
 import { ARTIST_PLATFORMS } from '../lib/platforms';
 import { useAuth, withAccount } from '../store/auth';
@@ -24,8 +25,9 @@ export function Artist() {
   const playlists = useUserPlaylists(profile.data?.id);
   const follow = useFollow(username.toLowerCase());
   const playList = usePlayer((s) => s.playList);
-  const [tab, setTab] = useState<'songs' | 'appears' | 'playlists'>('songs');
+  const [tab, setTab] = useState<'songs' | 'appears' | 'finds' | 'playlists'>('songs');
   const appearances = useAppearances(profile.data?.id);
+  const finds = useFinds(tab === 'finds' ? profile.data?.id : undefined);
   const [reporting, setReporting] = useState(false);
 
   if (profile.isLoading) {
@@ -78,6 +80,23 @@ export function Artist() {
               {p.official && <OfficialTag />}
             </p>
             {p.bio && <p className="mt-3 max-w-xl text-[15px] leading-6 text-ink/80">{p.bio}</p>}
+            {(p.founding || (p.explorer ?? 0) > 0) && (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                {p.founding && (
+                  <Link to="/founding">
+                    <FoundingBadge founding={p.founding} />
+                  </Link>
+                )}
+                {(p.explorer ?? 0) > 0 && (
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full border border-warn/30 bg-warn/10 px-3 py-1 text-[12px] font-medium text-warn"
+                    title="Weeks in a row finding new artists"
+                  >
+                    <LuFlame /> Explorer · {p.explorer} {p.explorer === 1 ? 'week' : 'weeks'}
+                  </span>
+                )}
+              </div>
+            )}
             {p.ear?.early_likes > 0 && (
               <Link
                 to="/charts?tab=tastemakers"
@@ -127,6 +146,7 @@ export function Artist() {
           [
             ['songs', 'Songs'],
             ['appears', 'Appears on'],
+            ...(p.ear?.early_likes > 0 ? ([['finds', 'Early finds']] as const) : []),
             ['playlists', 'Playlists'],
           ] as const
         ).map(([t, label]) => (
@@ -166,6 +186,20 @@ export function Artist() {
           ))
         ) : (
           <EmptyState title="Not featured on anything yet" text={`Songs ${name} is featured on show here.`} />
+        ))}
+
+      {tab === 'finds' &&
+        (finds.isLoading ? (
+          <Skeleton className="h-40 w-full rounded-2xl" />
+        ) : finds.data?.length ? (
+          <>
+            <p className="mb-3 text-[13px] text-muted">Songs {name} liked early, after really listening.</p>
+            {finds.data.map((s, i) => (
+              <SongRow key={s.id} song={s} list={finds.data!} index={i} source={`${name}: early finds`} />
+            ))}
+          </>
+        ) : (
+          <EmptyState title="No early finds yet" text="Songs liked early, before they took off, show here." />
         ))}
 
       {tab === 'playlists' &&

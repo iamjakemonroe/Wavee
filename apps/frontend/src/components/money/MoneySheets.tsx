@@ -7,6 +7,7 @@ import { CURRENCY, money, payApi } from '../../lib/pay';
 import { useAuth } from '../../store/auth';
 import { useMoney } from '../../store/money';
 import { toast } from '../../store/toast';
+import { FeedbackSummaryView } from '../growth/Feedback';
 import { Button, Cover, Modal, Spinner } from '../ui';
 
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
@@ -277,6 +278,7 @@ function StatsBody({ song }: { song: Song }) {
               </span>
             </button>
           )}
+          <FeedbackSummaryView songId={song.id} />
         </>
       )}
     </div>

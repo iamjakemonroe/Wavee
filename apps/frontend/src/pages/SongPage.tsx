@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { LuCalendar, LuFilm, LuHeadphones, LuHeart, LuImage, LuShare2 } from 'react-icons/lu';
+import { LuCalendar, LuFilm, LuHeadphones, LuHeart, LuImage, LuMessageSquareHeart, LuShare2 } from 'react-icons/lu';
 import { Link, useParams } from 'react-router-dom';
+import { FeedbackDialog } from '../components/growth/Feedback';
 import { LinkPills } from '../components/music/Links';
 import { AiTag, Artists } from '../components/music/Artists';
 import { ShareCardDialog } from '../components/music/ShareCard';
@@ -10,6 +11,7 @@ import { Avatar, Button, Cover, EmptyState, Skeleton } from '../components/ui';
 import { useSong, useUserSongs } from '../hooks/data';
 import { ago, artistName, count, duration, songGenres } from '../lib/format';
 import { SONG_PLATFORMS } from '../lib/platforms';
+import { useAuth, withAccount } from '../store/auth';
 import { NotFound } from './NotFound';
 
 export function SongPage() {
@@ -17,6 +19,8 @@ export function SongPage() {
   const song = useSong(id);
   const more = useUserSongs(song.data?.artist_id);
   const [card, setCard] = useState(false);
+  const [feedback, setFeedback] = useState(false);
+  const me = useAuth((x) => x.session?.user.id);
 
   if (song.isLoading) {
     return (
@@ -71,6 +75,15 @@ export function SongPage() {
               <Button variant="ghost" icon={<LuImage />} onClick={() => setCard(true)}>
                 <span className="max-sm:hidden">Story card</span>
               </Button>
+              {me !== s.artist_id && (
+                <Button
+                  variant="ghost"
+                  icon={<LuMessageSquareHeart />}
+                  onClick={() => withAccount('Sign in to send the artist feedback.', () => setFeedback(true))}
+                >
+                  <span className="max-sm:hidden">Feedback</span>
+                </Button>
+              )}
               <SongMenu song={s} />
             </div>
             {s.links && Object.keys(s.links).length > 0 && (
@@ -106,6 +119,7 @@ export function SongPage() {
         )}
       </section>
       {card && <ShareCardDialog song={s} open={card} onClose={() => setCard(false)} />}
+      {feedback && <FeedbackDialog song={s} open={feedback} onClose={() => setFeedback(false)} />}
     </div>
   );
 }

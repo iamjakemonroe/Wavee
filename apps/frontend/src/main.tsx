@@ -5,6 +5,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
+import { rememberReferrer } from './lib/growth';
 import { startAppMode } from './lib/standalone';
 import { startAuth } from './store/auth';
 import { startInstall } from './store/install';
@@ -20,6 +21,7 @@ const client = new QueryClient({
   },
 });
 
+rememberReferrer();
 startAuth();
 startAppMode();
 startInstall();

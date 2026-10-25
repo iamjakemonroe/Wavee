@@ -1,90 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { LuCopy, LuDownload, LuShare2 } from 'react-icons/lu';
 import type { Song } from '../../lib/api';
+import { drawCover, FONT, H, lines, loadCover, mark, roundRect, TEAL, VIOLET, W } from '../../lib/canvas';
 import { artistNames } from '../../lib/format';
 import { toast } from '../../store/toast';
 import { Button, Modal, Spinner } from '../ui';
 
-const W = 1080;
-const H = 1920;
-const TEAL = '#18e2b0';
-const VIOLET = '#8466ff';
-const FONT = '"Inter Variable", Inter, "Helvetica Neue", Arial, sans-serif';
-
 export const songUrl = (song: Song) => `${window.location.origin}/songs/${song.id}`;
-
-/** The cover, readable by a canvas (media.wavee.kaivon.app allows it; the query keeps a copy
- * cached without that permission from being reused). Null if it can't be had. */
-async function loadCover(url: string | null): Promise<ImageBitmap | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}card=1`, { mode: 'cors' });
-    if (!res.ok) return null;
-    return await createImageBitmap(await res.blob());
-  } catch {
-    return null;
-  }
-}
-
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-/** Draws [image] to fill the box, cropping the overflow (like object-fit: cover). */
-function drawCover(ctx: CanvasRenderingContext2D, image: CanvasImageSource & { width: number; height: number }, x: number, y: number, w: number, h: number) {
-  const scale = Math.max(w / image.width, h / image.height);
-  const sw = w / scale;
-  const sh = h / scale;
-  ctx.drawImage(image, (image.width - sw) / 2, (image.height - sh) / 2, sw, sh, x, y, w, h);
-}
-
-/** Splits [text] into at most [max] lines that fit [width], ending in … if it's cut. */
-function lines(ctx: CanvasRenderingContext2D, text: string, width: number, max: number): string[] {
-  const words = text.split(/\s+/).filter(Boolean);
-  const out: string[] = [];
-  let line = '';
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word;
-    if (ctx.measureText(next).width <= width || !line) {
-      line = next;
-    } else {
-      out.push(line);
-      line = word;
-    }
-  }
-  if (line) out.push(line);
-  if (out.length > max) {
-    const kept = out.slice(0, max);
-    let last = kept[max - 1];
-    while (last && ctx.measureText(`${last}…`).width > width) last = last.slice(0, -1);
-    kept[max - 1] = `${last.trimEnd()}…`;
-    return kept;
-  }
-  return out;
-}
-
-/** Five equaliser bars, Wavee's mark, in a box of [size] at (x, y). */
-function mark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  const heights = [0.45, 0.75, 1, 0.8, 0.55];
-  const w = size * 0.11;
-  const gap = size * 0.08;
-  const total = w * 5 + gap * 4;
-  heights.forEach((k, i) => {
-    const h = size * k;
-    const g = ctx.createLinearGradient(0, y, 0, y + size);
-    g.addColorStop(0, i < 2 ? TEAL : VIOLET);
-    g.addColorStop(1, i < 3 ? TEAL : VIOLET);
-    ctx.fillStyle = g;
-    roundRect(ctx, x + (size - total) / 2 + i * (w + gap), y + (size - h) / 2, w, h, w / 2);
-    ctx.fill();
-  });
-}
 
 /** A 1080×1920 picture of the song for WhatsApp Status, Instagram and TikTok stories. */
 export async function renderCard(song: Song, badge?: string): Promise<Blob> {
@@ -238,8 +160,126 @@ export async function renderCard(song: Song, badge?: string): Promise<Blob> {
   );
 }
 
-/** Makes the card, shows it, and hands it to the phone's share sheet (WhatsApp Status,
- * Instagram, TikTok) or downloads it. */
+interface PictureProps {
+  /** Draws the picture (once each time the dialog opens). */
+  make: () => Promise<Blob>;
+  /** The file's name, without .png. */
+  name: string;
+  text: string;
+  link: string;
+  alt: string;
+  hint?: string;
+}
+
+/** The dialog's inside, mounted fresh each time it opens: draws the picture, then offers it. */
+function PictureBody({
+  make,
+  name,
+  text,
+  link,
+  alt,
+  hint = 'Post it on WhatsApp Status, Instagram or TikTok, and add the link so friends can tap through.',
+}: PictureProps) {
+  const [picture, setPicture] = useState<{ blob: Blob; url: string } | null>(null);
+  const draw = useRef(make);
+  useLayoutEffect(() => {
+    draw.current = make;
+  });
+
+  useEffect(() => {
+    let alive = true;
+    let url: string | null = null;
+    draw
+      .current()
+      .then((blob) => {
+        if (!alive) return;
+        url = URL.createObjectURL(blob);
+        setPicture({ blob, url });
+      })
+      .catch(() => alive && toast('We couldn’t make the picture. Please try again.', 'error'));
+    return () => {
+      alive = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, []);
+
+  const fileName = `${name.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').toLowerCase() || 'wavee'}.png`;
+  const file = picture ? new File([picture.blob], fileName, { type: 'image/png' }) : null;
+  const canShareFile = !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
+
+  const share = async () => {
+    if (!file) return;
+    try {
+      await navigator.share({ files: [file], title: alt, text: `${text} ${link}` });
+    } catch {
+      // Share sheet closed.
+    }
+  };
+
+  const download = () => {
+    if (!picture) return;
+    const a = document.createElement('a');
+    a.href = picture.url;
+    a.download = fileName;
+    a.click();
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast('Link copied. Add it to your story as a link sticker.');
+    } catch {
+      toast(link);
+    }
+  };
+
+  return (
+    <>
+      <div className="mx-auto aspect-[9/16] w-full max-w-[260px] overflow-hidden rounded-2xl bg-raised ring-1 ring-line/10">
+        {picture ? (
+          <img src={picture.url} alt={alt} className="h-full w-full object-cover" />
+        ) : (
+          <div className="grid h-full place-items-center">
+            <Spinner className="h-7 w-7 text-muted" />
+          </div>
+        )}
+      </div>
+      <p className="mx-auto mt-4 max-w-xs text-center text-[13px] leading-5 text-muted">{hint}</p>
+      <div className="mt-5 grid gap-2">
+        {canShareFile && (
+          <Button variant="brand" icon={<LuShare2 />} disabled={!file} onClick={() => void share()}>
+            Share
+          </Button>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant={canShareFile ? 'secondary' : 'primary'} icon={<LuDownload />} disabled={!picture} onClick={download}>
+            Save picture
+          </Button>
+          <Button variant="secondary" icon={<LuCopy />} onClick={() => void copy()}>
+            Copy link
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Makes a picture, shows it, and hands it to the phone's share sheet (WhatsApp Status,
+ * Instagram, TikTok) or downloads it, with the link to go with it. */
+export function PictureDialog({
+  open,
+  onClose,
+  title = 'Share to your story',
+  ...picture
+}: PictureProps & { open: boolean; onClose: () => void; title?: string }) {
+  return (
+    <Modal open={open} onClose={onClose} title={title}>
+      {open && <PictureBody {...picture} />}
+    </Modal>
+  );
+}
+
+/** A song's story card. */
 export function ShareCardDialog({
   song,
   badge,
@@ -251,92 +291,15 @@ export function ShareCardDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const [blob, setBlob] = useState<Blob | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    let url: string | null = null;
-    setBlob(null);
-    setPreview(null);
-    renderCard(song, badge)
-      .then((b) => {
-        if (!alive) return;
-        url = URL.createObjectURL(b);
-        setBlob(b);
-        setPreview(url);
-      })
-      .catch(() => alive && toast('We couldn’t make the picture. Please try again.', 'error'));
-    return () => {
-      alive = false;
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [open, song, badge]);
-
-  const name = `${song.title.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').toLowerCase() || 'song'}-on-wavee.png`;
-  const file = blob ? new File([blob], name, { type: 'image/png' }) : null;
-  const canShareFile = !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
-
-  const share = async () => {
-    if (!file) return;
-    try {
-      await navigator.share({
-        files: [file],
-        title: song.title,
-        text: `${song.title} by ${artistNames(song)} on Wavee: ${songUrl(song)}`,
-      });
-    } catch {
-      // Share sheet closed.
-    }
-  };
-
-  const download = () => {
-    if (!preview) return;
-    const a = document.createElement('a');
-    a.href = preview;
-    a.download = name;
-    a.click();
-  };
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(songUrl(song));
-      toast('Link copied. Add it to your story as a link sticker.');
-    } catch {
-      toast(songUrl(song));
-    }
-  };
-
   return (
-    <Modal open={open} onClose={onClose} title="Share to your story">
-      <div className="mx-auto aspect-[9/16] w-full max-w-[260px] overflow-hidden rounded-2xl bg-raised ring-1 ring-line/10">
-        {preview ? (
-          <img src={preview} alt={`Story card for ${song.title}`} className="h-full w-full object-cover" />
-        ) : (
-          <div className="grid h-full place-items-center">
-            <Spinner className="h-7 w-7 text-muted" />
-          </div>
-        )}
-      </div>
-      <p className="mx-auto mt-4 max-w-xs text-center text-[13px] leading-5 text-muted">
-        Post it on WhatsApp Status, Instagram or TikTok, and add the song’s link so friends can tap through.
-      </p>
-      <div className="mt-5 grid gap-2">
-        {canShareFile && (
-          <Button variant="brand" icon={<LuShare2 />} disabled={!file} onClick={() => void share()}>
-            Share
-          </Button>
-        )}
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant={canShareFile ? 'secondary' : 'primary'} icon={<LuDownload />} disabled={!preview} onClick={download}>
-            Save picture
-          </Button>
-          <Button variant="secondary" icon={<LuCopy />} onClick={() => void copy()}>
-            Copy link
-          </Button>
-        </div>
-      </div>
-    </Modal>
+    <PictureDialog
+      open={open}
+      onClose={onClose}
+      make={() => renderCard(song, badge)}
+      name={`${song.title}-on-wavee`}
+      text={`${song.title} by ${artistNames(song)} on Wavee:`}
+      link={songUrl(song)}
+      alt={`Story card for ${song.title}`}
+    />
   );
 }

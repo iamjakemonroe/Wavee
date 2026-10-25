@@ -228,7 +228,24 @@ async function withPreview(request: Request, env: Env, path: string): Promise<Re
     };
     const song = path.match(/^\/songs\/([0-9a-f-]{36})$/i);
     const user = path.match(/^\/u\/([a-z0-9_.]{3,30})$/i);
-    if (song) {
+    const origin = new URL(request.url).origin;
+    if (path === '/founding') {
+      const s = (await rpc('founding_status', {})) as
+        | { artists: { taken: number; cap: number }; listeners: { taken: number; cap: number } }
+        | null;
+      const left = s ? Math.max(0, s.artists.cap - s.artists.taken) + Math.max(0, s.listeners.cap - s.listeners.taken) : null;
+      meta = {
+        title: 'Wavee Founding 100: build Wavee from day one',
+        description: `${s ? s.artists.cap : 30} artists and ${s ? s.listeners.cap : 70} listeners shaping Wavee from the start, numbered for good.${left ? ` ${left} spots left.` : ''} Hear it first.`,
+        image: `${origin}/og-founding.png`,
+      };
+    } else if (path === '/picks') {
+      meta = {
+        title: 'Fresh Finds on Wavee',
+        description: 'New songs the Wavee team can’t stop playing this week, and why. Hear them first.',
+        image: `${origin}/og-picks.png`,
+      };
+    } else if (song) {
       const s = (await rpc('get_song', { p_id: song[1] })) as
         | (Record<string, string> & { features?: { username: string; display_name: string | null }[] })
         | null;
@@ -281,7 +298,7 @@ export default {
     if (url.pathname === '/api/media/mine' && request.method === 'DELETE') return removeAll(request, env);
     if (url.pathname.startsWith('/api/pay/')) return pay(request, env, url.pathname.slice('/api/pay/'.length));
     if (url.pathname.startsWith('/api/')) return json({ error: 'Not found.' }, 404);
-    if (request.method === 'GET' && /^\/(songs|u)\//.test(url.pathname)) {
+    if (request.method === 'GET' && (/^\/(songs|u)\//.test(url.pathname) || url.pathname === '/founding' || url.pathname === '/picks')) {
       return withPreview(request, env, url.pathname);
     }
     return env.ASSETS.fetch(request);

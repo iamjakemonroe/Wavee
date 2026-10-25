@@ -1,17 +1,20 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useState } from 'react';
-import { LuBadgeCheck, LuBug, LuExternalLink, LuFlag, LuShield } from 'react-icons/lu';
+import { LuActivity, LuBadgeCheck, LuBug, LuExternalLink, LuFlag, LuGem, LuListMusic, LuRadar, LuShield, LuSprout } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { OfficialTag } from '../components/music/Artists';
 import { Verified } from '../components/music/Verified';
 import { Avatar, Button, EmptyState, Input, Skeleton, Spinner } from '../components/ui';
 import { api, type Report } from '../lib/api';
 import { ago } from '../lib/format';
+import { CollectionsAdmin, FoundingAdmin, NewArtists, PicksAdmin, Pulse } from './AdminGrowth';
 import { useAuth } from '../store/auth';
 import { toast } from '../store/toast';
 
 const REPORT_STATUSES = ['open', 'reviewing', 'actioned', 'dismissed'] as const;
+
+type Tab = 'pulse' | 'new' | 'picks' | 'founding' | 'collections' | 'reports' | 'bugs' | 'artists';
 const BUG_STATUSES = ['open', 'closed'] as const;
 
 function Pills<T extends string>({ value, options, onChange }: { value: T; options: readonly T[]; onChange: (v: T) => void }) {
@@ -36,15 +39,20 @@ function Pills<T extends string>({ value, options, onChange }: { value: T; optio
 export function Admin() {
   const account = useAuth((s) => s.account);
   const loading = useAuth((s) => s.loading);
-  const [tab, setTab] = useState<'reports' | 'bugs' | 'artists'>('reports');
+  const [tab, setTab] = useState<Tab>('pulse');
   if (loading) return <Spinner className="mx-auto mt-24 block h-8 w-8 text-muted" />;
   if (!account?.is_admin) return <EmptyState icon={<LuShield />} title="Moderators only" text="This page is for the Wavee team." />;
   return (
     <div className="animate-rise">
-      <h1 className="mt-2 text-3xl">Moderation</h1>
-      <div className="mb-6 mt-6 flex gap-6 border-b border-line/[0.06]">
+      <h1 className="mt-2 text-3xl">The Wavee team</h1>
+      <div className="mb-6 mt-6 flex gap-6 overflow-x-auto border-b border-line/[0.06] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {(
           [
+            ['pulse', 'Pulse', <LuActivity key="p" />],
+            ['new', 'New artists', <LuSprout key="n" />],
+            ['picks', 'Fresh Finds', <LuRadar key="r" />],
+            ['founding', 'Founding 100', <LuGem key="g" />],
+            ['collections', 'Collections', <LuListMusic key="c" />],
             ['reports', 'Reports', <LuFlag key="f" />],
             ['bugs', 'Bug reports', <LuBug key="b" />],
             ['artists', 'Verify artists', <LuBadgeCheck key="v" />],
@@ -54,7 +62,7 @@ export function Admin() {
             key={id}
             onClick={() => setTab(id)}
             className={clsx(
-              '-mb-px flex items-center gap-2 border-b-2 py-3 text-sm font-medium transition',
+              '-mb-px flex shrink-0 items-center gap-2 border-b-2 py-3 text-sm font-medium transition',
               tab === id ? 'border-teal text-ink' : 'border-transparent text-muted hover:text-ink',
             )}
           >
@@ -63,7 +71,14 @@ export function Admin() {
           </button>
         ))}
       </div>
-      {tab === 'reports' ? <Reports /> : tab === 'bugs' ? <Bugs /> : <VerifyArtists />}
+      {tab === 'pulse' && <Pulse />}
+      {tab === 'new' && <NewArtists />}
+      {tab === 'picks' && <PicksAdmin />}
+      {tab === 'founding' && <FoundingAdmin />}
+      {tab === 'collections' && <CollectionsAdmin />}
+      {tab === 'reports' && <Reports />}
+      {tab === 'bugs' && <Bugs />}
+      {tab === 'artists' && <VerifyArtists />}
     </div>
   );
 }

@@ -1093,7 +1093,7 @@ def run_contract_tests(db, c):
         c.ok("get_profile is case-insensitive and has the contract keys",
              prof and set(prof) == {"id", "username", "display_name", "avatar_url", "bio", "is_artist", "music_roles",
                                     "followers_count", "following_count", "songs_count", "is_following", "links",
-                                    "ear", "verified", "official"}, prof)
+                                    "ear", "verified", "official", "founding", "explorer"}, prof)
         c.ok("get_profile of an unknown user is null",
              db.anon("select public.get_profile('nobody_here')")[0][0] is None)
 
@@ -1348,6 +1348,9 @@ def run_contract_tests(db, c):
     c.start("money")
 
     def money():
+        # First listens (free Boosts for new artists) are checked under growth.
+        db.su("update public.wavee_growth set welcome_songs = 0")
+        db.su("update public.boosts set status = 'done' where source = 'welcome'")
         artist = signup("boosty@example.com", {"username": "boosty", "music_roles": ["singer"]})
         fan = signup("fan@example.com", {"username": "fanny"})
         fan2 = signup("fan2@example.com", {"username": "fanny2"})
@@ -1431,6 +1434,201 @@ def run_contract_tests(db, c):
         c.raises("players can't read payments directly", lambda: db.user(artist, "select * from public.boosts"), "permission denied")
 
     c.safe("money", money)
+
+    # ── Growth: Founding 100, first listens, Fresh Finds, feedback, invites ──
+    c.start("growth")
+
+    def growth():
+        def heard(listener, sid, seconds=60, length=120):
+            db.user(listener, "select public.record_play(%s, %s, %s, false, null)", (sid, seconds, length))
+
+        db.su("update public.wavee_growth set welcome_songs = 3")
+
+        # Founding 100.
+        st = db.anon("select public.founding_status()")[0][0]
+        c.ok("the founding spots, as they really are", st["open"] is True and st["artists"] == {"taken": 0, "cap": 30}
+             and st["listeners"] == {"taken": 0, "cap": 70} and st["me"] is None and st["members"] == [], st)
+        ear = signup("ear@example.com", {"username": "first_ear"})
+        maker = signup("maker@example.com", {"username": "maker", "music_roles": ["producer"]})
+        mine = db.user(ear, "select public.claim_founding('listener')")[0][0]
+        c.ok("a listener takes a founding spot, numbered", mine == {"number": 1, "role": "listener"}, mine)
+        c.ok("asking again keeps the same spot", db.user(ear, "select public.claim_founding('artist')")[0][0] == mine)
+        c.raises("founding artists need a song first",
+                 lambda: db.user(maker, "select public.claim_founding('artist')"), "WV001", "Upload a song first")
+        first = new_song(maker, "First One", duration=150)
+        c.ok("with a song, an artist takes the next number",
+             db.user(maker, "select public.claim_founding('artist')")[0][0] == {"number": 2, "role": "artist"})
+        st = db.user(ear, "select public.founding_status()")[0][0]
+        c.ok("the status counts them and knows you", st["artists"]["taken"] == 1 and st["listeners"]["taken"] == 1
+             and st["me"] == mine and [m["username"] for m in st["members"]] == ["maker", "first_ear"], st)
+        late = signup("late@example.com", {"username": "late_ear"})
+        db.su("update public.wavee_growth set founding_listeners = 1")
+        c.raises("no spots left, no spot", lambda: db.user(late, "select public.claim_founding('listener')"), "WV001", "taken")
+        db.su("update public.wavee_growth set founding_listeners = 70, founding_open = false")
+        c.raises("closed means closed", lambda: db.user(late, "select public.claim_founding('listener')"), "closed")
+        c.raises("only the team gives spots by hand",
+                 lambda: db.user(late, "select public.admin_set_founding(%s, 'listener')", (late,)), "42501")
+        given = db.user(ADMIN, "select public.admin_set_founding(%s, 'listener')", (late,))[0][0]
+        c.ok("the team can give one past the limits", given == {"number": 3, "role": "listener"}, given)
+        db.su("update public.wavee_growth set founding_open = true")
+        prof = db.anon("select public.get_profile('maker')")[0][0]
+        c.ok("the profile shows the founding badge", prof["founding"] == {"number": 2, "role": "artist"}
+             and prof["explorer"] == 0, prof)
+        c.raises("nobody reads the founding list directly",
+                 lambda: db.user(ear, "select * from public.founding_members"), "permission denied")
+
+        # First listens.
+        welcome = db.su("select listeners, source, status, amount from public.boosts where song_id = %s", (first,))
+        c.ok("a new artist's song gets first listens, free", [tuple(map(str, r)) for r in welcome] == [("25", "welcome", "active", "0.00")], welcome)
+        for t in ("Second", "Third", "Fourth"):
+            new_song(maker, t, duration=150)
+        c.ok("…for their first three songs only",
+             db.su("select count(*) from public.boosts where user_id = %s and source = 'welcome'", (maker,))[0][0] == 3)
+        third = db.su("select id::text from public.songs where user_id = %s and title = 'Third'", (maker,))[0][0]
+        db.user(maker, "delete from public.songs where id = %s", (third,))
+        new_song(maker, "Third Again", duration=150)
+        c.ok("deleting one and uploading again doesn't earn more",
+             db.su("select count(*) from public.first_listens where user_id = %s", (maker,))[0][0] == 3)
+        house = signup("wavee.house@example.com", {"username": "wavee_house"})
+        db.service("update public.users set is_official = true where id = %s", (house,))
+        new_song(house, "House Song")
+        c.ok("Wavee's own songs don't get first listens",
+             db.su("select count(*) from public.boosts where user_id = %s", (house,))[0][0] == 0)
+        c.raises("first listens can't be bought",
+                 lambda: db.user(maker, "select public.boost_start(%s, 'wavee.welcome', 'USD')", (first,)), "")
+        payer = signup("payer@example.com", {"username": "payer"})
+        paid_song = new_song(payer, "Paid For", duration=150)
+        db.su("update public.boosts set status = 'done' where user_id = %s", (payer,))
+        start = db.user(payer, "select public.boost_start(%s, 'wavee.boost.100', 'USD')", (paid_song,))[0][0]
+        db.service("select public.wavee_credit(%s, 'flw-growth-1', 2.99, 'USD', 'sandbox')", (start["ref"],))
+        db.su("update public.boosts set status = 'done' where status = 'active'"
+              " and not (song_id = %s and source = 'welcome') and not (song_id = %s and source = 'paid')", (first, paid_song))
+        promo = db.user(late, "select public.get_promoted(2)")[0][0]
+        c.ok("paid Boosts and first listens take turns, each marked",
+             [(p["kind"], p["song"]["id"]) for p in promo] == [("promoted", paid_song), ("new", first)], promo)
+        db.user(late, "select public.boost_heard(%s)", (promo[1]["boost_id"],))
+        heard(late, first)
+        c.ok("a first listen counts toward the charts (a paid one doesn't)",
+             db.su("select public._wavee_boosted(%s, %s)", (first, late))[0][0] is False)
+        mine_boosts = db.user(maker, "select public.my_boosts()")[0][0]
+        c.ok("the artist sees first listens with their Boosts",
+             any(b["source"] == "welcome" and b["reached"] == 1 and b["listeners"] == 25 for b in mine_boosts), mine_boosts)
+
+        # Fresh Finds.
+        c.raises("only the team picks", lambda: db.user(ear, "select public.admin_pick(%s, 'x')", (first,)), "42501")
+        picks = db.user(ADMIN, "select public.admin_pick(%s, 'A producer from Abuja with a hook you can''t shake.')", (first,))[0][0]
+        c.ok("a pick, with why", picks["this_week"] is True and picks["picks"][0]["song"]["id"] == first
+             and picks["picks"][0]["note"].startswith("A producer"), picks)
+        db.user(ADMIN, "select public.admin_pick(%s, null)", (paid_song,))
+        got = db.anon("select public.get_picks(null)")[0][0]
+        c.ok("anyone sees this week's picks, in order", [p["song"]["id"] for p in got["picks"]] == [first, paid_song]
+             and got["weeks"] == [got["week"]], got)
+        c.ok("any day of the week finds the week",
+             db.anon("select public.get_picks((now() at time zone 'utc')::date)")[0][0]["week"] == got["week"])
+        db.su("update public.songs set status = 'hidden' where id = %s", (paid_song,))
+        c.ok("a hidden song drops out of the picks",
+             [p["song"]["id"] for p in db.anon("select public.get_picks(null)")[0][0]["picks"]] == [first])
+        db.su("update public.songs set status = 'active' where id = %s", (paid_song,))
+        after = db.user(ADMIN, "select public.admin_unpick(%s, %s)", (paid_song, got["week"]))[0][0]
+        c.ok("a pick can be taken back", [p["song"]["id"] for p in after["picks"]] == [first])
+
+        # Feedback.
+        c.raises("not on your own song",
+                 lambda: db.user(maker, "select public.give_feedback(%s, array['hook'], null, 100)", (first,)), "own song")
+        fan = signup("feedback.fan@example.com", {"username": "honest_fan"})
+        c.raises("only after really listening",
+                 lambda: db.user(fan, "select public.give_feedback(%s, array['hook'], null, 5)", (first,)), "Listen a little longer")
+        fb = db.user(fan, "select public.give_feedback(%s, array['hook','vocals','hook'], 'The second verse!', 40)", (first,))[0][0]
+        c.ok("40 seconds of the song playing now is enough", fb == {"tags": ["hook", "vocals"], "note": "The second verse!"}, fb)
+        c.raises("tags are from the list", lambda: db.user(fan, "select public.give_feedback(%s, array['bad'], null, 40)", (first,)), "22023")
+        c.raises("up to four", lambda: db.user(fan, "select public.give_feedback(%s, array['hook','vocals','beat','lyrics','vibe'], null, 40)", (first,)), "four")
+        c.raises("something to say", lambda: db.user(fan, "select public.give_feedback(%s, array[]::text[], '  ', 40)", (first,)), "write a line")
+        heard(late, first, 90, 150)
+        db.user(late, "select public.give_feedback(%s, array['mix'], null, 0)", (first,))
+        c.ok("a play that counts is enough too", db.user(late, "select public.my_feedback(%s)", (first,))[0][0] == {"tags": ["mix"], "note": None})
+        db.user(fan, "select public.give_feedback(%s, array['replay'], null, 40)", (first,))
+        summary = db.user(maker, "select public.song_feedback_summary(%s)", (first,))[0][0]
+        c.ok("the artist sees what listeners said, without names", summary["count"] == 2
+             and summary["tags"] == {"replay": 1, "mix": 1} and summary["notes"] == [], summary)
+        c.raises("only the artist", lambda: db.user(fan, "select public.song_feedback_summary(%s)", (first,)), "not your song")
+
+        # Your week.
+        db.user(fan, "select public.set_follow(%s, true)", (maker,))
+        db.user(fan, "select public.toggle_like(%s, true)", (first,))
+        heard(maker, first)
+        week = db.user(maker, "select public.my_week()")[0][0]
+        c.ok("your week: listens from others, followers, likes, feedback, first listens",
+             week["plays"] == 1 and week["listeners"] == 1 and week["plays_before"] == 0 and week["followers"] == 1
+             and week["likes"] == 1 and week["feedback"] == 2 and week["top_song"]["id"] == first
+             and week["first_listens"]["reached"] >= 1 and week["picked"] is True and week["songs"] == 4, week)
+
+        # The discovery challenge, early finds.
+        others = [new_song(signup(f"scene{i}@example.com", {"username": f"scene_{i}"}), f"Scene {i}", duration=120) for i in range(4)]
+        explorer = signup("explorer@example.com", {"username": "explorer"})
+        heard(explorer, others[0])
+        heard(explorer, others[3], seconds=10)
+        ch = db.user(explorer, "select public.my_challenge()")[0][0]
+        c.ok("only real listens count toward the challenge", ch["found"] == 1 and ch["goal"] == 3 and ch["streak"] == 0
+             and [a["username"] for a in ch["artists"]] == ["scene_0"], ch)
+        heard(explorer, others[1])
+        heard(explorer, others[2])
+        heard(explorer, new_song(house, "House Two", duration=120))
+        ch = db.user(explorer, "select public.my_challenge()")[0][0]
+        c.ok("three new artists this week: done (Wavee's own don't count)", ch["found"] == 3 and ch["streak"] == 1, ch)
+        db.su("update public.plays set created_at = created_at - interval '7 days' where user_id = %s", (explorer,))
+        heard(explorer, first)
+        ch = db.user(explorer, "select public.my_challenge()")[0][0]
+        c.ok("last week's run stays a streak while this week is under way", ch["found"] == 1 and ch["streak"] == 1, ch)
+        c.ok("the profile shows the streak", db.anon("select public.get_profile('explorer')")[0][0]["explorer"] == 1)
+        db.user(explorer, "select public.toggle_like(%s, true)", (others[2],))
+        c.ok("early likes are someone's finds",
+             card_ids(db.anon("select * from public.get_user_finds(%s, 50)", (explorer,))) == [others[2]])
+
+        # Invites.
+        newbie = signup("invited@example.com", {"username": "invited"})
+        c.ok("who sent you is kept", db.user(newbie, "select public.claim_referral('maker')")[0][0] == {"ok": True}
+             and db.user(newbie, "select public.claim_referral('first_ear')")[0][0] == {"ok": False})
+        c.ok("not yourself", db.user(ear, "select public.claim_referral('first_ear')")[0][0] == {"ok": False})
+        db.su("update public.users set created_at = now() - interval '20 days' where id = %s", (late,))
+        c.ok("not for an old account", db.user(late, "select public.claim_referral('maker')")[0][0] == {"ok": False})
+        inv = db.user(maker, "select public.my_invites()")[0][0]
+        c.ok("the inviter sees who they brought", inv["count"] == 1 and inv["artists"] == 0
+             and [p["username"] for p in inv["people"]] == ["invited"], inv)
+        c.raises("nobody changes who sent them by hand",
+                 lambda: db.user(newbie, "update public.users set referred_by = null where id = %s", (newbie,)), "permission denied")
+
+        # Collections.
+        pub = str(db.user(house, "insert into public.playlists (user_id, name) values (%s, 'Hidden Gems') returning id", (house,))[0][0])
+        priv = str(db.user(house, "insert into public.playlists (user_id, name, is_private) values (%s, 'Drafts', true) returning id", (house,))[0][0])
+        db.user(house, "select public.add_to_playlist(%s, %s)", (pub, first))
+        c.raises("only public playlists are featured",
+                 lambda: db.user(ADMIN, "select public.admin_feature_playlist(%s, true)", (priv,)), "public playlist")
+        c.raises("only the team features", lambda: db.user(house, "select public.admin_feature_playlist(%s, true)", (pub,)), "42501")
+        db.user(ADMIN, "select public.admin_feature_playlist(%s, true)", (pub,))
+        feat = db.anon("select public.get_featured_playlists()")[0][0]
+        c.ok("featured collections, for everyone", [(f["name"], f["songs_count"]) for f in feat] == [("Hidden Gems", 1)], feat)
+        db.user(house, "update public.playlists set is_private = true where id = %s", (pub,))
+        c.ok("a playlist made private leaves Home", db.anon("select public.get_featured_playlists()")[0][0] == [])
+
+        # For the team.
+        c.raises("the growth numbers are the team's", lambda: db.user(ear, "select public.admin_pulse(8)"), "42501")
+        pulse = db.user(ADMIN, "select public.admin_pulse(8)")[0][0]
+        now = pulse["weeks"][0]
+        c.ok("the pulse: eight weeks, this one first, with real listeners", len(pulse["weeks"]) == 8
+             and now["listeners"] >= 2 and now["artists"] >= 5 and now["feedback"] >= 2 and now["picks"] == 1
+             and pulse["totals"]["founding_listeners"] == 2 and pulse["totals"]["invited"] == 1, pulse)
+        new = db.user(ADMIN, "select public.admin_new_artists(30)")[0][0]
+        row = next(r for r in new if r["user"]["username"] == "maker")
+        c.ok("every new artist, with how their start is going", row["songs"] == 4 and row["founding"] == 2
+             and row["picked"] is True and row["feedback"] == 2 and row["welcomed_at"] is None
+             and row["song"]["id"] == first and row["listeners"] >= 2, row)
+        c.ok("…never Wavee's own", all(r["user"]["username"] != "wavee_house" for r in new))
+        db.user(ADMIN, "select public.admin_welcome_artist(%s, 'DM on Instagram, helped with the hook')", (maker,))
+        row = next(r for r in db.user(ADMIN, "select public.admin_new_artists(30)")[0][0] if r["user"]["username"] == "maker")
+        c.ok("the team marks who they've welcomed", row["welcomed_at"] is not None
+             and row["welcome_note"].startswith("DM on Instagram"), row)
+
+    c.safe("growth", growth)
 
     # ── Account deletion (the delete-account Edge Function deletes the auth user) ──
     c.start("account deletion")

@@ -37,6 +37,8 @@ export interface Song {
   links?: Links;
   /** In the feed as a Boost: the boost's id (a listener who hears it for a while counts). */
   promoted?: string;
+  /** 'promoted' for a paid Boost, 'new' for a new artist's first listens. */
+  promoted_kind?: 'promoted' | 'new';
 }
 
 export interface Featured {
@@ -72,6 +74,130 @@ export interface Profile extends UserCard {
   ear: { early_likes: number; hits: number };
   verified?: boolean;
   official?: boolean;
+  /** Their Founding 100 spot, for good. */
+  founding?: Founding | null;
+  /** Weeks in a row they've found new artists (the discovery challenge). */
+  explorer?: number;
+}
+
+export interface Founding {
+  number: number;
+  role: 'artist' | 'listener';
+}
+
+export interface FoundingStatus {
+  open: boolean;
+  artists: { taken: number; cap: number };
+  listeners: { taken: number; cap: number };
+  me: Founding | null;
+  /** The latest to join, newest first. */
+  members: (Founding & Pick<UserCard, 'username' | 'display_name' | 'avatar_url'> & { verified: boolean })[];
+}
+
+/** The team's picks for a week (a Monday), each with why. */
+export interface Picks {
+  week: string;
+  this_week: boolean;
+  picks: { note: string | null; song: Song }[];
+  /** Recent weeks that have picks, newest first. */
+  weeks: string[];
+}
+
+export type FeedbackTag = 'replay' | 'hook' | 'vocals' | 'beat' | 'lyrics' | 'vibe' | 'share' | 'mix' | 'intro' | 'long';
+
+export interface Feedback {
+  tags: FeedbackTag[];
+  note: string | null;
+}
+
+export interface FeedbackSummary {
+  count: number;
+  tags: Partial<Record<FeedbackTag, number>>;
+  notes: { note: string; tags: FeedbackTag[]; at: string }[];
+}
+
+/** An artist's last seven days, next to the seven before. */
+export interface MyWeek {
+  songs: number;
+  plays: number;
+  plays_before: number;
+  listeners: number;
+  listeners_before: number;
+  /** Plays that got past 30 seconds. */
+  heard: number;
+  top_song: Song | null;
+  followers: number;
+  likes: number;
+  feedback: number;
+  first_listens: { reached: number; listeners: number } | null;
+  /** In this week's Fresh Finds. */
+  picked: boolean;
+}
+
+export interface Challenge {
+  week: string;
+  ends_at: string;
+  goal: number;
+  found: number;
+  streak: number;
+  artists: (Pick<UserCard, 'id' | 'username' | 'display_name' | 'avatar_url'> & { verified: boolean })[];
+}
+
+export interface Invites {
+  count: number;
+  artists: number;
+  people: (Pick<UserCard, 'username' | 'display_name' | 'avatar_url'> & { joined: string })[];
+}
+
+/** A playlist the team features on Home. */
+export interface Collection {
+  id: string;
+  name: string;
+  description: string | null;
+  cover_image_url: string | null;
+  owner: { username: string; display_name: string | null };
+  songs_count: number;
+  covers: string[];
+}
+
+export interface NewArtist {
+  user: Pick<UserCard, 'id' | 'username' | 'display_name' | 'avatar_url'> & { verified: boolean; links: Links };
+  first_at: string;
+  songs: number;
+  song: Song | null;
+  /** Listeners in their first seven days. */
+  listeners: number;
+  first_listens: { reached: number; listeners: number } | null;
+  feedback: number;
+  founding: number | null;
+  picked: boolean;
+  welcomed_at: string | null;
+  welcome_note: string | null;
+}
+
+export interface PulseWeek {
+  week: string;
+  accounts: number;
+  artists: number;
+  songs: number;
+  listeners: number;
+  returning: number;
+  plays: number;
+  new_songs_heard: number;
+  feedback: number;
+  picks: number;
+}
+
+export interface Pulse {
+  weeks: PulseWeek[];
+  totals: {
+    accounts: number;
+    artists: number;
+    songs: number;
+    founding_artists: number;
+    founding_listeners: number;
+    invited: number;
+  };
 }
 
 export interface ChartEntry {
@@ -156,7 +282,9 @@ export interface BugReport {
  * database's internals. */
 export class ApiError extends Error {}
 
-function friendly(message: string): string {
+/** Messages written for people (raised with errcode WV001) are shown as they are. */
+function friendly(message: string, code?: string): string {
+  if (code === 'WV001') return message;
   if (/rate|too many/i.test(message)) return 'You’re doing that a lot. Please wait a little and try again.';
   if (/duplicate|unique/i.test(message)) return 'That’s already taken.';
   if (/JWT|not authenticated|permission|row-level/i.test(message)) {
@@ -170,7 +298,7 @@ function friendly(message: string): string {
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args);
-  if (error) throw new ApiError(friendly(error.message));
+  if (error) throw new ApiError(friendly(error.message, error.code));
   return data as T;
 }
 
@@ -426,7 +554,35 @@ export const api = {
       p_contact_email: bug.contactEmail,
     }),
 
+  // ── Growing Wavee ──────────────────────────────────────────────────
+
+  foundingStatus: () => rpc<FoundingStatus>('founding_status'),
+  claimFounding: (role: Founding['role']) => rpc<Founding>('claim_founding', { p_role: role }),
+  picks: (week?: string | null) => rpc<Picks>('get_picks', { p_week: week ?? null }),
+  giveFeedback: (songId: string, tags: FeedbackTag[], note: string, listened: number) =>
+    rpc<Feedback>('give_feedback', { p_song: songId, p_tags: tags, p_note: note || null, p_listened: Math.round(listened) }),
+  myFeedback: (songId: string) => rpc<Feedback | null>('my_feedback', { p_song: songId }),
+  feedbackSummary: (songId: string) => rpc<FeedbackSummary>('song_feedback_summary', { p_song: songId }),
+  myWeek: () => rpc<MyWeek>('my_week'),
+  challenge: () => rpc<Challenge>('my_challenge'),
+  finds: (userId: string, limit = 50) => rpc<Song[]>('get_user_finds', { p_user: userId, p_limit: limit }),
+  claimReferral: (username: string) => rpc<{ ok: boolean }>('claim_referral', { p_username: username }),
+  myInvites: () => rpc<Invites>('my_invites'),
+  collections: () => rpc<Collection[]>('get_featured_playlists'),
+
   // ── Admin ──────────────────────────────────────────────────────────
+
+  adminSetFounding: (userId: string, role: Founding['role'] | null) =>
+    rpc<Founding | null>('admin_set_founding', { p_user: userId, p_role: role }),
+  adminPick: (songId: string, note: string, week?: string | null) =>
+    rpc<Picks>('admin_pick', { p_song: songId, p_note: note || null, p_week: week ?? null }),
+  adminUnpick: (songId: string, week: string) => rpc<Picks>('admin_unpick', { p_song: songId, p_week: week }),
+  adminFeaturePlaylist: (playlistId: string, on: boolean) =>
+    rpc<Collection[]>('admin_feature_playlist', { p_playlist: playlistId, p_on: on }),
+  adminNewArtists: (days = 30) => rpc<NewArtist[]>('admin_new_artists', { p_days: days }),
+  adminWelcomeArtist: (userId: string, note: string) =>
+    rpc<void>('admin_welcome_artist', { p_user: userId, p_note: note || null }),
+  adminPulse: (weeks = 8) => rpc<Pulse>('admin_pulse', { p_weeks: weeks }),
 
   adminReports: (status: string) => rpc<Report[]>('admin_reports', { p_status: status }),
   adminBugReports: (status: string) => rpc<BugReport[]>('admin_bug_reports', { p_status: status }),

@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { api, type Account } from '../lib/api';
+import { claimReferrer } from '../lib/growth';
 import { supabase } from '../lib/supabase';
 
 interface AuthState {
@@ -28,7 +29,9 @@ export const useAuth = create<AuthState>((set, get) => ({
       return;
     }
     try {
-      set({ account: await api.myAccount() });
+      const account = await api.myAccount();
+      set({ account });
+      if (account) void claimReferrer(account.username);
     } catch {
       // Keep what we had; it refreshes on the next sign-in event.
     }

@@ -36,12 +36,15 @@ export interface Boost {
   listeners: number;
   reached: number;
   status: 'active' | 'done' | 'stopped';
-  source: 'paid' | 'pro';
+  /** 'welcome': a new artist's first listens, free. */
+  source: 'paid' | 'pro' | 'welcome';
   created_at: string;
 }
 
 export interface Promoted {
   boost_id: string;
+  /** 'new' for a new artist's first listens. */
+  kind: 'promoted' | 'new';
   song: Song;
 }
 

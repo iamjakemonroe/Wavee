@@ -35,7 +35,50 @@ export const keys = {
   myPlan: ['my-plan'] as const,
   myBoosts: ['my-boosts'] as const,
   promoted: ['promoted'] as const,
+  founding: ['founding'] as const,
+  picks: (week: string | null) => ['picks', week] as const,
+  myWeek: ['my-week'] as const,
+  challenge: ['challenge'] as const,
+  finds: (id: string) => ['finds', id] as const,
+  myInvites: ['my-invites'] as const,
+  collections: ['collections'] as const,
+  myFeedback: (id: string) => ['my-feedback', id] as const,
+  feedbackSummary: (id: string) => ['feedback-summary', id] as const,
 };
+
+/** The Founding 100: spots taken and left, and yours. */
+export function useFounding() {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({ queryKey: [...keys.founding, signedIn], queryFn: api.foundingStatus, staleTime: 60_000, retry: false });
+}
+
+/** A week's Fresh Finds (null: the latest). */
+export const usePicks = (week: string | null = null) =>
+  useQuery({ queryKey: keys.picks(week), queryFn: () => api.picks(week), staleTime: 5 * 60_000, retry: false });
+
+/** An artist's last seven days. */
+export function useMyWeek(enabled: boolean) {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({ queryKey: keys.myWeek, queryFn: api.myWeek, enabled: signedIn && enabled, staleTime: 5 * 60_000, retry: false });
+}
+
+/** This week's discovery challenge. */
+export function useChallenge() {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({ queryKey: keys.challenge, queryFn: api.challenge, enabled: signedIn, staleTime: 60_000, retry: false });
+}
+
+export const useFinds = (userId: string | undefined) =>
+  useQuery({ queryKey: keys.finds(userId ?? ''), queryFn: () => api.finds(userId!), enabled: !!userId, retry: false });
+
+export function useInvites(enabled = true) {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({ queryKey: keys.myInvites, queryFn: api.myInvites, enabled: signedIn && enabled, retry: false });
+}
+
+/** Playlists the team features on Home. */
+export const useCollections = () =>
+  useQuery({ queryKey: keys.collections, queryFn: api.collections, staleTime: 10 * 60_000, retry: false });
 
 /** The signed-in artist's Artist Pro plan (and this month's free Boost). */
 export function useMyPlan() {

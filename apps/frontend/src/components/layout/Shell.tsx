@@ -14,6 +14,8 @@ import {
   LuTrophy,
   LuUpload,
   LuDownload,
+  LuGem,
+  LuRadar,
 } from 'react-icons/lu';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useFeatureInvites, useMyPlaylists } from '../../hooks/data';
@@ -36,6 +38,12 @@ const nav = [
   { to: '/library', label: 'Library', icon: <LuLibrary /> },
 ];
 
+/** Wide screens only (phones find these on Home). */
+const discover = [
+  { to: '/picks', label: 'Fresh Finds', icon: <LuRadar />, end: false },
+  { to: '/founding', label: 'Founding 100', icon: <LuGem />, end: false },
+];
+
 function Sidebar() {
   const account = useAuth((s) => s.account);
   const playlists = useMyPlaylists();
@@ -45,7 +53,7 @@ function Sidebar() {
         <Logo />
       </Link>
       <nav className="space-y-1" aria-label="Main">
-        {nav.map((n) => (
+        {[...nav, ...discover].map((n) => (
           <NavLink
             key={n.to}
             to={n.to}

@@ -11,6 +11,7 @@ import {
   LuListEnd,
   LuListPlus,
   LuListStart,
+  LuMessageSquareHeart,
   LuPlus,
   LuRocket,
   LuShare2,
@@ -26,6 +27,7 @@ import { useMoney } from '../../store/money';
 import { usePlayer } from '../../store/player';
 import { toast } from '../../store/toast';
 import { Button, Checkbox, Cover, IconButton, Input, Modal, Spinner, Textarea } from '../ui';
+import { FeedbackDialog } from '../growth/Feedback';
 import { ShareCardDialog } from './ShareCard';
 
 interface Item {
@@ -164,6 +166,7 @@ export function SongMenu({
   const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [card, setCard] = useState(false);
+  const [feedback, setFeedback] = useState(false);
 
   const items: Item[] = [
     { label: 'Play next', icon: <LuListStart />, onClick: () => playNext(song) },
@@ -176,6 +179,15 @@ export function SongMenu({
     { label: 'Share', icon: <LuShare2 />, onClick: () => void shareSong(song) },
     { label: 'Story card', icon: <LuImage />, onClick: () => setCard(true) },
     { label: 'Go to artist', icon: <LuUser />, onClick: () => navigate(`/u/${song.artist_username}`) },
+    ...(me === song.artist_id
+      ? []
+      : [
+          {
+            label: 'Feedback for the artist',
+            icon: <LuMessageSquareHeart />,
+            onClick: () => withAccount('Sign in to send the artist feedback.', () => setFeedback(true)),
+          },
+        ]),
     ...(extra ?? []).map((e) => ({ icon: <LuListEnd />, ...e })),
     ...(me === song.artist_id
       ? [
@@ -201,6 +213,7 @@ export function SongMenu({
       />
       <DeleteSong song={song} open={deleting} onClose={() => setDeleting(false)} />
       {card && <ShareCardDialog song={song} open={card} onClose={() => setCard(false)} />}
+      {feedback && <FeedbackDialog song={song} open={feedback} onClose={() => setFeedback(false)} />}
     </>
   );
 }

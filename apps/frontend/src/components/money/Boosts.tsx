@@ -63,7 +63,7 @@ export function Boosts() {
                   </div>
                   <p className="mt-1.5 text-[12.5px] text-muted">
                     {b.reached.toLocaleString()} of {b.listeners.toLocaleString()} new listeners
-                    {b.source === 'pro' ? ' · free with Pro' : ''}
+                    {b.source === 'pro' ? ' · free with Pro' : b.source === 'welcome' ? ' · First listens, free for new artists' : ''}
                   </p>
                 </div>
               </div>

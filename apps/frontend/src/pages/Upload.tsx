@@ -11,6 +11,7 @@ import { LinksEditor, linksValid } from '../components/music/Links';
 import { Avatar, Button, Checkbox, Cover, EmptyState, Input, Textarea } from '../components/ui';
 import { keys, useMyPlan } from '../hooks/data';
 import { api } from '../lib/api';
+import { payApi } from '../lib/pay';
 import { duration } from '../lib/format';
 import { checkFile, deleteMedia, MEDIA_LIMITS, readDuration, uploadMedia, type MediaKind, type Uploaded } from '../lib/media';
 import { SONG_PLATFORMS, type Links } from '../lib/platforms';
@@ -310,7 +311,19 @@ export function Upload() {
       void client.invalidateQueries({ queryKey: keys.userSongs(session.user.id) });
       void client.invalidateQueries({ queryKey: keys.fresh });
       void client.invalidateQueries({ queryKey: keys.feed });
-      toast('Your song is live', 'success');
+      void client.invalidateQueries({ queryKey: keys.myBoosts });
+      void client.invalidateQueries({ queryKey: keys.myWeek });
+      // A new artist's first songs are played to new listeners in the feed (first listens).
+      const welcome = await payApi
+        .myBoosts()
+        .then((all) => all.find((b) => b.song_id === id && b.source === 'welcome'))
+        .catch(() => undefined);
+      toast(
+        welcome
+          ? `Your song is live. Wavee will play it to its first ${welcome.listeners} new listeners in the feed.`
+          : 'Your song is live',
+        'success',
+      );
       navigate(`/songs/${id}`);
     } catch (e) {
       toast((e as Error).message, 'error');

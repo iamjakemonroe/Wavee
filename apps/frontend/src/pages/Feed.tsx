@@ -47,11 +47,19 @@ function FeedCard({ song, onPlay }: { song: Song; onPlay: () => void }) {
               {song.made_with_ai && <AiTag />}
             </span>
             <p className="mt-2 text-[13px] text-faint">
-              {song.promoted && (
-                <span className="mr-2 rounded-full bg-line/10 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted">
-                  Promoted
-                </span>
-              )}
+              {song.promoted &&
+                (song.promoted_kind === 'new' ? (
+                  <span
+                    className="mr-2 rounded-full bg-teal/15 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-teal"
+                    title="New on Wavee: every new artist’s first songs are played to new listeners"
+                  >
+                    New artist
+                  </span>
+                ) : (
+                  <span className="mr-2 rounded-full bg-line/10 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted">
+                    Promoted
+                  </span>
+                ))}
               {songGenres(song).join(', ')} · {count(song.plays_count)} plays
               {song.hook_start ? <> · from the hook at {duration(song.hook_start)}</> : null}
             </p>
@@ -111,7 +119,9 @@ export function Feed() {
     const seen = new Set<string>();
     // Boosted songs join the feed at the 3rd and 9th places, marked Promoted.
     const pages = [...(feed.data?.pages.flat() ?? [])];
-    (promoted ?? []).forEach((p, k) => pages.splice(Math.min(2 + k * 6, pages.length), 0, { ...p.song, promoted: p.boost_id }));
+    (promoted ?? []).forEach((p, k) =>
+      pages.splice(Math.min(2 + k * 6, pages.length), 0, { ...p.song, promoted: p.boost_id, promoted_kind: p.kind }),
+    );
     const all = [...(source === 'Feed' ? queue : []), ...pages];
     return all.filter((s) => !seen.has(s.id) && !!seen.add(s.id));
   }, [feed.data, queue, source, promoted]);

@@ -49,6 +49,9 @@ interface PlayerActions {
   removeAt: (index: number) => void;
   jumpTo: (index: number) => void;
   updateSong: (id: string, changes: Partial<Song>) => void;
+  /** Seconds of [id] heard so far, if it's the song playing now (its play is only
+   * recorded when it ends). */
+  listenedTo: (id: string) => number;
   setNowPlayingOpen: (open: boolean) => void;
   setQueueOpen: (open: boolean) => void;
 }
@@ -300,6 +303,8 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
     updateSong(id, changes) {
       set({ queue: get().queue.map((s) => (s.id === id ? { ...s, ...changes } : s)) });
     },
+
+    listenedTo: (id) => (currentSong(get())?.id === id ? listened : 0),
 
     setNowPlayingOpen: (open) => set({ nowPlayingOpen: open }),
     setQueueOpen: (open) => set({ queueOpen: open }),
