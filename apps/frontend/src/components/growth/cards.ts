@@ -1,4 +1,4 @@
-import type { Founding, Picks } from '../../lib/api';
+import type { Founding, Picks, Song } from '../../lib/api';
 import { artistNames } from '../../lib/format';
 import { weekLabel } from '../../lib/growth';
 import { drawCover, FONT, H, lines, loadCover, mark, roundRect, TEAL, VIOLET, W } from '../../lib/canvas';
@@ -158,35 +158,50 @@ export async function renderFoundingCard(person: {
   return toBlob(canvas);
 }
 
-/** This week's Fresh Finds as one story: up to five songs, cover and name. */
-export async function renderPicksCard(picks: Picks): Promise<Blob> {
+/** Up to five songs as one story: a title, then cover, name and artist for each (with a rank
+ * when it's a chart). */
+async function renderSongList(o: {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  songs: Song[];
+  ranks?: boolean;
+  cta: string;
+  link: string;
+}): Promise<Blob> {
   await fonts();
-  const shown = picks.picks.slice(0, 5);
-  const covers = await Promise.all(shown.map((p) => loadCover(p.song.cover_image_url)));
+  const shown = o.songs.slice(0, 5);
+  const covers = await Promise.all(shown.map((song) => loadCover(song.cover_image_url)));
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d')!;
   sky(ctx, 'rgba(24,226,176,0.30)', 'rgba(132,102,255,0.40)');
 
-  eyebrow(ctx, weekLabel(picks.week).toUpperCase(), 210);
+  eyebrow(ctx, o.eyebrow.toUpperCase(), 210);
   const title = ctx.createLinearGradient(W * 0.2, 0, W * 0.8, 0);
   title.addColorStop(0, TEAL);
   title.addColorStop(1, VIOLET);
   ctx.fillStyle = title;
   ctx.font = `800 128px ${FONT}`;
   ctx.textAlign = 'center';
-  ctx.fillText('Fresh Finds', W / 2, 350);
+  ctx.fillText(lines(ctx, o.title, W - 140, 1)[0] ?? '', W / 2, 350);
   ctx.font = `500 40px ${FONT}`;
   ctx.fillStyle = 'rgba(238,241,245,0.7)';
-  ctx.fillText('New music the Wavee team can’t stop playing', W / 2, 420);
+  ctx.fillText(o.subtitle, W / 2, 420);
 
   const size = 200;
   const gap = 36;
-  const x = 110;
+  const x = o.ranks ? 190 : 110;
   let y = 520;
-  shown.forEach((p, i) => {
+  shown.forEach((song, i) => {
     const cover = covers[i];
+    if (o.ranks) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = i < 3 ? title : 'rgba(238,241,245,0.8)';
+      ctx.font = `800 72px ${FONT}`;
+      ctx.fillText(String(i + 1), 120, y + size / 2 + 26);
+    }
     ctx.save();
     roundRect(ctx, x, y, size, size, 30);
     ctx.clip();
@@ -205,14 +220,37 @@ export async function renderPicksCard(picks: Picks): Promise<Blob> {
     ctx.fillStyle = INK;
     ctx.font = `700 52px ${FONT}`;
     const tx = x + size + 44;
-    const tw = W - tx - 100;
-    ctx.fillText(lines(ctx, p.song.title, tw, 1)[0] ?? '', tx, y + 92);
+    const tw = W - tx - 90;
+    ctx.fillText(lines(ctx, song.title, tw, 1)[0] ?? '', tx, y + 92);
     ctx.font = `500 38px ${FONT}`;
     ctx.fillStyle = 'rgba(238,241,245,0.66)';
-    ctx.fillText(lines(ctx, artistNames(p.song), tw, 1)[0] ?? '', tx, y + 146);
+    ctx.fillText(lines(ctx, artistNames(song), tw, 1)[0] ?? '', tx, y + 146);
     y += size + gap;
   });
 
-  signature(ctx, 'Hear them first on Wavee', 'wavee.kaivon.app/picks');
+  signature(ctx, o.cta, o.link);
   return toBlob(canvas);
 }
+
+/** This week's Fresh Finds as one story: up to five songs, cover and name. */
+export const renderPicksCard = (picks: Picks) =>
+  renderSongList({
+    eyebrow: weekLabel(picks.week),
+    title: 'Fresh Finds',
+    subtitle: 'New music the Wavee team can’t stop playing',
+    songs: picks.picks.map((p) => p.song),
+    cta: 'Hear them first on Wavee',
+    link: 'wavee.kaivon.app/picks',
+  });
+
+/** A chart's top five as one story, for Monday's post. */
+export const renderChartCard = (name: string, songs: Song[]) =>
+  renderSongList({
+    eyebrow: `This week · ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}`,
+    title: `Wavee ${name}`,
+    subtitle: 'Real listens only: never the artist’s own, never paid',
+    songs,
+    ranks: true,
+    cta: 'Hear the chart on Wavee',
+    link: 'wavee.kaivon.app/charts',
+  });

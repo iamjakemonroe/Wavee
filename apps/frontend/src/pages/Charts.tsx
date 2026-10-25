@@ -1,8 +1,9 @@
 import clsx from 'clsx';
 import { useEffect, useMemo, useState } from 'react';
-import { LuArrowDown, LuArrowUp, LuEar, LuInfo, LuMinus, LuPlay, LuShare2, LuTrophy } from 'react-icons/lu';
+import { LuArrowDown, LuArrowUp, LuEar, LuImage, LuInfo, LuMinus, LuPlay, LuShare2, LuTrophy } from 'react-icons/lu';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ShareCardDialog } from '../components/music/ShareCard';
+import { renderChartCard } from '../components/growth/cards';
+import { PictureDialog, ShareCardDialog } from '../components/music/ShareCard';
 import { SongRow } from '../components/music/Song';
 import { Avatar, Button, EmptyState, Skeleton } from '../components/ui';
 import { useChart, useTastemakers } from '../hooks/data';
@@ -108,6 +109,7 @@ function SongChart({ kind, genre, onGenre }: { kind: ChartKind; genre: string | 
   const playList = usePlayer((s) => s.playList);
   const me = useAuth((s) => s.session?.user.id);
   const [sharing, setSharing] = useState<{ song: Song; badge: string } | null>(null);
+  const [posting, setPosting] = useState(false);
   const entries = chart.data ?? [];
   const songs = useMemo(() => entries.map((e) => e.song), [entries]);
   const name = `${CHART_NAME[kind]}${genre ? ` ${genre}` : ''}`;
@@ -137,9 +139,14 @@ function SongChart({ kind, genre, onGenre }: { kind: ChartKind; genre: string | 
         </div>
       ) : entries.length ? (
         <>
-          <Button variant="primary" size="sm" className="mb-4" icon={<LuPlay className="fill-current" />} onClick={() => playList(songs, 0, `Wavee ${name}`)}>
-            Play the chart
-          </Button>
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Button variant="primary" size="sm" icon={<LuPlay className="fill-current" />} onClick={() => playList(songs, 0, `Wavee ${name}`)}>
+              Play the chart
+            </Button>
+            <Button variant="secondary" size="sm" icon={<LuImage />} onClick={() => setPosting(true)}>
+              Story card
+            </Button>
+          </div>
           <ol>
             {entries.map((e, i) => (
               <li key={e.song.id} className="flex items-center gap-1 sm:gap-2">
@@ -183,6 +190,19 @@ function SongChart({ kind, genre, onGenre }: { kind: ChartKind; genre: string | 
         />
       )}
       {sharing && <ShareCardDialog song={sharing.song} badge={sharing.badge} open onClose={() => setSharing(null)} />}
+      {posting && (
+        <PictureDialog
+          open
+          onClose={() => setPosting(false)}
+          title="Post the chart"
+          hint="Post it on Monday and tag every artist on it: charted artists repost."
+          make={() => renderChartCard(name, songs)}
+          name={`wavee-${name}-chart`}
+          text={`This week's Wavee ${name}:`}
+          link={`${window.location.origin}/charts`}
+          alt={`Wavee ${name} chart`}
+        />
+      )}
     </>
   );
 }
