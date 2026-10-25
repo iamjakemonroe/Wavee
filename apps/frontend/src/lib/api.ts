@@ -1,3 +1,4 @@
+import type { Origin } from './origin';
 import type { Links } from './platforms';
 import { supabase } from './supabase';
 
@@ -200,6 +201,84 @@ export interface Pulse {
   };
 }
 
+/** Where streams came from (plays.source). */
+export type PlaySource = Origin | 'new' | 'boost';
+
+interface InsightTotals {
+  plays: number;
+  streams: number;
+  listeners: number;
+  /** Average share of a song heard, 0–100. */
+  avg_heard: number | null;
+  /** Null for a single song (followers are the artist's). */
+  followers: number | null;
+  likes: number;
+  playlist_adds: number;
+  feedback: number;
+}
+
+/** An artist's stats for a period (artist_insights). */
+export interface Insights {
+  days: number;
+  unit: 'day' | 'week';
+  /** Artist Pro (or a founding artist): every range and the audience details. */
+  full: boolean;
+  from: string;
+  totals: InsightTotals;
+  prev: InsightTotals;
+  series: { date: string; streams: number; listeners: number; followers: number | null }[];
+  top: {
+    id: string;
+    title: string;
+    cover_image_url: string | null;
+    streams: number;
+    streams_before: number;
+    listeners: number;
+    avg_heard: number | null;
+    likes: number;
+  }[];
+  sources: Partial<Record<PlaySource, number>>;
+  all_time: { streams: number; listeners: number; followers: number };
+  songs: { id: string; title: string }[];
+  more: {
+    countries: { shown: { country: string; listeners: number }[]; other: number; unknown: number };
+    audience: { new: number; returning: number };
+    segments: { light: number; regular: number; super: number };
+    /** Plays by how much of the song was heard, in tenths. */
+    completion: number[];
+  } | null;
+}
+
+interface ListeningTotals {
+  minutes: number;
+  streams: number;
+  artists: number;
+  discovered: number;
+  likes: number;
+}
+
+/** Someone's own listening (listener_insights). */
+export interface Listening {
+  days: number;
+  unit: 'day' | 'week';
+  totals: ListeningTotals;
+  prev: ListeningTotals;
+  series: { date: string; minutes: number; discovered: number }[];
+  top_artists: (Pick<UserCard, 'id' | 'username' | 'display_name' | 'avatar_url'> & { verified: boolean; streams: number })[];
+  all_time: { minutes: number; discovered: number };
+  ear: { early_likes: number; hits: number };
+  streak: number;
+  invited: number;
+}
+
+const timeZone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+};
+
 export interface ChartEntry {
   rank: number;
   plays: number;
@@ -327,13 +406,23 @@ export const api = {
     rpc<ChartEntry[]>('get_chart', { p_chart: kind, p_genre: genre, p_limit: limit }),
   tastemakers: (limit = 50) => rpc<Tastemaker[]>('get_tastemakers', { p_limit: limit }),
 
-  recordPlay: (songId: string, listened: number, duration: number, skipped: boolean, session: string) =>
+  recordPlay: (
+    songId: string,
+    listened: number,
+    duration: number,
+    skipped: boolean,
+    session: string,
+    source: Origin | 'new' | 'boost',
+    country: string | null,
+  ) =>
     rpc<void>('record_play', {
       p_song: songId,
       p_listened: Math.max(0, Math.round(listened)),
       p_duration: Math.max(1, Math.round(duration)),
       p_skipped: skipped,
       p_session: session,
+      p_source: source,
+      p_country: country,
     }),
 
   // ── You ────────────────────────────────────────────────────────────
@@ -569,6 +658,9 @@ export const api = {
   claimReferral: (username: string) => rpc<{ ok: boolean }>('claim_referral', { p_username: username }),
   myInvites: () => rpc<Invites>('my_invites'),
   collections: () => rpc<Collection[]>('get_featured_playlists'),
+  insights: (days: number, song: string | null, user: string | null = null) =>
+    rpc<Insights>('artist_insights', { p_days: days, p_song: song, p_tz: timeZone(), p_user: user }),
+  listening: (days: number) => rpc<Listening>('listener_insights', { p_days: days, p_tz: timeZone() }),
 
   // ── Admin ──────────────────────────────────────────────────────────
 

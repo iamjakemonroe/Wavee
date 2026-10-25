@@ -14,6 +14,7 @@ import {
   LuTrophy,
   LuUpload,
   LuDownload,
+  LuChartColumn,
   LuGem,
   LuRadar,
 } from 'react-icons/lu';
@@ -42,6 +43,7 @@ const nav = [
 const discover = [
   { to: '/picks', label: 'Fresh Finds', icon: <LuRadar />, end: false },
   { to: '/founding', label: 'Founding 100', icon: <LuGem />, end: false },
+  { to: '/stats', label: 'Your stats', icon: <LuChartColumn />, end: false },
 ];
 
 function Sidebar() {

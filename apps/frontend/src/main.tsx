@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { rememberReferrer } from './lib/growth';
+import { rememberLanding } from './lib/origin';
 import { startAppMode } from './lib/standalone';
 import { startAuth } from './store/auth';
 import { startInstall } from './store/install';
@@ -22,6 +23,7 @@ const client = new QueryClient({
 });
 
 rememberReferrer();
+rememberLanding();
 startAuth();
 startAppMode();
 startInstall();

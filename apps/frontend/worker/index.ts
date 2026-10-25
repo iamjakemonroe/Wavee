@@ -297,6 +297,11 @@ export default {
     if (url.pathname === '/api/object' && request.method === 'DELETE') return remove(request, env);
     if (url.pathname === '/api/media/mine' && request.method === 'DELETE') return removeAll(request, env);
     if (url.pathname.startsWith('/api/pay/')) return pay(request, env, url.pathname.slice('/api/pay/'.length));
+    if (url.pathname === '/api/geo') {
+      // The listener's country, from Cloudflare, for artists' stats (never stored with anything else).
+      const country = (request.cf as { country?: string } | undefined)?.country ?? null;
+      return json({ country });
+    }
     if (url.pathname.startsWith('/api/')) return json({ error: 'Not found.' }, 404);
     if (request.method === 'GET' && (/^\/(songs|u)\//.test(url.pathname) || url.pathname === '/founding' || url.pathname === '/picks')) {
       return withPreview(request, env, url.pathname);

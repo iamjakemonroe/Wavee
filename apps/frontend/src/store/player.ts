@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { api, type Song } from '../lib/api';
 import { audio, sessionId } from '../lib/audio';
+import { country } from '../lib/geo';
+import { originHere, type Origin } from '../lib/origin';
 import { artistNames } from '../lib/format';
 import { toast } from './toast';
 
@@ -25,6 +27,8 @@ interface PlayerState {
   more: (() => Promise<Song[]>) | null;
   /** Songs start at their hook (the feed), not the beginning. */
   fromHook: boolean;
+  /** Where the queue was started, for the artist's stats. */
+  origin: Origin;
 }
 
 interface PlayerActions {
@@ -77,7 +81,13 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
     if (!song || listened < 1) return;
     const length = audio.duration || song.duration_seconds || listened;
     const skipped = !ended && listened < Math.min(30, length * 0.5);
-    void api.recordPlay(song.id, listened, length, skipped, sessionId()).catch(() => undefined);
+    // A song in the feed as a Boost or a new artist's first listens says so; the rest came from
+    // wherever their queue was started.
+    const source = song.promoted ? (song.promoted_kind === 'new' ? 'new' : 'boost') : get().origin;
+    const heard = listened;
+    void country()
+      .then((c) => api.recordPlay(song.id, heard, length, skipped, sessionId(), source, c))
+      .catch(() => undefined);
     listened = 0;
   };
 
@@ -167,6 +177,7 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
     queueOpen: false,
     more: null,
     fromHook: false,
+    origin: 'other',
 
     playList(songs, startIndex = 0, source, more = null, fromHook = false) {
       if (!songs.length) return;
@@ -177,7 +188,9 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
         get().toggle();
         return;
       }
-      set({ queue: songs, source: source ?? null, more, fromHook });
+      // The song being left is counted first, while its own queue is still in place.
+      report(now, false);
+      set({ queue: songs, source: source ?? null, more, fromHook, origin: originHere() });
       start(startIndex);
     },
 
@@ -187,7 +200,8 @@ export const usePlayer = create<PlayerState & PlayerActions>((set, get) => {
         get().toggle();
         return;
       }
-      set({ queue: [song], source: source ?? null, more: null, fromHook: false });
+      report(now, false);
+      set({ queue: [song], source: source ?? null, more: null, fromHook: false, origin: originHere() });
       start(0);
     },
 

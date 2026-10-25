@@ -50,8 +50,8 @@ export function YourWeek() {
             <p className="label">The last 7 days</p>
             <h2 className="mt-1 text-xl">Your week on Wavee</h2>
           </div>
-          <Link to="/library?tab=uploads" className="inline-flex shrink-0 items-center gap-1.5 text-sm text-muted hover:text-ink">
-            Your music <LuArrowRight />
+          <Link to="/stats" className="inline-flex shrink-0 items-center gap-1.5 text-sm text-muted hover:text-ink">
+            All stats <LuArrowRight />
           </Link>
         </div>
 

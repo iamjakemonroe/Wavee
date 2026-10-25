@@ -34,6 +34,7 @@ const Admin = later(() => import('./pages/Admin'), 'Admin');
 const BugReport = later(() => import('./pages/BugReport'), 'BugReport');
 const Founding = later(() => import('./pages/Founding'), 'Founding');
 const Picks = later(() => import('./pages/Picks'), 'Picks');
+const Stats = later(() => import('./pages/Stats'), 'Stats');
 const Legal = later(() => import('./pages/Legal'), 'Legal') as ComponentType<{
   slug: 'terms' | 'privacy' | 'copyright' | 'guidelines';
 }>;
@@ -94,6 +95,7 @@ export function App() {
         <Route path="/charts" element={<Charts />} />
         <Route path="/picks" element={<Picks />} />
         <Route path="/founding" element={<Founding />} />
+        <Route path="/stats" element={<Stats />} />
         <Route path="/library" element={<Library />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/songs/:id" element={<SongPage />} />

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useMemo, type ReactNode } from 'react';
-import { LuArrowRight, LuDisc3, LuHeart, LuMoon, LuPlay, LuSparkles, LuSun, LuSunrise, LuSunset, LuTrophy, LuUpload, LuUsers } from 'react-icons/lu';
+import { LuArrowRight, LuChartColumn, LuDisc3, LuHeart, LuMoon, LuPlay, LuSparkles, LuSun, LuSunrise, LuSunset, LuTrophy, LuUpload, LuUsers } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { Challenge, Collections, FoundingBanner, YourWeek } from '../components/growth/Home';
 import { FreshFinds } from '../components/growth/Picks';
@@ -313,7 +313,7 @@ function Greeting({ account, fresh }: { account: Account | null; fresh?: Song[] 
         )}
         {account?.is_artist ? (
           mine?.length ? (
-            <Chip to="/library?tab=uploads" icon={<LuDisc3 />}>
+            <Chip to="/stats" icon={<LuDisc3 />}>
               Your music · {count(plays)} {plays === 1 ? 'play' : 'plays'}
             </Chip>
           ) : (
@@ -329,6 +329,11 @@ function Greeting({ account, fresh }: { account: Account | null; fresh?: Song[] 
         <Chip to="/charts" icon={<LuTrophy />}>
           Charts
         </Chip>
+        {account && !account.is_artist && (
+          <Chip to="/stats" icon={<LuChartColumn />}>
+            Your listening
+          </Chip>
+        )}
       </div>
     </section>
   );

@@ -1630,6 +1630,99 @@ def run_contract_tests(db, c):
 
     c.safe("growth", growth)
 
+    # ── Stats pages: artist_insights and listener_insights ─────────────────
+    c.start("insights")
+
+    def insights():
+        star = signup("star@example.com", {"username": "rising_star"})
+        s1 = new_song(star, "Star One", duration=200)
+        s2 = new_song(star, "Star Two", duration=200)
+        fans = [signup(f"insight{i}@example.com", {"username": f"insight_fan{i}"}) for i in range(8)]
+
+        def play(u, sid, secs=120, source=None, country=None, ago="1 hour", headers=None):
+            db.user(u, "select public.record_play(%s, %s, 200, false, null, %s, %s)", (sid, secs, source, country),
+                    headers=headers)
+            db.su("update public.plays set created_at = now() - %s::interval where id = ("
+                  "select id from public.plays where user_id = %s and song_id = %s order by created_at desc limit 1)",
+                  (ago, u, sid))
+
+        for f in fans[:5]:
+            play(f, s1, source="feed", country="ng")
+        for f in fans[5:7]:
+            play(f, s1, source="link", country="GH")
+        play(fans[7], s1, secs=10, source="feed")
+        for h in (2, 3, 4, 5):
+            play(fans[0], s2, source="profile", ago=f"{h} hours")
+        play(fans[5], s1, source="feed", ago="40 days")
+        play(star, s1, source="profile")
+        rows = db.su("select source, country from public.plays where user_id = %s and song_id = %s", (fans[0], s1))
+        c.ok("a play keeps where it started and the country", rows == [("feed", "NG")], rows)
+        tester = signup("insight.tester@example.com", {"username": "insight_tester"})
+        play(tester, s2, source="tiktok", country="Nigeria")
+        c.ok("unknown sources and countries are dropped",
+             db.su("select source, country from public.plays where user_id = %s", (tester,)) == [(None, None)])
+        play(tester, s1, country="NG", headers={"cf-ipcountry": "GH"})
+        c.ok("Cloudflare's country wins over the app's",
+             db.su("select country from public.plays where user_id = %s and song_id = %s", (tester, s1)) == [("GH",)])
+        db.user(tester, "select public.record_play(p_song => %s, p_listened => 60, p_duration => 200, p_skipped => false, "
+                        "p_session => null)", (s2,))
+        c.ok("apps that don't send them yet still record plays",
+             db.su("select count(*) from public.plays where user_id = %s", (tester,))[0][0] == 3)
+        db.su("delete from public.plays where user_id = %s", (tester,))
+
+        st = db.user(star, "select public.artist_insights(28, null, 'Africa/Lagos')")[0][0]
+        t = st["totals"]
+        c.ok("streams, plays and listeners: real listens from others only",
+             (t["plays"], t["streams"], t["listeners"]) == (12, 11, 7) and st["prev"]["streams"] == 1
+             and st["prev"]["listeners"] == 1, (t, st["prev"]))
+        c.ok("28 days, a point a day, adding up to the totals",
+             st["days"] == 28 and st["unit"] == "day" and len(st["series"]) == 28
+             and sum(d["streams"] for d in st["series"]) == 11, st["series"][-3:])
+        c.ok("where plays come from", st["sources"] == {"feed": 5, "link": 2, "profile": 4}, st["sources"])
+        c.ok("top songs, most streamed first", [(x["title"], x["streams"], x["listeners"]) for x in st["top"]]
+             == [("Star One", 7, 7), ("Star Two", 4, 1)], st["top"])
+        c.ok("all time: every listen, and the followers", st["all_time"]["streams"] == 12
+             and st["all_time"]["listeners"] == 7 and st["all_time"]["followers"] == 0, st["all_time"])
+        c.ok("free: the last 7 or 28 days, the rest with Pro",
+             db.user(star, "select public.artist_insights(90)")[0][0]["days"] == 28 and st["full"] is False
+             and st["more"] is None)
+
+        db.user(ADMIN, "select public.admin_set_founding(%s, 'artist')", (star,))
+        full = db.user(star, "select public.artist_insights(90)")[0][0]
+        c.ok("founding artists see everything", full["full"] is True and full["days"] == 90 and full["more"] is not None)
+        more = db.user(star, "select public.artist_insights(28)")[0][0]["more"]
+        c.ok("countries with 5+ listeners are named, the rest added up",
+             more["countries"] == {"shown": [{"country": "NG", "listeners": 5}], "other": 2, "unknown": 0}, more["countries"])
+        c.ok("new and returning listeners", more["audience"] == {"new": 6, "returning": 1}, more["audience"])
+        c.ok("superfans: 5+ streams", more["segments"] == {"light": 6, "regular": 0, "super": 1}, more["segments"])
+        c.ok("how much of the song people heard", more["completion"] == [1, 0, 0, 0, 0, 0, 11, 0, 0, 0], more["completion"])
+        year = db.user(star, "select public.artist_insights(365)")[0][0]
+        c.ok("12 months, a point a week", year["unit"] == "week" and 52 <= len(year["series"]) <= 54
+             and sum(d["streams"] for d in year["series"]) == 12, len(year["series"]))
+        db.su("update public.wavee_growth set founding_pro_insights = false")
+        c.ok("the founding perk can be switched off",
+             db.user(star, "select public.artist_insights(90)")[0][0]["full"] is False)
+        db.su("update public.wavee_growth set founding_pro_insights = true")
+
+        one = db.user(star, "select public.artist_insights(28, %s)", (s2,))[0][0]
+        c.ok("one song", one["totals"]["streams"] == 4 and one["totals"]["followers"] is None
+             and [s["title"] for s in one["songs"]] == ["Star Two", "Star One"], one["totals"])
+        c.raises("not someone else's song", lambda: db.user(fans[0], "select public.artist_insights(28, %s)", (s1,)), "not your song")
+        c.raises("not someone else's stats",
+                 lambda: db.user(fans[0], "select public.artist_insights(28, null, 'UTC', %s)", (star,)), "not allowed")
+        c.ok("the team can look", db.user(ADMIN, "select public.artist_insights(28, null, 'UTC', %s)", (star,))[0][0]
+             ["totals"]["streams"] == 11)
+        c.ok("a made-up time zone counts in UTC",
+             db.user(star, "select public.artist_insights(7, null, 'Mars/Olympus')")[0][0]["days"] == 7)
+
+        me = db.user(fans[0], "select public.listener_insights(28, 'Africa/Lagos')")[0][0]
+        c.ok("a listener's own listening", (me["totals"]["streams"], me["totals"]["minutes"], me["totals"]["artists"],
+                                             me["totals"]["discovered"]) == (5, 10, 1, 1)
+             and [a["username"] for a in me["top_artists"]] == ["rising_star"] and len(me["series"]) == 28, me["totals"])
+        c.raises("stats need an account", lambda: db.anon("select public.listener_insights(28)"), "permission denied")
+
+    c.safe("insights", insights)
+
     # ── Account deletion (the delete-account Edge Function deletes the auth user) ──
     c.start("account deletion")
 

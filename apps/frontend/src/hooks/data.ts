@@ -1,5 +1,6 @@
 import { payApi } from '../lib/pay';
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -44,7 +45,35 @@ export const keys = {
   collections: ['collections'] as const,
   myFeedback: (id: string) => ['my-feedback', id] as const,
   feedbackSummary: (id: string) => ['feedback-summary', id] as const,
+  insights: (days: number, song: string | null, user: string | null) => ['insights', days, song, user] as const,
+  listening: (days: number) => ['listening', days] as const,
 };
+
+/** An artist's stats; the last numbers stay on screen while new ones load. */
+export function useInsights(days: number, song: string | null, user: string | null, enabled = true) {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({
+    queryKey: keys.insights(days, song, user),
+    queryFn: () => api.insights(days, song, user),
+    enabled: signedIn && enabled,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
+/** Your own listening. */
+export function useListening(days: number, enabled = true) {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({
+    queryKey: keys.listening(days),
+    queryFn: () => api.listening(days),
+    enabled: signedIn && enabled,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
 
 /** The Founding 100: spots taken and left, and yours. */
 export function useFounding() {

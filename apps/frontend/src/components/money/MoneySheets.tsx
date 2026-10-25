@@ -7,6 +7,7 @@ import { CURRENCY, money, payApi } from '../../lib/pay';
 import { useAuth } from '../../store/auth';
 import { useMoney } from '../../store/money';
 import { toast } from '../../store/toast';
+import { Link } from 'react-router-dom';
 import { FeedbackSummaryView } from '../growth/Feedback';
 import { Button, Cover, Modal, Spinner } from '../ui';
 
@@ -179,7 +180,11 @@ function ProBody() {
       </div>
       <ul className="mt-5 space-y-2.5">
         <Perk icon={<LuRocket />} title="A free Boost every month" text="100 new listeners for a song of your choice." />
-        <Perk icon={<LuChartColumn />} title="Song stats" text="Plays and listeners day by day, and how much of each song people hear." />
+        <Perk
+          icon={<LuChartColumn />}
+          title="Full stats"
+          text="12 months of history, where your listeners are, your superfans, and how much of each song people hear."
+        />
         <Perk icon={<LuUpload />} title="Bigger uploads" text="Lossless masters up to 150 MB and videos up to 300 MB." />
       </ul>
       <div className="mt-5">
@@ -279,6 +284,11 @@ function StatsBody({ song }: { song: Song }) {
             </button>
           )}
           <FeedbackSummaryView songId={song.id} />
+          <Link to={`/stats?song=${song.id}`} onClick={() => useMoney.getState().showStats(null)} className="mt-5 block">
+            <Button variant="secondary" className="w-full" icon={<LuChartColumn />}>
+              All stats for this song
+            </Button>
+          </Link>
         </>
       )}
     </div>

@@ -135,6 +135,9 @@ function NewArtistCard({ a }: { a: NewArtist }) {
             {a.founding && <FoundingBadge founding={{ number: a.founding, role: 'artist' }} className="!px-2 !py-0.5 !text-[11px]" />}
             {a.picked && <span className="rounded-full bg-teal/15 px-2 py-0.5 text-[11px] font-semibold text-teal">Picked</span>}
             {a.welcomed_at && <span className="rounded-full bg-line/10 px-2 py-0.5 text-[11px] font-semibold text-muted">Welcomed {ago(a.welcomed_at)}</span>}
+            <Link to={`/stats?user=${a.user.id}&name=${a.user.username}`} className="ml-auto text-[12.5px] font-medium text-muted hover:text-ink">
+              Stats →
+            </Link>
           </p>
           <p className="text-[13px] text-muted">
             @{a.user.username} · first song {ago(a.first_at)} · {a.songs} {a.songs === 1 ? 'song' : 'songs'}
