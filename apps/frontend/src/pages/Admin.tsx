@@ -1,21 +1,21 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useState } from 'react';
-import { LuActivity, LuBadgeCheck, LuBug, LuExternalLink, LuFlag, LuGem, LuListMusic, LuRadar, LuShield, LuSprout } from 'react-icons/lu';
+import { LuActivity, LuBadgeCheck, LuBug, LuExternalLink, LuFlag, LuGem, LuInbox, LuListMusic, LuRadar, LuShield, LuSprout } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { OfficialTag } from '../components/music/Artists';
 import { Verified } from '../components/music/Verified';
 import { Avatar, Button, EmptyState, Input, Skeleton, Spinner } from '../components/ui';
 import { api, type Report } from '../lib/api';
 import { ago, plural } from '../lib/format';
-import { CollectionsAdmin, FoundingAdmin, NewArtists, PicksAdmin, Pulse } from './AdminGrowth';
+import { Applications, CollectionsAdmin, FoundingAdmin, NewArtists, PicksAdmin, Pulse } from './AdminGrowth';
 import { useAuth } from '../store/auth';
 import { toast } from '../store/toast';
 import { useTitle } from '../hooks/useTitle';
 
 const REPORT_STATUSES = ['open', 'reviewing', 'actioned', 'dismissed'] as const;
 
-type Tab = 'pulse' | 'new' | 'picks' | 'founding' | 'collections' | 'reports' | 'bugs' | 'artists';
+type Tab = 'pulse' | 'applications' | 'new' | 'picks' | 'founding' | 'collections' | 'reports' | 'bugs' | 'artists';
 const BUG_STATUSES = ['open', 'closed'] as const;
 
 function Pills<T extends string>({ value, options, onChange }: { value: T; options: readonly T[]; onChange: (v: T) => void }) {
@@ -52,6 +52,7 @@ export function Admin() {
         {(
           [
             ['pulse', 'Pulse', <LuActivity key="p" />],
+            ['applications', 'Applications', <LuInbox key="a" />],
             ['new', 'New artists', <LuSprout key="n" />],
             ['picks', 'Fresh Finds', <LuRadar key="r" />],
             ['founding', 'Founding 100', <LuGem key="g" />],
@@ -75,6 +76,7 @@ export function Admin() {
         ))}
       </div>
       {tab === 'pulse' && <Pulse />}
+      {tab === 'applications' && <Applications />}
       {tab === 'new' && <NewArtists />}
       {tab === 'picks' && <PicksAdmin />}
       {tab === 'founding' && <FoundingAdmin />}
@@ -286,8 +288,9 @@ function VerifyArtists() {
   return (
     <div className="max-w-xl">
       <p className="mb-5 text-sm leading-6 text-muted">
-        Verify an artist only after checking it’s really them: an email from their official address or management, or a
-        post on their official account that mentions their Wavee username. Write down how you checked. Mark Wavee’s own
+        Requests to be verified arrive in Applications, with the artist’s code to look for on their official account.
+        By hand here, verify an artist only after checking it’s really them: an email from their official address or
+        management, or a post on their official account that mentions their Wavee username. Write down how you checked. Mark Wavee’s own
         accounts official: their songs play in the feed but stay out of the charts and Trending.
       </p>
       <form

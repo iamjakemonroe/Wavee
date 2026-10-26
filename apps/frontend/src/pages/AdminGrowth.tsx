@@ -1,19 +1,41 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { useState } from 'react';
-import { LuCheck, LuExternalLink, LuGem, LuImage, LuRadar, LuSearch, LuTrash2 } from 'react-icons/lu';
+import { useState, type ReactNode } from 'react';
+import {
+  LuBadgeCheck,
+  LuCheck,
+  LuExternalLink,
+  LuGem,
+  LuImage,
+  LuMail,
+  LuRadar,
+  LuSearch,
+  LuStar,
+  LuTrash2,
+  LuTriangleAlert,
+} from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { renderPicksCard } from '../components/growth/cards';
 import { FoundingBadge } from '../components/growth/Founding';
 import { LinkPills } from '../components/music/Links';
 import { PictureDialog } from '../components/music/ShareCard';
 import { PlayToggle } from '../components/music/Song';
-import { Avatar, Button, Cover, EmptyState, Input, Skeleton, Spinner } from '../components/ui';
+import { Avatar, Button, Checkbox, Cover, EmptyState, Input, Skeleton, Spinner, Textarea } from '../components/ui';
 import { keys, useCollections, useFounding, usePicks } from '../hooks/data';
-import { api, type NewArtist, type PulseWeek, type Song } from '../lib/api';
+import {
+  api,
+  type AdminApplication,
+  type ApplicationKind,
+  type ApplicationReview,
+  type ApplicationStatus,
+  type NewArtist,
+  type PulseWeek,
+  type Song,
+  type SongSignal,
+} from '../lib/api';
 import { ago, artistName } from '../lib/format';
-import { thisMonday, weekLabel } from '../lib/growth';
-import { ARTIST_PLATFORMS } from '../lib/platforms';
+import { FEEDBACK, thisMonday, weekLabel } from '../lib/growth';
+import { ARTIST_PLATFORMS, PLATFORMS } from '../lib/platforms';
 import { toast } from '../store/toast';
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
@@ -102,6 +124,381 @@ export function Pulse() {
         (does every new song find listeners?). Fifty people who come back every week beat a thousand accounts that never
         play a song.
       </p>
+    </div>
+  );
+}
+
+// ── Applications: founding artists and the Verified badge ────────────────
+
+const pct = (x: number | null) => (x == null ? '–' : `${Math.round(x * 100)}%`);
+
+function Tile({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className="rounded-xl bg-line/[0.05] px-1.5 py-2 text-center">
+      <p className="text-[15px] font-bold tabular-nums leading-none">{value}</p>
+      <p className="mt-1 text-[10.5px] leading-tight text-muted">{label}</p>
+    </div>
+  );
+}
+
+/** One song and what listeners did with it: strangers first, since they never chose the artist. */
+function SongEvidence({ song, signal, name }: { song: Song; signal: SongSignal; name: string }) {
+  const st = signal.strangers;
+  const tags = FEEDBACK.filter((f) => signal.tags[f.tag]);
+  return (
+    <div className="rounded-2xl bg-line/[0.04] p-3">
+      <div className="flex items-center gap-3">
+        <Cover src={song.cover_image_url} title={song.title} className="h-11 w-11" />
+        <Link to={`/songs/${song.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+          {song.title}
+        </Link>
+        <PlayToggle song={song} list={[song]} index={0} source={`Application: ${name}`} className="h-10 w-10 text-base" />
+      </div>
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-faint">Strangers (its first listens)</p>
+      <div className="mt-1.5 grid grid-cols-4 gap-1.5">
+        <Tile value={`${st.heard}/${st.reached}`} label="heard it" />
+        <Tile value={pct(st.completion)} label="listened" />
+        <Tile value={st.came_back} label="came back" />
+        <Tile value={st.likes} label="liked" />
+      </div>
+      <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-faint">Everyone</p>
+      <div className="mt-1.5 grid grid-cols-5 gap-1.5">
+        <Tile value={signal.listeners} label="listeners" />
+        <Tile value={pct(signal.completion)} label="listened" />
+        <Tile value={signal.finished} label="finished" />
+        <Tile value={signal.likes} label="likes" />
+        <Tile value={signal.saves} label="saves" />
+      </div>
+      {tags.length > 0 && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {tags.map((f) => (
+            <span
+              key={f.tag}
+              className={clsx('rounded-full px-2 py-0.5 text-[11.5px] font-medium', f.good ? 'bg-teal/15 text-teal' : 'bg-warn/15 text-warn')}
+            >
+              {f.label} ×{signal.tags[f.tag]}
+            </span>
+          ))}
+        </div>
+      )}
+      {signal.listeners < 10 && (
+        <p className="mt-2 text-[12px] text-faint">Under ten listeners so far: too few to judge on numbers alone.</p>
+      )}
+    </div>
+  );
+}
+
+const OWNERSHIP: [NonNullable<ApplicationReview['ownership']>[number], string][] = [
+  ['code', 'Code seen'],
+  ['making_of', 'Video matches'],
+  ['released', 'Released under their name'],
+  ['credits', 'Credits make sense'],
+];
+const IDENTITY: [NonNullable<ApplicationReview['identity']>, string][] = [
+  ['code', 'Code on an official account'],
+  ['email', 'Email from an official address'],
+  ['personal', 'We know them'],
+];
+
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={clsx(
+        'h-8 rounded-full border px-3 text-[12.5px] font-medium transition',
+        on ? 'border-teal/60 bg-teal/[0.12] text-ink' : 'border-line/10 bg-line/[0.04] text-muted hover:text-ink',
+      )}
+    >
+      {on && <LuCheck className="-ml-0.5 mr-1 inline align-[-0.1em] text-teal" />}
+      {children}
+    </button>
+  );
+}
+
+function ApplicationCard({ a }: { a: AdminApplication }) {
+  const client = useQueryClient();
+  const founding = a.kind === 'founding';
+  const [ownership, setOwnership] = useState(a.review?.ownership ?? []);
+  const [identity, setIdentity] = useState<ApplicationReview['identity'] | null>(a.review?.identity ?? null);
+  const [ear, setEar] = useState(a.review?.ear ?? 0);
+  const [verify, setVerify] = useState(!founding || a.track === 'known');
+  const [message, setMessage] = useState('');
+  const [note, setNote] = useState(a.note ?? '');
+  const [busy, setBusy] = useState<string | null>(null);
+  const name = a.user.display_name || a.user.username;
+  const [now] = useState(() => Date.now());
+  const days = Math.floor((now - Date.parse(a.user.joined_at)) / 86_400_000);
+  const codeLink = a.code_on ? a.links[a.code_on] : null;
+  const verifying = !founding || verify;
+
+  const decide = async (decision: 'approved' | 'not_yet') => {
+    setBusy(decision);
+    const review: ApplicationReview = { ownership, ...(identity ? { identity } : {}), ...(ear ? { ear } : {}) };
+    const out = await run(
+      () => api.adminDecideApplication({ userId: a.user.id, kind: a.kind, decision, message, note, verify: verifying, review }),
+      decision === 'not_yet'
+        ? `Not yet for ${name}: they’ll see your note`
+        : founding
+          ? `${name} is a founding artist`
+          : `${name} is verified`,
+    );
+    setBusy(null);
+    if (out) {
+      void client.invalidateQueries({ queryKey: ['admin-applications'] });
+      void client.invalidateQueries({ queryKey: keys.founding });
+    }
+  };
+
+  return (
+    <article className="card p-5">
+      <div className="flex items-start gap-4">
+        <Link to={`/u/${a.user.username}`}>
+          <Avatar src={a.user.avatar_url} name={name} className="h-14 w-14 text-lg" />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-2 font-semibold">
+            <Link to={`/u/${a.user.username}`} className="hover:underline">
+              {name}
+            </Link>
+            {a.user.verified && <LuBadgeCheck className="text-teal" aria-label="Verified" />}
+            <span className={clsx('rounded-full px-2 py-0.5 text-[11px] font-semibold', founding ? 'bg-[#e7a33e]/15 text-[#f0c060]' : 'bg-teal/15 text-teal')}>
+              {founding ? (a.track === 'known' ? 'Founding · known artist' : 'Founding · new artist') : 'Verified badge'}
+            </span>
+            {a.attempts > 1 && <span className="rounded-full bg-line/10 px-2 py-0.5 text-[11px] font-semibold text-muted">Try {a.attempts}</span>}
+            {a.status !== 'pending' && (
+              <span className={clsx('rounded-full px-2 py-0.5 text-[11px] font-semibold', a.status === 'approved' ? 'bg-teal/15 text-teal' : 'bg-line/10 text-muted')}>
+                {a.status === 'approved' ? (founding && a.founding ? `Chosen · #${a.founding}` : 'Yes') : 'Not yet'}
+              </span>
+            )}
+          </p>
+          <p className="text-[13px] text-muted">
+            @{a.user.username} · releases as <b className="text-ink">{a.artist_name}</b>
+          </p>
+          <p className="text-[12.5px] text-faint">
+            Applied {ago(a.applied_at)} · account {days} {days === 1 ? 'day' : 'days'} old · {a.user.songs} songs · {a.user.followers} followers
+          </p>
+          {a.user.email && (
+            <a href={`mailto:${a.user.email}`} className="mt-1 inline-flex items-center gap-1.5 text-[12.5px] text-muted hover:text-ink">
+              <LuMail /> {a.user.email}
+            </a>
+          )}
+        </div>
+      </div>
+
+      {(a.same_name.length > 0 || days < 7) && (
+        <div className="mt-4 flex gap-2.5 rounded-2xl border border-warn/30 bg-warn/[0.07] p-3 text-[13px] leading-5">
+          <LuTriangleAlert className="mt-0.5 shrink-0 text-warn" />
+          <div>
+            {a.same_name.length > 0 && (
+              <p>
+                Also going by this name:{' '}
+                {a.same_name.map((o, i) => (
+                  <span key={o.username}>
+                    {i > 0 && ', '}
+                    <Link to={`/u/${o.username}`} className="font-medium underline">
+                      @{o.username}
+                    </Link>
+                    {o.verified && ' (verified)'}
+                  </span>
+                ))}
+                . Make sure this is the real one.
+              </p>
+            )}
+            {days < 7 && <p>A new account: check the code with extra care.</p>}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 space-y-2 rounded-2xl bg-line/[0.04] p-3.5 text-[13.5px]">
+        <p className="flex flex-wrap items-center gap-2">
+          <span className="text-muted">Code</span>
+          <code className="rounded-lg bg-line/[0.08] px-2 py-0.5 font-mono font-semibold">{a.code ?? '–'}</code>
+          {a.code_on && codeLink ? (
+            <a href={codeLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-teal hover:underline">
+              in the bio on {PLATFORMS[a.code_on].label} <LuExternalLink />
+            </a>
+          ) : (
+            <span className="text-faint">not placed anywhere</span>
+          )}
+        </p>
+        {a.making_of && (
+          <p className="flex flex-wrap items-center gap-2">
+            <span className="text-muted">Making of</span>
+            <a href={a.making_of} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex min-w-0 items-center gap-1 truncate font-medium text-teal hover:underline">
+              {a.making_of.replace(/^https:\/\//, '').slice(0, 48)} <LuExternalLink className="shrink-0" />
+            </a>
+          </p>
+        )}
+        <LinkPills links={a.links} order={ARTIST_PLATFORMS} className="pt-1" />
+      </div>
+
+      <p className="mt-4 whitespace-pre-line text-[14px] leading-6">{a.about}</p>
+      {a.audience && (
+        <p className="mt-2 text-[13.5px] leading-6 text-muted">
+          <b className="text-ink">Their listeners now:</b> {a.audience}
+        </p>
+      )}
+
+      {a.songs.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {a.songs.map((x) => (
+            <SongEvidence key={x.song.id} song={x.song} signal={x.signal} name={name} />
+          ))}
+        </div>
+      )}
+
+      {a.status === 'approved' ? (
+        <div className="mt-4 rounded-2xl bg-line/[0.04] p-3.5 text-[13px] leading-5 text-muted">
+          <p>
+            Said yes {a.decided_at ? ago(a.decided_at) : ''}
+            {a.decided_by ? ` (@${a.decided_by})` : ''}.
+          </p>
+          {a.message && <p className="mt-1">To them: “{a.message}”</p>}
+          {a.note && <p className="mt-1">Note: {a.note}</p>}
+        </div>
+      ) : (
+        <div className="mt-5 space-y-4 border-t border-line/[0.08] pt-4">
+          {a.status === 'not_yet' && a.message && (
+            <p className="text-[13px] leading-5 text-muted">
+              Last time ({a.decided_at ? ago(a.decided_at) : ''}): “{a.message}”
+            </p>
+          )}
+          {founding && (
+            <div>
+              <p className="mb-2 text-[12.5px] font-medium text-muted">How you checked the music is theirs</p>
+              <div className="flex flex-wrap gap-1.5">
+                {OWNERSHIP.map(([k, label]) => (
+                  <Chip key={k} on={ownership.includes(k)} onClick={() => setOwnership((o) => (o.includes(k) ? o.filter((x) => x !== k) : [...o, k]))}>
+                    {label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <p className="mb-2 text-[12.5px] font-medium text-muted">How you checked it’s really them{founding ? ' (needed to verify)' : ''}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {IDENTITY.map(([k, label]) => (
+                <Chip key={k} on={identity === k} onClick={() => setIdentity(identity === k ? null : k)}>
+                  {label}
+                </Chip>
+              ))}
+            </div>
+          </div>
+          {founding && (
+            <div>
+              <p className="mb-2 text-[12.5px] font-medium text-muted">Your ear</p>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-label={`${n} of 5`}
+                    onClick={() => setEar(ear === n ? 0 : n)}
+                    className={clsx('grid h-8 w-8 place-items-center rounded-lg text-[17px] transition', n <= ear ? 'text-[#f0c060]' : 'text-line/30 hover:text-muted')}
+                  >
+                    <LuStar className={n <= ear ? 'fill-current' : ''} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {founding && (
+            <Checkbox checked={verify} onChange={setVerify}>
+              Also give them the Verified badge (you’ve checked it’s really them)
+            </Checkbox>
+          )}
+          <Textarea
+            label="To the artist (they see this)"
+            placeholder="Why it’s a yes, or kindly, what would make it one"
+            value={message}
+            maxLength={600}
+            onChange={(e) => setMessage(e.target.value)}
+            className="[&_textarea]:min-h-[84px]"
+          />
+          <Input label="Note for the team (private)" value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="brand"
+              icon={founding ? <LuGem /> : <LuBadgeCheck />}
+              loading={busy === 'approved'}
+              disabled={!!busy || (verifying && !identity)}
+              onClick={() => void decide('approved')}
+            >
+              {founding ? (verify ? 'Choose and verify' : 'Choose as a founding artist') : 'Verify'}
+            </Button>
+            <Button variant="secondary" loading={busy === 'not_yet'} disabled={!!busy || message.trim().length < 10} onClick={() => void decide('not_yet')}>
+              Not yet
+            </Button>
+          </div>
+          {verifying && !identity && <p className="-mt-2 text-[12.5px] text-faint">Pick how you checked it’s them to verify.</p>}
+        </div>
+      )}
+    </article>
+  );
+}
+
+/** Founding artist applications and Verified requests: read, listen, check, decide. */
+export function Applications() {
+  const [status, setStatus] = useState<ApplicationStatus | 'all'>('pending');
+  const [kind, setKind] = useState<ApplicationKind | null>(null);
+  const founding = useFounding().data;
+  const list = useQuery({ queryKey: ['admin-applications', status, kind], queryFn: () => api.adminApplications(status, kind) });
+  const pill = (on: boolean) => clsx('h-8 shrink-0 rounded-full px-3.5 text-[13px] font-medium', on ? 'bg-ink text-bg' : 'bg-line/[0.06] text-muted');
+  return (
+    <div>
+      <p className="mb-4 max-w-2xl text-sm leading-6 text-muted">
+        Listen to the songs, open the profile and look for the code in the bio. Say yes when the music is theirs and
+        listeners love it: what strangers do counts more than friends. Verify only when you’ve checked it’s really them.
+        A “not yet” needs a kind reason; they can apply again in a month.
+        {founding && (
+          <>
+            {' '}
+            <b className="text-ink">
+              {founding.artists.taken} of {founding.artists.cap} founding artists chosen.
+            </b>
+          </>
+        )}
+      </p>
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {(
+          [
+            ['pending', 'To read'],
+            ['approved', 'Yes'],
+            ['not_yet', 'Not yet'],
+            ['all', 'All'],
+          ] as const
+        ).map(([id, label]) => (
+          <button key={id} type="button" onClick={() => setStatus(id)} className={pill(status === id)}>
+            {label}
+          </button>
+        ))}
+        <span className="mx-1 h-5 w-px bg-line/10" />
+        {(
+          [
+            [null, 'Both'],
+            ['founding', 'Founding'],
+            ['verified', 'Verified'],
+          ] as const
+        ).map(([id, label]) => (
+          <button key={label} type="button" onClick={() => setKind(id)} className={pill(kind === id)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {list.isLoading ? (
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      ) : list.data?.length ? (
+        <div className="grid items-start gap-3 xl:grid-cols-2">
+          {list.data.map((a) => (
+            <ApplicationCard key={`${a.user.id}-${a.kind}-${a.updated_at}`} a={a} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState title={status === 'pending' ? 'Nothing to read' : 'None here'} text={status === 'pending' ? 'Every application has an answer.' : undefined} />
+      )}
     </div>
   );
 }
@@ -433,8 +830,10 @@ export function FoundingAdmin() {
       {status && (
         <p className="mb-5 text-sm leading-6 text-muted">
           {status.artists.taken} of {status.artists.cap} artists and {status.listeners.taken} of {status.listeners.cap}{' '}
-          listeners so far ({status.open ? 'open' : 'closed'}). Spots you give here go past the limits. To change the limits
-          or close it: <code className="text-ink">update wavee_growth set founding_open = false;</code>
+          listeners so far ({status.open ? 'open' : 'closed'}).{' '}
+          {status.review && 'Artists are chosen in Applications; give a spot here only to someone you recruited yourself. '}
+          Spots you give here go past the limits. To change the limits or close it:{' '}
+          <code className="text-ink">update wavee_growth set founding_open = false;</code>
         </p>
       )}
       <form

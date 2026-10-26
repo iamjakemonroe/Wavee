@@ -256,7 +256,7 @@ async function withPreview(request: Request, env: Env, path: string): Promise<Re
       const left = s ? Math.max(0, s.artists.cap - s.artists.taken) + Math.max(0, s.listeners.cap - s.listeners.taken) : null;
       meta = {
         title: 'Wavee Founding 100: build Wavee from day one',
-        description: `${s ? s.artists.cap : 30} artists and ${s ? s.listeners.cap : 70} listeners shaping Wavee from the start, numbered for good.${left ? ` ${left} spots left.` : ''} Hear it first.`,
+        description: `${s ? s.artists.cap : 30} artists chosen by hand and ${s ? s.listeners.cap : 70} listeners shaping Wavee from the start, numbered for good.${left ? ` ${left} spots left.` : ''} Hear it first.`,
         image: `${origin}/og-founding.png`,
       };
     } else if (path === '/picks') {

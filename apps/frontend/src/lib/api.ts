@@ -1,5 +1,5 @@
 import type { Origin } from './origin';
-import type { Links } from './platforms';
+import type { Links, Platform } from './platforms';
 import { supabase } from './supabase';
 
 /** A song as every list shows it (the database's `song_card`). */
@@ -88,11 +88,108 @@ export interface Founding {
 
 export interface FoundingStatus {
   open: boolean;
-  artists: { taken: number; cap: number };
+  /** Founding artists are chosen by the team from applications (wavee_growth.artists_by_review). */
+  review: boolean;
+  /** applied: every founding application so far. */
+  artists: { taken: number; cap: number; applied: number };
   listeners: { taken: number; cap: number };
   me: Founding | null;
+  /** Your founding application, if you've sent one. */
+  application: { status: ApplicationStatus; decided_at: string | null } | null;
   /** The latest to join, newest first. */
   members: (Founding & Pick<UserCard, 'username' | 'display_name' | 'avatar_url'> & { verified: boolean })[];
+}
+
+export type ApplicationKind = 'founding' | 'verified';
+/** emerging: show it's yours and let listeners decide; known: prove you are who you say. */
+export type ApplicationTrack = 'emerging' | 'known';
+export type ApplicationStatus = 'pending' | 'approved' | 'not_yet';
+
+/** An application to be a founding artist, or to be verified, as its artist sees it. */
+export interface Application {
+  kind: ApplicationKind;
+  track: ApplicationTrack;
+  status: ApplicationStatus;
+  artist_name: string;
+  songs: string[];
+  links: Links;
+  /** Which of [links] carries the code. */
+  code_on: Platform | null;
+  making_of: string | null;
+  about: string;
+  audience: string | null;
+  attempts: number;
+  applied_at: string;
+  updated_at: string;
+  decided_at: string | null;
+  /** From the team, with the decision. */
+  message: string | null;
+  /** After "not yet": when they can apply again. */
+  again_at: string | null;
+}
+
+export interface MyApplications {
+  /** Their code (wavee-xxxxxx), for a profile bio until the team has looked. */
+  code: string;
+  /** Already wearing the Verified badge. */
+  is_verified: boolean;
+  founding: Application | null;
+  verified: Application | null;
+}
+
+export interface ApplicationInput {
+  kind: ApplicationKind;
+  track: ApplicationTrack;
+  artistName: string;
+  songs: string[];
+  links: Links;
+  codeOn: Platform | null;
+  makingOf: string;
+  about: string;
+  audience: string;
+  promise: boolean;
+}
+
+/** What listeners did with a song: everyone (not the artist), and the strangers its first
+ * listens reached, who never chose the artist. completion is 0–1 (each listener's best listen). */
+export interface SongSignal {
+  listeners: number;
+  heard: number;
+  completion: number | null;
+  finished: number;
+  came_back: number;
+  likes: number;
+  saves: number;
+  feedback: number;
+  tags: Partial<Record<FeedbackTag, number>>;
+  strangers: { reached: number; heard: number; completion: number | null; likes: number; came_back: number };
+}
+
+/** The checks a reviewer made; identity is required to verify. */
+export interface ApplicationReview {
+  identity?: 'code' | 'email' | 'personal';
+  ownership?: ('code' | 'making_of' | 'released' | 'credits')[];
+  /** The reviewer's own ear, 1–5. */
+  ear?: number;
+}
+
+export interface AdminApplication extends Omit<Application, 'songs' | 'again_at'> {
+  user: Pick<UserCard, 'id' | 'username' | 'display_name' | 'avatar_url'> & {
+    verified: boolean;
+    links: Links;
+    joined_at: string;
+    email: string | null;
+    followers: number;
+    songs: number;
+  };
+  code: string | null;
+  decided_by: string | null;
+  note: string | null;
+  review: ApplicationReview | null;
+  founding: number | null;
+  /** Other accounts going by the same name. */
+  same_name: { username: string; display_name: string | null; verified: boolean }[];
+  songs: { song: Song; signal: SongSignal }[];
 }
 
 /** The team's picks for a week (a Monday), each with why. */
@@ -647,6 +744,21 @@ export const api = {
 
   foundingStatus: () => rpc<FoundingStatus>('founding_status'),
   claimFounding: (role: Founding['role']) => rpc<Founding>('claim_founding', { p_role: role }),
+  myApplications: () => rpc<MyApplications>('my_applications'),
+  submitApplication: (a: ApplicationInput) =>
+    rpc<Application>('submit_application', {
+      p_kind: a.kind,
+      p_track: a.track,
+      p_artist_name: a.artistName,
+      p_songs: a.songs,
+      p_links: a.links,
+      p_code_on: a.codeOn,
+      p_making_of: a.makingOf || null,
+      p_about: a.about,
+      p_audience: a.audience || null,
+      p_promise: a.promise,
+    }),
+  withdrawApplication: (kind: ApplicationKind) => rpc<MyApplications>('withdraw_application', { p_kind: kind }),
   picks: (week?: string | null) => rpc<Picks>('get_picks', { p_week: week ?? null }),
   giveFeedback: (songId: string, tags: FeedbackTag[], note: string, listened: number) =>
     rpc<Feedback>('give_feedback', { p_song: songId, p_tags: tags, p_note: note || null, p_listened: Math.round(listened) }),
@@ -675,6 +787,26 @@ export const api = {
   adminWelcomeArtist: (userId: string, note: string) =>
     rpc<void>('admin_welcome_artist', { p_user: userId, p_note: note || null }),
   adminPulse: (weeks = 8) => rpc<Pulse>('admin_pulse', { p_weeks: weeks }),
+  adminApplications: (status: ApplicationStatus | 'all', kind: ApplicationKind | null = null) =>
+    rpc<AdminApplication[]>('admin_applications', { p_status: status, p_kind: kind }),
+  adminDecideApplication: (d: {
+    userId: string;
+    kind: ApplicationKind;
+    decision: Exclude<ApplicationStatus, 'pending'>;
+    message: string;
+    note: string;
+    verify: boolean;
+    review: ApplicationReview;
+  }) =>
+    rpc<{ status: ApplicationStatus; founding: number | null; verified: boolean }>('admin_decide_application', {
+      p_user: d.userId,
+      p_kind: d.kind,
+      p_decision: d.decision,
+      p_message: d.message || null,
+      p_note: d.note || null,
+      p_verify: d.verify,
+      p_review: d.review,
+    }),
 
   adminReports: (status: string) => rpc<Report[]>('admin_reports', { p_status: status }),
   adminBugReports: (status: string) => rpc<BugReport[]>('admin_bug_reports', { p_status: status }),

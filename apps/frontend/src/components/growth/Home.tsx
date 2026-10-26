@@ -4,6 +4,7 @@ import { LuArrowRight, LuChartColumn, LuCompass, LuFlame, LuGem, LuImage, LuRada
 import { Link } from 'react-router-dom';
 import { useChallenge, useCollections, useFounding, useMyWeek } from '../../hooks/data';
 import { count, plural } from '../../lib/format';
+import { decisionSeen } from '../../lib/growth';
 import { useMoney } from '../../store/money';
 import { ShareCardDialog } from '../music/ShareCard';
 import { Avatar, Button, Cover } from '../ui';
@@ -180,10 +181,34 @@ export function Challenge() {
   );
 }
 
-/** While founding spots are left: the way in. */
+/** The team's answer to a founding application until it's been seen; otherwise, while founding
+ * spots are left, the way in. */
 export function FoundingBanner() {
   const s = useFounding().data;
-  if (!s || !s.open || s.me) return null;
+  const app = s?.application;
+  if (s && app && app.status !== 'pending' && !decisionSeen(app.decided_at)) {
+    const yes = app.status === 'approved' && s.me?.role === 'artist';
+    return (
+      <Link to={yes ? '/founding' : '/founding/apply'} className="group mt-8 block">
+        <Card className="border-[#e7a33e]/30 transition group-hover:border-[#e7a33e]/50">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_100%_at_0%_0%,rgba(231,163,62,0.24),transparent_60%)]" />
+          <div className="relative flex items-center gap-4">
+            <span className={clsx('grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-[22px] text-[#1a1206]', GOLD)}>
+              <LuGem />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{yes ? `You’re Founding Artist #${s.me!.number}` : 'The team replied to your application'}</p>
+              <p className="mt-0.5 text-[13.5px] leading-5 text-muted">
+                {yes ? 'The Wavee team chose you. Your number is yours for good: share your badge.' : 'Read what they said, and what would make it a yes.'}
+              </p>
+            </div>
+            <LuArrowRight className="shrink-0 text-muted transition group-hover:translate-x-0.5 group-hover:text-ink" />
+          </div>
+        </Card>
+      </Link>
+    );
+  }
+  if (!s || !s.open || s.me || app?.status === 'pending') return null;
   const left = Math.max(0, s.artists.cap - s.artists.taken) + Math.max(0, s.listeners.cap - s.listeners.taken);
   if (!left) return null;
   return (
@@ -201,7 +226,9 @@ export function FoundingBanner() {
                 : `The Founding ${s.artists.cap + s.listeners.cap}: ${left} ${left === 1 ? 'spot' : 'spots'} left`}
             </p>
             <p className="mt-0.5 text-[13.5px] leading-5 text-muted">
-              Be one of the first artists and listeners building Wavee. Your number is yours for good.
+              {s.review
+                ? `Listeners take a spot; artists apply, and ${s.artists.cap} are chosen. Your number is yours for good.`
+                : 'Be one of the first artists and listeners building Wavee. Your number is yours for good.'}
             </p>
           </div>
           <LuArrowRight className="shrink-0 text-muted transition group-hover:translate-x-0.5 group-hover:text-ink" />

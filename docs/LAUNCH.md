@@ -17,7 +17,8 @@ The founding story works *because* it's true: people help build something real.
 
 | Feature | Where | What it does for the cold start |
 | --- | --- | --- |
-| **Founding 100** | /founding, Home banner, profile badge | The first 30 artists and 70 listeners get a numbered gold badge for good. Shows the real spots left. Founders can post their badge as a story card. |
+| **Founding 100** | /founding, Home banner, profile badge | 30 artists and 70 listeners get a numbered gold badge for good. Shows the real spots left. Founders can post their badge as a story card. |
+| **Founding artists are chosen** | /founding/apply, /verify, Settings → Get verified, Admin → Applications | Since 2026-10-26 artists apply (migration 20261026090000): new artists prove the music is theirs (their code `wavee-xxxxxx` in a profile bio, or a making-of video) and the team reads what strangers from first listens did with each song; known artists prove it's them with the code on an official account and are verified when chosen. "Not yet" comes with a reason; they can apply again after `reapply_days`. Listeners still take their own spot. Anyone can ask for Verified alone. The playbook is in the growth folder: `02 …/How we choose founding artists.md` and `What to offer known artists.md`. |
 | **First listens** | Automatic on upload | Each artist's first three songs are played to 25 real listeners each in the feed, marked "New artist". No upload goes unheard. They count toward the charts like any feed play. |
 | **Fresh Finds** | /picks, Home | The team's weekly picks, each with one line on why. Comes with a story card to post every week. |
 | **Feedback** | Song menu, song page, Fresh Finds | Listeners tell the artist what worked ("The hook stuck") and what didn't ("The mix needs work"), privately and anonymously. Artists see it in Stats. |
@@ -26,13 +27,15 @@ The founding story works *because* it's true: people help build something real.
 | **Early finds** | Profile tab | Songs someone liked early, after really listening: their "My Wavee Finds", shareable. |
 | **Invites** | Founding page, Your week | Personal links (`/founding?ref=username`). Shows who you brought. |
 | **Collections** | Home | Playlists the team features: Hidden Gems, New Artists to Watch… |
-| **Team tools** | /admin | **Pulse** (the weekly numbers), **New artists** (everyone whose first song came in, to welcome them), Fresh Finds, Founding 100, Collections. |
+| **Team tools** | /admin | **Pulse** (the weekly numbers), **Applications** (founding artists and Verified requests, with the proof and what listeners did), **New artists** (everyone whose first song came in, to welcome them), Fresh Finds, Founding 100, Collections. |
 
 Settings live in the `wavee_growth` table (SQL editor):
 
 ```sql
 update wavee_growth set founding_artists = 30, founding_listeners = 70;  -- the caps
 update wavee_growth set founding_open = false;                          -- close it
+update wavee_growth set artists_by_review = false;                      -- artists first come again
+update wavee_growth set reapply_days = 14;                              -- the wait after "not yet"
 update wavee_growth set welcome_listeners = 25, welcome_songs = 3;       -- first listens
 update wavee_growth set challenge_goal = 3;                             -- the weekly challenge
 ```

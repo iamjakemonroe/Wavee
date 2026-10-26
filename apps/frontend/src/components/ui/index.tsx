@@ -13,7 +13,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { usePhone, useSwipeToClose } from '../../hooks/useSwipeToClose';
-import { LuRefreshCw, LuWifiOff, LuX } from 'react-icons/lu';
+import { LuCheck, LuRefreshCw, LuWifiOff, LuX } from 'react-icons/lu';
 
 // ── Buttons ─────────────────────────────────────────────────────────────
 
@@ -227,6 +227,26 @@ export function Checkbox({
       />
       <span>{children}</span>
     </label>
+  );
+}
+
+/** A numbered card in a long form; the number turns into a tick once the step is done. */
+export function Step({ n, title, done, children }: { n: number; title: string; done?: boolean; children: ReactNode }) {
+  return (
+    <section className="card p-5 sm:p-6">
+      <h2 className="mb-5 flex items-center gap-3 text-base">
+        <span
+          className={clsx(
+            'grid h-7 w-7 place-items-center rounded-full text-[13px] font-semibold transition',
+            done ? 'bg-teal text-bg' : 'bg-line/[0.08] text-muted',
+          )}
+        >
+          {done ? <LuCheck /> : n}
+        </span>
+        {title}
+      </h2>
+      {children}
+    </section>
   );
 }
 

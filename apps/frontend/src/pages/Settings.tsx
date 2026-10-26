@@ -1,8 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useEffect, useState, type ReactNode } from 'react';
-import { LuCamera, LuCheck, LuCopy, LuDownload, LuLaptopMinimal, LuLogOut, LuSettings, LuTrash2 } from 'react-icons/lu';
-import { useNavigate } from 'react-router-dom';
+import { LuBadgeCheck, LuCamera, LuCheck, LuCopy, LuDownload, LuLaptopMinimal, LuLogOut, LuSettings, LuTrash2 } from 'react-icons/lu';
+import { Link, useNavigate } from 'react-router-dom';
 import { SignedOut } from '../components/auth/SignedOut';
 import { passwordStrength, StrengthMeter, authMessage } from '../components/auth/AuthLayout';
 import { SignOutConfirm } from '../components/auth/SignOutConfirm';
@@ -60,6 +60,17 @@ export function Settings() {
       <GetTheApp />
       <ProfileForm key={account.id} />
       <LinksForm key={`links-${account.id}`} />
+      <Panel title="Verified" text="The tick that tells fans it’s really you. Free, never for sale.">
+        <p className="text-[14px] leading-6 text-muted">
+          For artists with fans elsewhere, who someone could pretend to be. You prove it with a code in the bio of one of
+          your official accounts, and the team checks.
+        </p>
+        <Link to="/verify" className="mt-4 inline-block">
+          <Button variant="secondary" icon={<LuBadgeCheck />}>
+            Get verified
+          </Button>
+        </Link>
+      </Panel>
       <PasswordForm />
       <DangerZone />
     </div>

@@ -2,14 +2,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
-import { LuCheck, LuFilm, LuImage, LuMusic, LuRefreshCw, LuUpload, LuX } from 'react-icons/lu';
+import { LuFilm, LuImage, LuMusic, LuRefreshCw, LuUpload, LuX } from 'react-icons/lu';
 import { Link, useNavigate } from 'react-router-dom';
 import { SignedOut } from '../components/auth/SignedOut';
 import { FeaturePicker, type Person } from '../components/music/FeaturePicker';
 import { GenrePicker } from '../components/music/GenrePicker';
 import { HookPicker } from '../components/music/HookPicker';
 import { LinksEditor, linksValid } from '../components/music/Links';
-import { Avatar, Button, Checkbox, Cover, Input, Textarea } from '../components/ui';
+import { Avatar, Button, Checkbox, Cover, Input, Step, Textarea } from '../components/ui';
 import { keys, useMyPlan } from '../hooks/data';
 import { api } from '../lib/api';
 import { payApi } from '../lib/pay';
@@ -184,25 +184,6 @@ function Progress({ slot, onRetry, onRemove }: { slot: Slot; onRetry: () => void
         <LuX />
       </button>
     </div>
-  );
-}
-
-function Step({ n, title, done, children }: { n: number; title: string; done?: boolean; children: ReactNode }) {
-  return (
-    <section className="card p-5 sm:p-6">
-      <h2 className="mb-5 flex items-center gap-3 text-base">
-        <span
-          className={clsx(
-            'grid h-7 w-7 place-items-center rounded-full text-[13px] font-semibold transition',
-            done ? 'bg-teal text-bg' : 'bg-line/[0.08] text-muted',
-          )}
-        >
-          {done ? <LuCheck /> : n}
-        </span>
-        {title}
-      </h2>
-      {children}
-    </section>
   );
 }
 

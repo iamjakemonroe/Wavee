@@ -1,9 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   LuEar,
+  LuFingerprint,
+  LuFlame,
   LuGem,
   LuHeadphones,
   LuMessageSquareHeart,
@@ -14,11 +16,12 @@ import {
   LuUpload,
   LuUserPlus,
 } from 'react-icons/lu';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FoundingBadge, FoundingCardDialog, GOLD, InviteDialog } from '../components/growth/Founding';
 import { Avatar, Button, Skeleton } from '../components/ui';
 import { keys, useFounding, useUserSongs } from '../hooks/data';
-import { api, type Founding as FoundingSpot } from '../lib/api';
+import { api, type Founding as FoundingSpot, type FoundingStatus } from '../lib/api';
+import { markDecisionSeen } from '../lib/growth';
 import { useAuth, withAccount } from '../store/auth';
 import { toast } from '../store/toast';
 import { useTitle } from '../hooks/useTitle';
@@ -59,8 +62,58 @@ function Perk({ icon, title, children }: { icon: ReactNode; title: string; child
   );
 }
 
+/** When founding artists are chosen: apply, or where the application stands. */
+function ArtistWayIn({ s, signedIn, hasSong }: { s: FoundingStatus; signedIn: boolean; hasSong: boolean }) {
+  const navigate = useNavigate();
+  const app = s.application;
+  const full = s.artists.taken >= s.artists.cap;
+  if (app?.status === 'pending' || app?.status === 'not_yet') {
+    return (
+      <>
+        <p className="mt-1.5 text-[13.5px] leading-6 text-muted">
+          {app.status === 'pending'
+            ? 'Your application is with the team. We read every one ourselves.'
+            : 'The team has replied to your application.'}
+        </p>
+        <Link to="/founding/apply" className="mt-4 inline-block">
+          <Button variant="secondary">{app.status === 'pending' ? 'See or change it' : 'Read the reply'}</Button>
+        </Link>
+      </>
+    );
+  }
+  return (
+    <>
+      <p className="mt-1.5 text-[13.5px] leading-6 text-muted">
+        {signedIn && !hasSong
+          ? 'Founding artists are chosen from their music. Upload your best song, then apply.'
+          : 'Founding artists are chosen by the Wavee team: music that’s yours, and that listeners love.'}
+      </p>
+      <Button
+        className="mt-4"
+        variant="brand"
+        disabled={full}
+        onClick={() => withAccount('Make an account to apply.', () => navigate('/founding/apply'))}
+      >
+        {full ? 'Artist spots taken' : 'Apply as an artist'}
+      </Button>
+    </>
+  );
+}
+
+function Chosen({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3.5">
+      <span className={clsx('grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-[18px] text-[#1a1206]', GOLD)}>{icon}</span>
+      <div>
+        <p className="font-semibold">{title}</p>
+        <p className="mt-1 text-[14px] leading-6 text-muted">{children}</p>
+      </div>
+    </div>
+  );
+}
+
 /** Wavee Founding 100: the first 30 artists and 70 listeners, by name and number. The counts are
- * the real ones. */
+ * the real ones. Artists are chosen from applications while wavee_growth.artists_by_review is on. */
 export function Founding() {
   useTitle('Founding 100');
   const status = useFounding();
@@ -93,6 +146,12 @@ export function Founding() {
     });
 
   const hasSong = !!songs?.length;
+  const chosen = s?.application?.status === 'approved' ? s.application.decided_at : null;
+
+  // Seen here, the team's yes stops waving from Home.
+  useEffect(() => {
+    if (chosen) markDecisionSeen(chosen);
+  }, [chosen]);
 
   return (
     <div className="animate-rise pb-6">
@@ -108,9 +167,12 @@ export function Founding() {
             <span className="text-brand">from day one.</span>
           </h1>
           <p className="mt-5 max-w-xl text-[16px] leading-7 text-muted">
-            Wavee is new, and we’re not pretending otherwise. We’re looking for {s?.artists.cap ?? 30} artists with music
-            ready to share and {s?.listeners.cap ?? 70} listeners who love finding it first. Together you shape what Wavee
-            becomes, and your profile says you were here first, for good.
+            Wavee is new, and we’re not pretending otherwise.{' '}
+            {s?.review === false
+              ? `We’re looking for ${s.artists.cap} artists with music ready to share`
+              : `We’re choosing ${s?.artists.cap ?? 30} artists by hand, whose music is theirs and that listeners love,`}{' '}
+            and {s?.listeners.cap ?? 70} listeners who love finding it first. Together you shape what Wavee becomes, and
+            your profile says you were here first, for good.
           </p>
         </div>
       </section>
@@ -125,7 +187,7 @@ export function Founding() {
           <div className="grid gap-3 sm:grid-cols-2">
             {s.artists.taken + s.listeners.taken >= 10 ? (
               <>
-                <Meter label="Founding artists" icon={<LuMicVocal />} taken={s.artists.taken} cap={s.artists.cap} />
+                <Meter label={s.review ? 'Founding artists chosen' : 'Founding artists'} icon={<LuMicVocal />} taken={s.artists.taken} cap={s.artists.cap} />
                 <Meter label="Founding listeners" icon={<LuHeadphones />} taken={s.listeners.taken} cap={s.listeners.cap} />
               </>
             ) : (
@@ -173,36 +235,44 @@ export function Founding() {
               </div>
             ) : (
               <div>
-                <h2 className="text-2xl">Take your spot</h2>
+                <h2 className="text-2xl">{s.review ? 'Join the first hundred' : 'Take your spot'}</h2>
                 <p className="mt-2 max-w-xl text-[15px] leading-7 text-muted">
-                  It’s free. Spots are numbered in the order they’re taken, and the number is yours to keep.
+                  {s.review
+                    ? 'It’s free. Listeners take a spot; artists apply and are chosen. Spots are numbered in order, and the number is yours to keep.'
+                    : 'It’s free. Spots are numbered in the order they’re taken, and the number is yours to keep.'}
                 </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-3xl border border-line/10 bg-line/[0.03] p-5">
                     <p className="flex items-center gap-2 font-semibold">
                       <LuMicVocal className="text-teal" /> I make music
                     </p>
-                    <p className="mt-1.5 text-[13.5px] leading-6 text-muted">
-                      {signedIn && !hasSong
-                        ? 'Founding artists have a song on Wavee. Upload your best one, then come back.'
-                        : 'Singers, rappers, producers, bands, DJs: anyone with a song of their own.'}
-                    </p>
-                    {signedIn && !hasSong ? (
-                      <Link to="/upload" className="mt-4 inline-block">
-                        <Button variant="secondary" icon={<LuUpload />}>
-                          Upload a song
-                        </Button>
-                      </Link>
+                    {s.review ? (
+                      <ArtistWayIn s={s} signedIn={signedIn} hasSong={hasSong} />
                     ) : (
-                      <Button
-                        className="mt-4"
-                        variant="brand"
-                        loading={busy === 'artist'}
-                        disabled={s.artists.taken >= s.artists.cap}
-                        onClick={() => claim('artist')}
-                      >
-                        {s.artists.taken >= s.artists.cap ? 'Artist spots taken' : 'Join as an artist'}
-                      </Button>
+                      <>
+                        <p className="mt-1.5 text-[13.5px] leading-6 text-muted">
+                          {signedIn && !hasSong
+                            ? 'Founding artists have a song on Wavee. Upload your best one, then come back.'
+                            : 'Singers, rappers, producers, bands, DJs: anyone with a song of their own.'}
+                        </p>
+                        {signedIn && !hasSong ? (
+                          <Link to="/upload" className="mt-4 inline-block">
+                            <Button variant="secondary" icon={<LuUpload />}>
+                              Upload a song
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Button
+                            className="mt-4"
+                            variant="brand"
+                            loading={busy === 'artist'}
+                            disabled={s.artists.taken >= s.artists.cap}
+                            onClick={() => claim('artist')}
+                          >
+                            {s.artists.taken >= s.artists.cap ? 'Artist spots taken' : 'Join as an artist'}
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                   <div className="rounded-3xl border border-line/10 bg-line/[0.03] p-5">
@@ -227,6 +297,35 @@ export function Founding() {
             )}
           </div>
         </>
+      )}
+
+      {s?.review && (
+        <section className="mt-12 rounded-4xl border border-line/10 bg-line/[0.03] p-6 sm:p-8">
+          <h2 className="text-xl sm:text-[22px]">How we choose founding artists</h2>
+          <p className="mt-2 max-w-2xl text-[15px] leading-7 text-muted">
+            If anyone could be a founder, it would mean nothing. Every application is read by the Wavee team
+            {s.artists.applied >= 10 ? `: ${s.artists.applied} artists have applied so far` : ''}.
+          </p>
+          <div className="mt-6 grid gap-5 md:grid-cols-3">
+            <Chosen icon={<LuFingerprint />} title="It’s yours">
+              Your code on a profile that carries your music, or a video of you making it. We check.
+            </Chosen>
+            <Chosen icon={<LuEar />} title="Listeners love it">
+              Your first songs are played to listeners who’ve never heard of you. We look at what they do: finish it,
+              come back, save it.
+            </Chosen>
+            <Chosen icon={<LuFlame />} title="You’re serious">
+              You release, you perform, you build, and you’ll bring your fans to Wavee.
+            </Chosen>
+          </div>
+          <p className="mt-6 text-[14px] leading-6 text-muted">
+            <b className="text-ink">Already known?</b> Prove it’s you with a code on your official account and you’re
+            verified at the same time.{' '}
+            <Link to="/verify" className="link">
+              Just want the Verified badge?
+            </Link>
+          </p>
+        </section>
       )}
 
       <h2 className="mt-12 text-xl sm:text-[22px]">What founders get</h2>

@@ -28,6 +28,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1479,7 +1480,7 @@ def run_contract_tests(db, c):
 
         # Founding 100.
         st = db.anon("select public.founding_status()")[0][0]
-        c.ok("the founding spots, as they really are", st["open"] is True and st["artists"] == {"taken": 0, "cap": 30}
+        c.ok("the founding spots, as they really are", st["open"] is True and st["artists"] == {"taken": 0, "cap": 30, "applied": 0}
              and st["listeners"] == {"taken": 0, "cap": 70} and st["me"] is None and st["members"] == [], st)
         ear = signup("ear@example.com", {"username": "first_ear"})
         maker = signup("maker@example.com", {"username": "maker", "music_roles": ["producer"]})
@@ -1500,11 +1501,16 @@ def run_contract_tests(db, c):
         mine = db.user(ear, "select public.claim_founding('listener')")[0][0]
         c.ok("a listener takes a founding spot, numbered", mine == {"number": 1, "role": "listener"}, mine)
         c.ok("asking again keeps the same spot", db.user(ear, "select public.claim_founding('artist')")[0][0] == mine)
+        c.raises("founding artists are chosen: taking a spot points to the application",
+                 lambda: db.user(maker, "select public.claim_founding('artist')"), "WV001", "apply on the Founding page")
+        # With review switched off, artists take spots first come (the old way, kept as a setting).
+        db.su("update public.wavee_growth set artists_by_review = false")
         c.raises("founding artists need a song first",
                  lambda: db.user(maker, "select public.claim_founding('artist')"), "WV001", "Upload a song first")
         first = new_song(maker, "First One", duration=150)
         c.ok("with a song, an artist takes the next number",
              db.user(maker, "select public.claim_founding('artist')")[0][0] == {"number": 2, "role": "artist"})
+        db.su("update public.wavee_growth set artists_by_review = true")
         st = db.user(ear, "select public.founding_status()")[0][0]
         c.ok("the status counts them and knows you", st["artists"]["taken"] == 1 and st["listeners"]["taken"] == 1
              and st["me"] == mine and [m["username"] for m in st["members"]] == ["maker", "first_ear"], st)
@@ -1691,6 +1697,203 @@ def run_contract_tests(db, c):
              and row["welcome_note"].startswith("DM on Instagram"), row)
 
     c.safe("growth", growth)
+
+    # ── Founding artists by application, and Verified on request ───────────
+    c.start("applications")
+
+    def applications():
+        db.su("update public.wavee_growth set welcome_songs = 3, founding_artists = 30, founding_open = true")
+        newbie = signup("newbie.artist@example.com", {"username": "newbie_artist"})
+        star = signup("big.star@example.com", {"username": "big_star_real"})
+        fake = signup("fake.star@example.com", {"username": "totally_big_star"})
+        unconfirmed = signup("unconfirmed.artist@example.com", {"username": "unconfirmed_artist"}, confirmed=False)
+        s1 = new_song(newbie, "Morning Light", duration=180)
+        s2 = new_song(newbie, "Night Bus", duration=200)
+        s3 = new_song(newbie, "Third Song", duration=200)
+        s4 = new_song(newbie, "Fourth Song", duration=200)
+        hit = new_song(star, "Hit Record", duration=210)
+        db.su("update public.users set display_name = 'Big Star' where id in (%s, %s)", (star, fake))
+
+        mine = db.user(newbie, "select public.my_applications()")[0][0]
+        code = mine["code"]
+        c.ok("every applicant gets a code that's easy to read",
+             re.fullmatch(r"wavee-[a-hjkmnp-z2-9]{6}", code) is not None
+             and mine["founding"] is None and mine["verified"] is None and mine["is_verified"] is False, mine)
+        c.ok("…the same one every time", db.user(newbie, "select public.my_applications()")[0][0]["code"] == code)
+        c.raises("visitors can't apply", lambda: db.anon("select public.my_applications()"), "permission denied")
+
+        about = ("I write and produce everything myself in my room in Ibadan: Afro-soul, two EPs out, "
+                 "and shows on campus every month.")
+        video = "https://www.tiktok.com/@newbie/video/123"
+
+        def apply(user, kind="founding", track="emerging", name="Newbie", songs=(), links=None, code_on=None,
+                  making_of=None, about=about, audience=None, promise=True):
+            return db.user(user, "select public.submit_application(%s, %s, %s, %s::uuid[], %s::jsonb, %s, %s, %s, %s, %s)",
+                           (kind, track, name, list(songs), json.dumps(links or {}), code_on, making_of, about,
+                            audience, promise))[0][0]
+
+        c.raises("real people: a confirmed email first",
+                 lambda: apply(unconfirmed, making_of=video), "WV001", "Confirm your email")
+        c.raises("a founding application brings music",
+                 lambda: apply(newbie, making_of=video), "WV001", "at least one")
+        c.raises("…of their own", lambda: apply(newbie, songs=[hit], making_of=video), "WV001", "uploaded yourself")
+        c.raises("…three at most", lambda: apply(newbie, songs=[s1, s2, s3, s4], making_of=video), "WV001", "up to three")
+        c.raises("new artists show the music is theirs", lambda: apply(newbie, songs=[s1]), "WV001", "is yours")
+        c.raises("the code goes on a profile they list",
+                 lambda: apply(newbie, songs=[s1], code_on="instagram"), "WV001", "Add the link")
+        c.raises("links are checked like a profile's",
+                 lambda: apply(newbie, songs=[s1], links={"instagram": "https://evil.example.com/x"}, code_on="instagram"),
+                 "WV001", "links isn")
+        c.raises("the video is a web address", lambda: apply(newbie, songs=[s1], making_of="javascript:alert(1)"),
+                 "WV001", "https://")
+        c.raises("a few real sentences", lambda: apply(newbie, songs=[s1], making_of=video, about="hi"),
+                 "WV001", "a little more")
+        c.raises("and the promise", lambda: apply(newbie, songs=[s1], making_of=video, promise=False), "WV001", "promise")
+        app = apply(newbie, songs=[s2, s1, s2], making_of=video, audience="  ",
+                    links={"instagram": "https://www.instagram.com/newbie", "spotify": ""})
+        c.ok("an emerging artist applies: each song once, in their order; empty links dropped",
+             app["status"] == "pending" and app["songs"] == [s2, s1]
+             and app["links"] == {"instagram": "https://www.instagram.com/newbie"} and app["audience"] is None
+             and app["attempts"] == 1 and "note" not in app and "review" not in app, app)
+        app = apply(newbie, name="Newbie Sound", songs=[s1], making_of=video, code_on="instagram",
+                    links={"instagram": "https://www.instagram.com/newbie"})
+        c.ok("a pending application can be changed", app["artist_name"] == "Newbie Sound"
+             and app["code_on"] == "instagram" and app["songs"] == [s1] and app["attempts"] == 1, app)
+        st = db.user(newbie, "select public.founding_status()")[0][0]
+        c.ok("the founding page knows it's being read", st["review"] is True and st["me"] is None
+             and st["application"] == {"status": "pending", "decided_at": None} and st["artists"]["applied"] == 1, st)
+        c.raises("applying doesn't make you a founder",
+                 lambda: db.user(newbie, "select public.claim_founding('artist')"), "WV001", "apply on the Founding page")
+        c.raises("applications are private", lambda: db.user(newbie, "select * from public.artist_applications"),
+                 "permission denied")
+        c.raises("…and so are codes", lambda: db.user(newbie, "select * from public.artist_codes"), "permission denied")
+
+        # What listeners did with Morning Light: two strangers its first listens reached, and a friend.
+        stranger1 = signup("stranger1@example.com", {"username": "stranger_one"})
+        stranger2 = signup("stranger2@example.com", {"username": "stranger_two"})
+        friend = signup("friend@example.com", {"username": "newbies_friend"})
+        db.su("insert into public.boost_reach (boost_id, user_id) select b.id, u.id from public.boosts b, "
+              "unnest(%s::uuid[]) u(id) where b.song_id = %s and b.source = 'welcome'", ([stranger1, stranger2], s1))
+
+        def play(listener, song, seconds, length):
+            age(listener, 900)
+            db.user(listener, "select public.record_play(%s, %s, %s, false, null)", (song, seconds, length))
+
+        play(stranger1, s1, 120, 180)
+        play(stranger1, s1, 180, 180)
+        play(stranger2, s1, 10, 180)
+        play(friend, s1, 170, 180)
+        play(newbie, s1, 180, 180)
+        db.user(friend, "select public.toggle_like(%s, true)", (s1,))
+        db.user(newbie, "select public.toggle_like(%s, true)", (s1,))
+
+        c.raises("the review is the team's", lambda: db.user(newbie, "select public.admin_applications('pending', null)"),
+                 "42501")
+        queue = db.user(ADMIN, "select public.admin_applications('pending', null)")[0][0]
+        row = next(r for r in queue if r["user"]["username"] == "newbie_artist")
+        c.ok("the team sees the code, the proof, the songs and how to reach them",
+             row["code"] == code and row["code_on"] == "instagram" and row["making_of"] == video
+             and [x["song"]["id"] for x in row["songs"]] == [s1] and row["user"]["email"] == "newbie.artist@example.com"
+             and row["same_name"] == [], row)
+        sig = row["songs"][0]["signal"]
+        c.ok("what everyone did (never the artist's own plays or like)",
+             (sig["listeners"], sig["heard"], sig["completion"], sig["finished"], sig["came_back"], sig["likes"])
+             == (3, 2, 0.667, 2, 1, 1), sig)
+        c.ok("…and the strangers who never chose them",
+             sig["strangers"] == {"reached": 2, "heard": 1, "completion": 0.528, "likes": 0, "came_back": 1},
+             sig["strangers"])
+
+        c.raises("only the team decides",
+                 lambda: db.user(newbie, "select public.admin_decide_application(%s, 'founding', 'approved')", (newbie,)),
+                 "42501")
+        c.raises("'not yet' comes with a kind reason",
+                 lambda: db.user(ADMIN, "select public.admin_decide_application(%s, 'founding', 'not_yet', 'no')",
+                                 (newbie,)), "WV001", "kindly")
+        number = db.su("select max(number) + 1 from public.founding_members")[0][0]
+        out = db.user(ADMIN, "select public.admin_decide_application(%s, 'founding', 'approved', 'Welcome to the first 30!', "
+                             "'Strangers finished it', false, %s::jsonb)",
+                      (newbie, json.dumps({"ownership": ["making_of"], "ear": 4})))[0][0]
+        c.ok("chosen: the next founding number, and not verified unless asked",
+             out == {"status": "approved", "founding": number, "verified": False}, out)
+        mine = db.user(newbie, "select public.my_applications()")[0][0]["founding"]
+        c.ok("the artist sees the decision and the message, never the team's note", mine["status"] == "approved"
+             and mine["message"] == "Welcome to the first 30!" and mine["decided_at"] is not None and "note" not in mine, mine)
+        st = db.user(newbie, "select public.founding_status()")[0][0]
+        c.ok("…and their founding badge", st["me"] == {"number": number, "role": "artist"}
+             and st["application"]["status"] == "approved", st)
+        c.raises("a yes stays a yes",
+                 lambda: db.user(ADMIN, "select public.admin_decide_application(%s, 'founding', 'not_yet', 'Changed our mind')",
+                                 (newbie,)), "WV001", "Already approved")
+        c.raises("a founding artist doesn't apply again", lambda: apply(newbie, songs=[s1], making_of=video),
+                 "WV001", "already a founding artist")
+
+        # Known artists prove who they are; an impostor is caught by the name and the missing code.
+        c.raises("a known artist's code goes on an official account",
+                 lambda: apply(star, track="known", name="Big Star", songs=[hit], making_of=video), "WV001", "official account")
+        ig = {"instagram": "https://www.instagram.com/bigstar"}
+        apply(star, track="known", name="Big Star", songs=[hit], links=ig, code_on="instagram",
+              audience="2M monthly listeners on Spotify, a sold-out show in Lagos")
+        apply(fake, kind="verified", name="Big Star", links=ig, code_on="instagram")
+        queue = db.user(ADMIN, "select public.admin_applications('pending', null)")[0][0]
+        c.ok("the queue: first come, first read", [r["user"]["username"] for r in queue]
+             == ["big_star_real", "totally_big_star"], [r["user"]["username"] for r in queue])
+        row = next(r for r in queue if r["user"]["username"] == "totally_big_star")
+        c.ok("an application under someone else's name shows who else uses it",
+             row["kind"] == "verified" and row["track"] == "known" and row["songs"] == []
+             and [o["username"] for o in row["same_name"]] == ["big_star_real"], row)
+        c.raises("verifying says how it was checked",
+                 lambda: db.user(ADMIN, "select public.admin_decide_application(%s, 'founding', 'approved', null, null, true)",
+                                 (star,)), "WV001", "how you checked")
+        out = db.user(ADMIN, "select public.admin_decide_application(%s, 'founding', 'approved', null, "
+                             "'Code seen in the Instagram bio', true, %s::jsonb)", (star, json.dumps({"identity": "code"})))[0][0]
+        c.ok("a known artist chosen: founding and verified at once", out["verified"] is True and out["founding"] == number + 1, out)
+        c.ok("…and the badge is logged with how", db.su(
+            "select note from public.moderation_log where target_id = %s and action = 'verified'", (star,))[0][0]
+             == "application: code")
+        db.user(ADMIN, "select public.admin_decide_application(%s, 'verified', 'not_yet', "
+                       "'We couldn''t find your code on that account. Put it in the bio and apply again.', "
+                       "'Impostor? Same name as the verified big_star_real')", (fake,))
+        mine = db.user(fake, "select public.my_applications()")[0][0]["verified"]
+        c.ok("'not yet': the reason, and when to try again", mine["status"] == "not_yet"
+             and mine["message"].startswith("We couldn't find") and mine["again_at"] is not None, mine)
+        c.raises("…not before", lambda: apply(fake, kind="verified", name="Big Star", links=ig, code_on="instagram"),
+                 "WV001", "apply again from")
+        db.su("update public.artist_applications set decided_at = now() - interval '31 days' where user_id = %s", (fake,))
+        again = apply(fake, kind="verified", name="Big Star", links=ig, code_on="instagram")
+        c.ok("after the wait, a fresh review", again["status"] == "pending" and again["attempts"] == 2
+             and again["message"] is None and again["decided_at"] is None, again)
+        c.ok("…with the team's last note kept for them", db.su(
+            "select note from public.artist_applications where user_id = %s", (fake,))[0][0].startswith("Impostor?"))
+        c.ok("taking it back", db.user(fake, "select public.withdraw_application('verified')")[0][0]["verified"] is None)
+        c.ok("the page knows who's verified", db.user(star, "select public.my_applications()")[0][0]["is_verified"] is True)
+        c.raises("verified already: nothing to ask for",
+                 lambda: apply(star, kind="verified", name="Big Star", links=ig, code_on="instagram"), "WV001", "already verified")
+        decided = db.user(ADMIN, "select public.admin_applications('approved', 'founding')")[0][0]
+        c.ok("decided ones, newest first", [r["user"]["username"] for r in decided] == ["big_star_real", "newbie_artist"]
+             and all(r["decided_by"] for r in decided), [r["user"]["username"] for r in decided])
+
+        # A founding listener chosen as an artist keeps their number; the limit holds.
+        fan = signup("fan.artist@example.com", {"username": "fan_turned_artist"})
+        for song, length in ((s1, 180), (s2, 200), (hit, 210)):
+            play(fan, song, 60, length)
+        listener_no = db.user(fan, "select public.claim_founding('listener')")[0][0]["number"]
+        fan_song = new_song(fan, "Bedroom Demo", duration=150)
+        apply(fan, name="Fan", songs=[fan_song], making_of=video)
+        taken = db.su("select count(*) from public.founding_members where role = 'artist'")[0][0]
+        db.su("update public.wavee_growth set founding_artists = %s", (taken,))
+        late = signup("late.artist@example.com", {"username": "late_artist"})
+        late_song = new_song(late, "Too Late", duration=150)
+        c.raises("no artist spots left, no applications",
+                 lambda: apply(late, name="Late", songs=[late_song], making_of=video), "WV001", "spots are taken")
+        c.raises("…and the team can't go past the limit by review",
+                 lambda: db.user(ADMIN, "select public.admin_decide_application(%s, 'founding', 'approved')", (fan,)),
+                 "WV001", "Raise the limit")
+        db.su("update public.wavee_growth set founding_artists = 30")
+        out = db.user(ADMIN, "select public.admin_decide_application(%s, 'founding', 'approved')", (fan,))[0][0]
+        c.ok("a founding listener chosen as an artist keeps their number", out["founding"] == listener_no, out)
+        c.ok("nobody reads the review through the API", db.anon("select public.founding_status()")[0][0]["application"] is None)
+
+    c.safe("applications", applications)
 
     # ── Stats pages: artist_insights and listener_insights ─────────────────
     c.start("insights")

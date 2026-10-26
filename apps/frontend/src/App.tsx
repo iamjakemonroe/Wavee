@@ -34,6 +34,7 @@ const Settings = later(() => import('./pages/Settings'), 'Settings');
 const Admin = later(() => import('./pages/Admin'), 'Admin');
 const BugReport = later(() => import('./pages/BugReport'), 'BugReport');
 const Founding = later(() => import('./pages/Founding'), 'Founding');
+const Apply = later(() => import('./pages/Apply'), 'Apply') as ComponentType<{ kind: 'founding' | 'verified' }>;
 const Picks = later(() => import('./pages/Picks'), 'Picks');
 const Stats = later(() => import('./pages/Stats'), 'Stats');
 const Legal = later(() => import('./pages/Legal'), 'Legal') as ComponentType<{
@@ -104,6 +105,8 @@ export function App() {
         <Route path="/charts" element={<Charts />} />
         <Route path="/picks" element={<Picks />} />
         <Route path="/founding" element={<Founding />} />
+        <Route path="/founding/apply" element={<Apply kind="founding" />} />
+        <Route path="/verify" element={<Apply kind="verified" />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/library" element={<Library />} />
         <Route path="/upload" element={<Upload />} />

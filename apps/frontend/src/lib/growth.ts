@@ -64,3 +64,24 @@ export async function claimReferrer(username: string) {
   if (Date.now() - (saved.at ?? 0) > 30 * 86_400_000) return;
   await api.claimReferral(saved.ref).catch(() => undefined);
 }
+
+const SEEN = 'wavee.application.seen';
+
+/** Whether this device has shown the team's decision of [decidedAt] (an application's decided_at). */
+export function decisionSeen(decidedAt: string | null | undefined): boolean {
+  if (!decidedAt) return true;
+  try {
+    return localStorage.getItem(SEEN) === decidedAt;
+  } catch {
+    return true;
+  }
+}
+
+export function markDecisionSeen(decidedAt: string | null | undefined) {
+  if (!decidedAt) return;
+  try {
+    localStorage.setItem(SEEN, decidedAt);
+  } catch {
+    // Private mode: the note shows again next time, nothing breaks.
+  }
+}

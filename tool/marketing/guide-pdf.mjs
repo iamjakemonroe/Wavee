@@ -29,7 +29,8 @@ const sections = [
     img('01 Set up your accounts/First posts/explainer-what.png', 'explainer-what.png'),
     img(`${STILLS}/how-wavee-works-mid.png`, 'Video: how-wavee-works.mp4 (24 s)'),
   ])],
-  ['Step 2', md('02 Find your first artists/Do this.md') + md('02 Find your first artists/Messages to artists.md') + gallery('Send with your message', [
+  ['Step 2', md('02 Find your first artists/Do this.md') + md('02 Find your first artists/How we choose founding artists.md')
+    + md('02 Find your first artists/What to offer known artists.md') + md('02 Find your first artists/Messages to artists.md') + gallery('Send with your message', [
     img('02 Find your first artists/Send with your message/explainer-artists.png', 'explainer-artists.png'),
     img('02 Find your first artists/Send with your message/artists-story.png', 'artists-story.png'),
     img('02 Find your first artists/Send with your message/artists-square.png', 'artists-square.png'),
@@ -65,6 +66,8 @@ section.part { page-break-before: always; }
 .cover + section.part { page-break-before: auto; }
 .step { display: inline-block; font-size: 8pt; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #0f9e7b; margin-bottom: 1mm; }
 h1 { font-size: 19pt; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 3mm; }
+/* A step's second, third… file (its messages, its how-tos) starts on a page of its own. */
+section.part h1 ~ h1 { page-break-before: always; }
 h2 { font-size: 13pt; letter-spacing: -0.01em; margin: 7mm 0 2mm; page-break-after: avoid; }
 h3 { font-size: 11pt; margin: 5mm 0 2mm; page-break-after: avoid; }
 p, ul, ol { margin: 0 0 2.5mm; }
@@ -77,7 +80,10 @@ blockquote p { margin: 0 0 1.5mm; } blockquote p:last-child { margin: 0; }
 code { font-family: ui-monospace, Menlo, monospace; font-size: 8.4pt; background: #eef0f4; padding: 0.3mm 1mm; border-radius: 1mm; }
 pre { background: #eef0f4; padding: 2.5mm 3mm; border-radius: 2mm; white-space: pre-wrap; page-break-inside: avoid; }
 pre code { background: none; padding: 0; }
-table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 8.6pt; page-break-inside: avoid; }
+table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 8.6pt; }
+/* Long tables may run onto the next page, between rows only. */
+tr { page-break-inside: avoid; }
+thead { display: table-header-group; }
 th { text-align: left; font-weight: 700; border-bottom: 0.4mm solid #c9ced8; padding: 1.4mm 1.6mm; }
 td { border-bottom: 0.2mm solid #e3e6ec; padding: 1.4mm 1.6mm; vertical-align: top; }
 hr { border: none; border-top: 0.2mm solid #e3e6ec; margin: 4mm 0; }

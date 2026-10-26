@@ -37,6 +37,7 @@ export const keys = {
   myBoosts: ['my-boosts'] as const,
   promoted: ['promoted'] as const,
   founding: ['founding'] as const,
+  myApplications: ['my-applications'] as const,
   picks: (week: string | null) => ['picks', week] as const,
   myWeek: ['my-week'] as const,
   challenge: ['challenge'] as const,
@@ -79,6 +80,12 @@ export function useListening(days: number, enabled = true) {
 export function useFounding() {
   const signedIn = !!useAuth((s) => s.session);
   return useQuery({ queryKey: [...keys.founding, signedIn], queryFn: api.foundingStatus, staleTime: 60_000, retry: false });
+}
+
+/** Your code and your applications (founding, verified). */
+export function useMyApplications(enabled = true) {
+  const signedIn = !!useAuth((s) => s.session);
+  return useQuery({ queryKey: keys.myApplications, queryFn: api.myApplications, enabled: signedIn && enabled, retry: false });
 }
 
 /** A week's Fresh Finds (null: the latest). */
