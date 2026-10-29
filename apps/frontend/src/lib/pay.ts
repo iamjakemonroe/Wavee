@@ -23,6 +23,16 @@ export interface PlanPrice {
   amount: number;
 }
 
+/** Whether payments are switched on, and whether it's Flutterwave's test mode (no real money). */
+export interface PayStatus {
+  on: boolean;
+  test: boolean;
+}
+
+/** The longest the check for whether payments are on takes: no answer by then counts as off, so a
+ * money sheet never waits on it for long. */
+export const PAY_WAIT = 4500;
+
 export interface MyPlan {
   pro_until: string | null;
   free_boost: boolean;
@@ -78,6 +88,14 @@ function friendly(message: string): string {
   return 'Something went wrong. Please try again.';
 }
 
+/** [promise], or a failure once [ms] have passed without its answer. */
+function within<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('No answer in time.')), ms);
+    promise.then(resolve, reject).finally(() => clearTimeout(timer));
+  });
+}
+
 /** Calls the Worker's /api/pay/[path] as the signed-in user. */
 async function pay<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
   const token = await accessToken();
@@ -92,7 +110,9 @@ async function pay<T>(path: string, body: Record<string, unknown> = {}): Promise
 }
 
 export const payApi = {
-  status: () => pay<{ on: boolean; test: boolean }>('status').catch(() => ({ on: false, test: false })),
+  /** Fails, rather than guessing, when the Worker can't be reached or takes longer than PAY_WAIT,
+   * so a failed check isn't kept (payStatusQuery). */
+  status: () => within(pay<PayStatus>('status'), PAY_WAIT),
   shop: (currency: Currency) => rpc<{ packs: Pack[]; plans: PlanPrice[] }>('wavee_shop', { p_currency: currency }),
   myPlan: () => rpc<MyPlan>('wavee_my_plan'),
   myBoosts: () => rpc<Boost[]>('my_boosts'),

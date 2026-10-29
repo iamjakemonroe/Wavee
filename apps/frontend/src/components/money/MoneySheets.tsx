@@ -1,15 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { LuChartColumn, LuCrown, LuFlaskConical, LuGift, LuLock, LuRocket, LuUpload, LuUsers } from 'react-icons/lu';
-import { keys, useMyPlan } from '../../hooks/data';
+import { keys, payStatusQuery, shopQuery, useMyPlan } from '../../hooks/data';
 import type { Song } from '../../lib/api';
-import { CURRENCY, money, payApi } from '../../lib/pay';
+import { CURRENCY, money, payApi, type Currency } from '../../lib/pay';
 import { useAuth } from '../../store/auth';
 import { useMoney } from '../../store/money';
 import { toast } from '../../store/toast';
 import { Link } from 'react-router-dom';
 import { FeedbackSummaryView } from '../growth/Feedback';
-import { Button, Cover, Modal, Spinner } from '../ui';
+import { Button, Cover, LoadError, Modal, Spinner } from '../ui';
 import { plural } from '../../lib/format';
 
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
@@ -32,15 +32,29 @@ function PayTerms() {
 }
 
 /** Says so when payments are Flutterwave's test mode (no real money). */
-function TestNote() {
-  const status = useQuery({ queryKey: ['pay-status'], queryFn: payApi.status, staleTime: 5 * 60_000 }).data;
-  if (!status?.test) return null;
+function TestNote({ test }: { test: boolean }) {
+  if (!test) return null;
   return (
     <p className="mb-4 flex items-start gap-2 rounded-2xl border border-warn/25 bg-warn/[0.07] px-3.5 py-2.5 text-[12.5px] leading-5 text-warn">
       <LuFlaskConical className="mt-0.5 shrink-0" />
       Test mode: no real money. Pay with one of Flutterwave’s test cards.
     </p>
   );
+}
+
+/** What a money sheet shows comes in together: [ready] once the prices, your plan and whether
+ * payments are on are all known (a check for payments that failed or ran out of time counts as
+ * off), so the sheet shows at once rather than piece by piece. */
+function useShelf(currency: Currency) {
+  const shop = useQuery(shopQuery(currency));
+  const plan = useMyPlan();
+  const status = useQuery(payStatusQuery);
+  const known = !!shop.data && !plan.isLoading && !status.isLoading;
+  // Once it's up it stays up: a check asked again while the sheet is open (back online, say) never
+  // brings the loader back.
+  const [shown, setShown] = useState(known);
+  if (known && !shown) setShown(true);
+  return { shop, plan: plan.data, test: !!status.data?.test, ready: shown || known };
 }
 
 function Perk({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
@@ -62,9 +76,8 @@ function BoostBody({ song }: { song: Song }) {
   const showPro = useMoney((s) => s.showPro);
   const close = useMoney((s) => s.boost);
   const client = useQueryClient();
-  const plan = useMyPlan().data;
   const currency = CURRENCY;
-  const shop = useQuery({ queryKey: ['wavee-shop', currency], queryFn: () => payApi.shop(currency) });
+  const { shop, plan, test, ready } = useShelf(currency);
   const [going, setGoing] = useState<string | null>(null);
 
   const buy = async (pack: string) => {
@@ -91,6 +104,10 @@ function BoostBody({ song }: { song: Song }) {
     }
   };
 
+  if (shop.isError && !shop.data) return <LoadError what="the prices" onRetry={() => void shop.refetch()} />;
+  // One loader until all of it is known, never a price or a button that comes in after the rest.
+  if (!ready) return <Spinner className="mx-auto my-24 block h-7 w-7 text-muted" />;
+
   return (
     <div>
       <div className="mb-5 flex items-center gap-3 rounded-2xl bg-line/[0.04] p-3">
@@ -100,7 +117,7 @@ function BoostBody({ song }: { song: Song }) {
           <p className="text-[13px] text-muted">Shown as Promoted in the feed until it reaches them</p>
         </div>
       </div>
-      <TestNote />
+      <TestNote test={test} />
       {plan?.free_boost && (
         <button
           type="button"
@@ -117,22 +134,18 @@ function BoostBody({ song }: { song: Song }) {
         </button>
       )}
       <div className="space-y-2">
-        {!shop.data ? (
-          <Spinner className="mx-auto my-8 block h-6 w-6 text-muted" />
-        ) : (
-          shop.data.packs.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-line/[0.07] bg-line/[0.03] p-3 pl-4">
-              <LuUsers className="shrink-0 text-teal" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[15.5px] font-semibold">{p.listeners.toLocaleString()} new listeners</p>
-                <p className="text-[12.5px] text-faint">{money(p.amount / p.listeners, p.currency)} a listener</p>
-              </div>
-              <Button size="sm" variant="brand" className="min-w-[96px]" loading={going === p.id} disabled={!!going} onClick={() => void buy(p.id)}>
-                {money(p.amount, p.currency)}
-              </Button>
+        {shop.data?.packs.map((p) => (
+          <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-line/[0.07] bg-line/[0.03] p-3 pl-4">
+            <LuUsers className="shrink-0 text-teal" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[15.5px] font-semibold">{p.listeners.toLocaleString()} new listeners</p>
+              <p className="text-[12.5px] text-faint">{money(p.amount / p.listeners, p.currency)} a listener</p>
             </div>
-          ))
-        )}
+            <Button size="sm" variant="brand" className="min-w-[96px]" loading={going === p.id} disabled={!!going} onClick={() => void buy(p.id)}>
+              {money(p.amount, p.currency)}
+            </Button>
+          </div>
+        ))}
       </div>
       <p className="mt-4 text-center text-[12px] leading-5 text-faint">
         A listener counts once they’ve really listened. Boosted plays don’t count toward the charts, so the charts stay
@@ -154,10 +167,9 @@ function BoostBody({ song }: { song: Song }) {
 // ── Artist Pro ──────────────────────────────────────────────────────────
 
 function ProBody() {
-  const plan = useMyPlan().data;
   const client = useQueryClient();
   const currency = CURRENCY;
-  const shop = useQuery({ queryKey: ['wavee-shop', currency], queryFn: () => payApi.shop(currency) });
+  const { shop, plan, test, ready } = useShelf(currency);
   const price = shop.data?.plans[0];
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -185,6 +197,10 @@ function ProBody() {
       setBusy(false);
     }
   };
+
+  if (shop.isError && !shop.data) return <LoadError what="the prices" onRetry={() => void shop.refetch()} />;
+  // One loader until all of it is known, never a price or a button that comes in after the rest.
+  if (!ready) return <Spinner className="mx-auto my-24 block h-7 w-7 text-muted" />;
 
   return (
     <div>
@@ -229,7 +245,7 @@ function ProBody() {
           )
         ) : (
           <>
-            <TestNote />
+            <TestNote test={test} />
                   <Button variant="brand" size="lg" className="w-full" loading={busy} disabled={!price} onClick={() => void join()}>
               {price ? `Go Pro for ${money(price.amount, price.currency)} a month` : 'Go Pro'}
             </Button>
@@ -323,6 +339,16 @@ export function MoneySheets() {
   const boost = useMoney((s) => s.boost);
   const showPro = useMoney((s) => s.showPro);
   const showStats = useMoney((s) => s.showStats);
+  const user = useAuth((s) => s.session?.user.id);
+  const client = useQueryClient();
+
+  // What the Boost and Artist Pro sheets show is fetched as the app opens, so they open with all of it.
+  useEffect(() => {
+    if (!user) return;
+    void client.prefetchQuery(payStatusQuery);
+    void client.prefetchQuery(shopQuery(CURRENCY));
+  }, [user, client]);
+
   return (
     <>
       <Modal open={!!boosting} onClose={() => boost(null)} title="Boost this song">

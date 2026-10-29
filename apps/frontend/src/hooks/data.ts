@@ -1,6 +1,7 @@
-import { payApi } from '../lib/pay';
+import { payApi, type Currency } from '../lib/pay';
 import {
   keepPreviousData,
+  queryOptions,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -34,6 +35,8 @@ export const keys = {
   invites: ['feature-invites'] as const,
   appearances: (id: string) => ['appearances', id] as const,
   myPlan: ['my-plan'] as const,
+  payStatus: ['pay-status'] as const,
+  shop: (currency: Currency) => ['wavee-shop', currency] as const,
   myBoosts: ['my-boosts'] as const,
   promoted: ['promoted'] as const,
   founding: ['founding'] as const,
@@ -121,6 +124,21 @@ export function useMyPlan() {
   const signedIn = !!useAuth((s) => s.session);
   return useQuery({ queryKey: keys.myPlan, queryFn: payApi.myPlan, enabled: signedIn, staleTime: 60_000 });
 }
+
+/** Whether payments are on, and in Flutterwave's test mode: asked once a visit (as the app opens)
+ * and kept. A check that failed or ran out of time isn't kept: the money sheets count it as off,
+ * and the next one to open asks again. */
+export const payStatusQuery = queryOptions({
+  queryKey: keys.payStatus,
+  queryFn: payApi.status,
+  staleTime: Infinity,
+  gcTime: Infinity,
+  retry: false,
+});
+
+/** Boost's packs and Artist Pro's price: fetched once a visit (as the app opens) and kept. */
+export const shopQuery = (currency: Currency) =>
+  queryOptions({ queryKey: keys.shop(currency), queryFn: () => payApi.shop(currency), staleTime: Infinity, gcTime: Infinity });
 
 export function useMyBoosts() {
   const signedIn = !!useAuth((s) => s.session);
